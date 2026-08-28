@@ -256,6 +256,272 @@ h3 {
   font-weight: 700;
 }
 
+.settings-page {
+  width: min(100% - 3rem, 45rem);
+  padding: clamp(3.5rem, 8vw, 7rem) 0;
+}
+.settings-header {
+  margin-bottom: 2.5rem;
+}
+.settings-header h1 {
+  margin-bottom: 0.7rem;
+  font-size: clamp(2.8rem, 7vw, 4.5rem);
+  line-height: 0.92;
+}
+.settings-header > p:last-child {
+  max-width: 36rem;
+  margin-bottom: 0;
+  color: var(--ink-muted);
+  line-height: 1.6;
+}
+.settings-form {
+  display: grid;
+  gap: 1.4rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: clamp(1.5rem, 5vw, 2.5rem);
+}
+.settings-form > label {
+  display: grid;
+  gap: 0.45rem;
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+.settings-form input[type="text"],
+.settings-form input:not([type]) {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--canvas);
+  padding: 0.75rem 0.85rem;
+  color: var(--ink);
+  font: inherit;
+}
+.settings-form select,
+.settings-form textarea,
+.admin-review-card input,
+.admin-review-card select,
+.admin-review-card textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--canvas);
+  padding: 0.75rem 0.85rem;
+  color: var(--ink);
+  font: inherit;
+}
+.settings-form textarea,
+.admin-review-card textarea {
+  resize: vertical;
+}
+.settings-form input:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--brass) 65%, white);
+  outline-offset: 2px;
+}
+.settings-form > label span,
+.settings-note {
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
+.settings-form fieldset {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  padding: 1.4rem 0 0;
+}
+.settings-form legend {
+  padding: 0;
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+.settings-form fieldset label {
+  display: flex;
+  align-items: start;
+  gap: 0.65rem;
+  color: var(--ink-muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.settings-form fieldset strong {
+  display: block;
+  color: var(--ink);
+}
+.settings-note {
+  margin: 0;
+}
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.submission-page,
+.admin-page {
+  width: min(100% - 3rem, 52rem);
+  padding: clamp(3.5rem, 8vw, 7rem) 0;
+}
+.admin-queue {
+  display: grid;
+  gap: 1.5rem;
+}
+.admin-review-card {
+  display: grid;
+  gap: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+.admin-review-card form {
+  display: grid;
+  gap: 1rem;
+}
+.admin-review-card form > label {
+  display: grid;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+.merge-form {
+  border-top: 1px solid var(--border);
+  padding-top: 1.25rem;
+}
+
+.discover-page {
+  padding: clamp(3.5rem, 8vw, 7rem) 0;
+}
+.discover-header {
+  max-width: 44rem;
+}
+.discover-header h1,
+.show-missing h1 {
+  margin-bottom: 0.8rem;
+  font-size: clamp(3rem, 8vw, 5.5rem);
+  line-height: 0.9;
+}
+.discover-header > p:last-child {
+  color: var(--ink-muted);
+  font-size: 1.08rem;
+  line-height: 1.6;
+}
+.catalog-search {
+  display: block;
+  margin-top: 2.5rem;
+}
+.catalog-search input {
+  width: min(100%, 44rem);
+  border: 1px solid var(--midnight);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 1rem 1.1rem;
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.05rem;
+}
+.catalog-search input:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--brass) 70%, white);
+  outline-offset: 3px;
+}
+.catalog-result-count {
+  margin: 1.5rem 0 0.75rem;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+.catalog-results {
+  width: min(100%, 56rem);
+  border-top: 1px solid var(--border);
+}
+.catalog-show-row {
+  display: grid;
+  grid-template-columns: 3.5rem 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 0;
+  text-decoration: none;
+}
+.catalog-show-row:hover strong {
+  color: var(--oxblood);
+}
+.catalog-show-row .show-artwork {
+  min-height: 4.5rem;
+}
+.catalog-show-row strong,
+.catalog-show-row small {
+  display: block;
+}
+.catalog-show-row strong {
+  font-family: Newsreader, Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+.catalog-show-row small,
+.catalog-show-row > span:last-child {
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+  text-transform: capitalize;
+}
+.catalog-empty {
+  max-width: 35rem;
+  border-top: 1px solid var(--border);
+  padding-top: 2.5rem;
+}
+.catalog-empty p {
+  color: var(--ink-muted);
+  line-height: 1.6;
+}
+.show-missing {
+  padding: 6rem 0;
+}
+.show-hero {
+  background: var(--midnight);
+  color: var(--surface);
+}
+.show-hero-content {
+  display: grid;
+  grid-template-columns: minmax(9rem, 15rem) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(2rem, 6vw, 5rem);
+  padding: clamp(3rem, 8vw, 7rem) 0;
+}
+.show-hero .show-artwork {
+  min-height: 21rem;
+}
+.show-hero .eyebrow {
+  color: color-mix(in srgb, var(--brass) 85%, white);
+}
+.show-hero h1 {
+  margin-bottom: 1rem;
+  font-size: clamp(3.2rem, 9vw, 6.5rem);
+  line-height: 0.86;
+}
+.show-hero p:last-child {
+  max-width: 31rem;
+  color: color-mix(in srgb, var(--surface) 70%, transparent);
+  font-size: 1.08rem;
+  line-height: 1.6;
+}
+.show-detail-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(15rem, 0.55fr);
+  gap: clamp(2.5rem, 8vw, 8rem);
+  padding: clamp(3rem, 8vw, 6rem) 0;
+}
+.show-detail-body > div > p:last-child,
+.show-detail-body aside p:last-child {
+  color: var(--ink-muted);
+  line-height: 1.7;
+}
+.show-detail-body aside {
+  border-left: 1px solid var(--border);
+  padding-left: 1.5rem;
+}
+
 .theatre-summary {
   display: flex;
   align-items: end;
@@ -614,6 +880,26 @@ h3 {
     width: 100%;
     justify-content: space-between;
     gap: 0.5rem;
+  }
+  .catalog-show-row {
+    grid-template-columns: 3.25rem 1fr;
+  }
+  .catalog-show-row > span:last-child {
+    display: none;
+  }
+  .show-hero-content,
+  .show-detail-body {
+    grid-template-columns: 1fr;
+  }
+  .show-hero .show-artwork {
+    min-height: 14rem;
+    max-height: 18rem;
+  }
+  .show-detail-body aside {
+    border-top: 1px solid var(--border);
+    border-left: 0;
+    padding-top: 1.5rem;
+    padding-left: 0;
   }
 }
 

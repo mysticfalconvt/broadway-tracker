@@ -10,16 +10,31 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProtectedRouteImport } from './routes/_protected'
+import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SignUpRouteImport } from './routes/sign-up'
+import { Route as ProtectedSettingsRouteImport } from './routes/_protected/settings'
+import { Route as ProtectedSubmitShowRouteImport } from './routes/_protected/submit-show'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ShowsSlugRouteImport } from './routes/shows/$slug'
+import { Route as ProtectedAdminCatalogRouteImport } from './routes/_protected/admin/catalog'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProtectedRoute = ProtectedRouteImport.update({
+  id: '/_protected',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiscoverRoute = DiscoverRouteImport.update({
+  id: '/discover',
+  path: '/discover',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -42,10 +57,30 @@ const SignUpRoute = SignUpRouteImport.update({
   path: '/sign-up',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProtectedSettingsRoute = ProtectedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedSubmitShowRoute = ProtectedSubmitShowRouteImport.update({
+  id: '/submit-show',
+  path: '/submit-show',
+  getParentRoute: () => ProtectedRoute,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ShowsSlugRoute = ShowsSlugRouteImport.update({
+  id: '/shows/$slug',
+  path: '/shows/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProtectedAdminCatalogRoute = ProtectedAdminCatalogRouteImport.update({
+  id: '/admin/catalog',
+  path: '/admin/catalog',
+  getParentRoute: () => ProtectedRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
@@ -55,69 +90,104 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/discover': typeof DiscoverRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/settings': typeof ProtectedSettingsRoute
+  '/submit-show': typeof ProtectedSubmitShowRoute
   '/api/health': typeof ApiHealthRoute
+  '/shows/$slug': typeof ShowsSlugRoute
+  '/admin/catalog': typeof ProtectedAdminCatalogRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/discover': typeof DiscoverRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/settings': typeof ProtectedSettingsRoute
+  '/submit-show': typeof ProtectedSubmitShowRoute
   '/api/health': typeof ApiHealthRoute
+  '/shows/$slug': typeof ShowsSlugRoute
+  '/admin/catalog': typeof ProtectedAdminCatalogRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_protected': typeof ProtectedRouteWithChildren
+  '/discover': typeof DiscoverRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/_protected/settings': typeof ProtectedSettingsRoute
+  '/_protected/submit-show': typeof ProtectedSubmitShowRoute
   '/api/health': typeof ApiHealthRoute
+  '/shows/$slug': typeof ShowsSlugRoute
+  '/_protected/admin/catalog': typeof ProtectedAdminCatalogRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/discover'
     | '/forgot-password'
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/settings'
+    | '/submit-show'
     | '/api/health'
+    | '/shows/$slug'
+    | '/admin/catalog'
     | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/discover'
     | '/forgot-password'
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/settings'
+    | '/submit-show'
     | '/api/health'
+    | '/shows/$slug'
+    | '/admin/catalog'
     | '/api/auth/$'
   id:
     | '__root__'
     | '/'
+    | '/_protected'
+    | '/discover'
     | '/forgot-password'
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/_protected/settings'
+    | '/_protected/submit-show'
     | '/api/health'
+    | '/shows/$slug'
+    | '/_protected/admin/catalog'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ProtectedRoute: typeof ProtectedRouteWithChildren
+  DiscoverRoute: typeof DiscoverRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ShowsSlugRoute: typeof ShowsSlugRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -128,6 +198,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_protected': {
+      id: '/_protected'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof ProtectedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/discover': {
+      id: '/discover'
+      path: '/discover'
+      fullPath: '/discover'
+      preLoaderRoute: typeof DiscoverRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -158,12 +242,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignUpRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_protected/settings': {
+      id: '/_protected/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof ProtectedSettingsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/submit-show': {
+      id: '/_protected/submit-show'
+      path: '/submit-show'
+      fullPath: '/submit-show'
+      preLoaderRoute: typeof ProtectedSubmitShowRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/shows/$slug': {
+      id: '/shows/$slug'
+      path: '/shows/$slug'
+      fullPath: '/shows/$slug'
+      preLoaderRoute: typeof ShowsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_protected/admin/catalog': {
+      id: '/_protected/admin/catalog'
+      path: '/admin/catalog'
+      fullPath: '/admin/catalog'
+      preLoaderRoute: typeof ProtectedAdminCatalogRouteImport
+      parentRoute: typeof ProtectedRoute
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -175,13 +287,32 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ProtectedRouteChildren {
+  ProtectedSettingsRoute: typeof ProtectedSettingsRoute
+  ProtectedSubmitShowRoute: typeof ProtectedSubmitShowRoute
+  ProtectedAdminCatalogRoute: typeof ProtectedAdminCatalogRoute
+}
+
+const ProtectedRouteChildren: ProtectedRouteChildren = {
+  ProtectedSettingsRoute: ProtectedSettingsRoute,
+  ProtectedSubmitShowRoute: ProtectedSubmitShowRoute,
+  ProtectedAdminCatalogRoute: ProtectedAdminCatalogRoute,
+}
+
+const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(
+  ProtectedRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ProtectedRoute: ProtectedRouteWithChildren,
+  DiscoverRoute: DiscoverRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ShowsSlugRoute: ShowsSlugRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
