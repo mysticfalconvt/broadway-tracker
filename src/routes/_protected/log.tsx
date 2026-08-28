@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 
-import { searchPublishedShows } from '../../server/catalog-functions'
+import { getPublishedProductions, searchPublishedShows } from '../../server/catalog-functions'
 import { createOuting } from '../../server/outing-functions'
 
 export const Route = createFileRoute('/_protected/log')({
@@ -11,9 +11,21 @@ export const Route = createFileRoute('/_protected/log')({
 
 function LogOuting() {
   const shows = Route.useLoaderData()
+  const [showId, setShowId] = useState('')
+  const [productions, setProductions] = useState<
+    Awaited<ReturnType<typeof getPublishedProductions>>
+  >([])
   const [precision, setPrecision] = useState('exact')
   const [error, setError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
+
+  useEffect(() => {
+    if (!showId) {
+      setProductions([])
+      return
+    }
+    void getPublishedProductions({ data: { showId } }).then(setProductions)
+  }, [showId])
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -24,6 +36,7 @@ function LogOuting() {
       const outing = await createOuting({
         data: {
           showId: String(form.get('showId')),
+          productionId: String(form.get('productionId')) || undefined,
           venue: String(form.get('venue')).trim() || undefined,
           city: String(form.get('city')).trim() || undefined,
           datePrecision: precision as 'exact' | 'month' | 'year' | 'approximate' | 'unknown',
@@ -56,11 +69,28 @@ function LogOuting() {
       <form className="settings-form" onSubmit={submit}>
         <label>
           What did you see?
-          <select name="showId" required>
+          <select
+            name="showId"
+            value={showId}
+            onChange={(event) => setShowId(event.target.value)}
+            required
+          >
             <option value="">Choose a show</option>
             {shows.map((show) => (
               <option key={show.id} value={show.id}>
                 {show.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Production <span>Optional</span>
+          <select name="productionId" disabled={!showId}>
+            <option value="">Choose a production</option>
+            {productions.map((production) => (
+              <option key={production.id} value={production.id}>
+                {production.name}
+                {production.venue ? ` · ${production.venue}` : ''}
               </option>
             ))}
           </select>

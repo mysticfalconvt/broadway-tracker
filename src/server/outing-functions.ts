@@ -255,3 +255,25 @@ export const getOuting = createServerFn({ method: 'GET' })
       })),
     }
   })
+
+export const getMyOutingsForShow = createServerFn({ method: 'GET' })
+  .validator(z.object({ showId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const session = await requireSession()
+    return getDb()
+      .select({
+        id: outings.id,
+        datePrecision: outings.datePrecision,
+        occurredOn: outings.occurredOn,
+        occurredMonth: outings.occurredMonth,
+        occurredYear: outings.occurredYear,
+        approximateDate: outings.approximateDate,
+        venue: outings.venue,
+        city: outings.city,
+        productionName: productions.name,
+      })
+      .from(outingAttendees)
+      .innerJoin(outings, eq(outingAttendees.outingId, outings.id))
+      .leftJoin(productions, eq(outings.productionId, productions.id))
+      .where(and(eq(outingAttendees.userId, session.user.id), eq(outings.showId, data.showId)))
+  })

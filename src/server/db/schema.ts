@@ -227,27 +227,6 @@ export const outingAttendees = pgTable(
   ],
 )
 
-// Legacy one-person performance log. New logging will use outings plus
-// outingAttendees; retain this table until the new flow is live and any data
-// can be migrated safely.
-export const performances = pgTable(
-  'performances',
-  {
-    id: uuid('id').defaultRandom().primaryKey(),
-    libraryEntryId: uuid('library_entry_id')
-      .notNull()
-      .references(() => libraryEntries.id, { onDelete: 'cascade' }),
-    productionId: uuid('production_id').references(() => productions.id, { onDelete: 'set null' }),
-    seenOn: date('seen_on'),
-    venue: text('venue'),
-    city: text('city'),
-    notes: text('notes'),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  },
-  (table) => [index('performances_library_entry_idx').on(table.libraryEntryId)],
-)
-
 export const lists = pgTable(
   'lists',
   {

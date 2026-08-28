@@ -89,32 +89,32 @@
 - [x] Build server-side service functions that validate date precision and authorize attendee invitations.
 - [x] Build the quick-log flow and make the creator an accepted attendee automatically.
 - [x] Build the shared-memory detail page, separating shared facts from personal and private content.
-- [ ] Migrate/drop the legacy one-person `performances` table after the new logging flow is live.
+- [x] Migrate/drop the legacy one-person `performances` table after the new logging flow is live.
 
 ## 5. Personal theatre library — MVP core
 
 **Goal:** The user can build a satisfying private record of their theatre life.
 
-- [ ] Create a personal library page with Want to See, Seen, and Favorites views.
-- [ ] Let users add a published show to their library.
-- [ ] Let users update status: `want_to_see` or `seen`, with Favorite as an independent state.
-- [ ] Let users give an optional 0.5–5 rating and write a personal review/note.
-- [ ] Let users choose private or friends visibility per library entry.
-- [ ] Add a quick “log a performance” flow: date, production, venue, city, and private notes.
-- [ ] Support multiple performance logs for the same show.
-- [ ] Build a user-facing show detail page with their own library data and performance history.
-- [ ] Add filters, sort order, and empty states to the library.
-- [ ] Add server-side authorization checks for every library read/write operation.
+- [x] Create a personal library page with Want to See, Seen, and Favorites views.
+- [x] Let users add a published show to their library.
+- [x] Let users update status: `want_to_see` or `seen`, with Favorite as an independent state.
+- [x] Let users give an optional 0.5–5 rating and write a personal review/note.
+- [x] Let users choose private or friends visibility per library entry.
+- [x] Add a quick “log a performance” flow: date, production, venue, city, and private notes.
+- [x] Support multiple performance logs for the same show.
+- [x] Build a user-facing show detail page with their own library data and performance history.
+- [x] Add filters, sort order, and empty states to the library.
+- [x] Add server-side authorization checks for every library read/write operation.
 - [ ] Add tests for library status changes, privacy, ratings, and performance logging.
 
 ## 6. Lists and personal profile
 
 **Goal:** Users can curate and revisit theatre memories beyond a single status list.
 
-- [ ] Create custom lists with title, description, and privacy setting.
-- [ ] Add/remove shows from lists and support ordering.
-- [ ] Build a personal profile page with library highlights and favorite shows.
-- [ ] Add useful, non-competitive personal stats (for example: shows seen by year or type).
+- [x] Create custom lists with title, description, and privacy setting.
+- [x] Add/remove shows from lists and support ordering.
+- [x] Build a personal profile page with library highlights and favorite shows.
+- [x] Add useful, non-competitive personal stats (for example: shows seen by year or type).
 - [ ] Ensure profile and list pages honor each owner’s privacy settings.
 - [ ] Add tests for custom-list authorization and visibility.
 

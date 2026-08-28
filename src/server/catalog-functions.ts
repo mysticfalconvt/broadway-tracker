@@ -60,6 +60,22 @@ export const getPublishedShow = createServerFn({ method: 'GET' })
     return show ?? null
   })
 
+export const getPublishedProductions = createServerFn({ method: 'GET' })
+  .validator(z.object({ showId: z.string().uuid() }))
+  .handler(async ({ data }) =>
+    getDb()
+      .select({
+        id: productions.id,
+        name: productions.name,
+        venue: productions.venue,
+        city: productions.city,
+      })
+      .from(productions)
+      .innerJoin(shows, eq(productions.showId, shows.id))
+      .where(and(eq(productions.showId, data.showId), eq(shows.catalogStatus, 'published')))
+      .orderBy(asc(productions.name)),
+  )
+
 function toSlug(title: string) {
   const slug = title
     .normalize('NFKD')

@@ -1,4 +1,5 @@
-import { HeadContent, Link, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
+import { HeadContent, Link, Scripts, createRootRoute } from '@tanstack/react-router'
+import { type ReactNode } from 'react'
 
 import '../styles.css'
 
@@ -15,6 +16,7 @@ export const Route = createRootRoute({
       },
     ],
     links: [
+      { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
       { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
       {
@@ -27,7 +29,7 @@ export const Route = createRootRoute({
   notFoundComponent: NotFound,
 })
 
-function RootShell() {
+function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
@@ -40,14 +42,15 @@ function RootShell() {
               Broadway Tracker
             </Link>
             <div className="nav-links" aria-label="Product areas">
-              <span>My Theatre</span>
-              <span>Discover</span>
-              <span>Friends</span>
-              <span className="nav-note">In development</span>
+              <Link to="/library">My Theatre</Link>
+              <Link to="/discover">Discover</Link>
+              <Link to="/lists">Lists</Link>
+              <Link to="/profile">Profile</Link>
+              <Link to="/friends">Friends</Link>
             </div>
           </nav>
         </header>
-        <Outlet />
+        {children}
         <Scripts />
       </body>
     </html>

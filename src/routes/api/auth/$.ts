@@ -2,11 +2,34 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { auth } from '../../../server/auth'
 
+async function handleAuthRequest(request: Request) {
+  const isDevelopment = process.env.NODE_ENV !== 'production'
+  if (isDevelopment) {
+    console.info('[auth] request', {
+      method: request.method,
+      path: new URL(request.url).pathname,
+      baseUrlConfigured: Boolean(process.env.BETTER_AUTH_URL),
+      secretConfigured: Boolean(process.env.BETTER_AUTH_SECRET),
+      smtpConfigured: Boolean(
+        process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD,
+      ),
+    })
+  }
+  try {
+    const response = await auth.handler(request)
+    if (isDevelopment) console.info('[auth] response', { status: response.status })
+    return response
+  } catch (error) {
+    console.error('[auth] request failed', error)
+    throw error
+  }
+}
+
 export const Route = createFileRoute('/api/auth/$')({
   server: {
     handlers: {
-      GET: async ({ request }) => auth.handler(request),
-      POST: async ({ request }) => auth.handler(request),
+      GET: async ({ request }) => handleAuthRequest(request),
+      POST: async ({ request }) => handleAuthRequest(request),
     },
   },
 })

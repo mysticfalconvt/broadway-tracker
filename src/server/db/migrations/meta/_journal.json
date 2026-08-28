@@ -22,6 +22,13 @@
       "when": 1787908243721,
       "tag": "0002_aspiring_madelyne_pryor",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787914380150,
+      "tag": "0003_equal_zaran",
+      "breakpoints": true
     }
   ]
 }

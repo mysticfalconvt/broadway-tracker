@@ -41,7 +41,7 @@ function SignUp() {
             Check your email to verify your account before signing in.
           </p>
         ) : (
-          <form className="auth-form" onSubmit={submit}>
+          <form className="auth-form" method="post" action="/sign-up" onSubmit={submit}>
             <label>
               Your name
               <input name="name" autoComplete="name" required />
