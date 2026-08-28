@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { PrivacyBadge } from '../../../components/PrivacyBadge'
 import { Rating } from '../../../components/Rating'
 import { getOuting } from '../../../server/outing-functions'
+import { formatFuzzyDate } from '../../../lib/fuzzy-date'
 
 export const Route = createFileRoute('/_protected/outings/$id')({
   loader: ({ params }) => getOuting({ data: { id: params.id } }),
@@ -15,16 +16,7 @@ function OutingDetail() {
     (attendee) =>
       attendee.privateNotes !== null || attendee.userId === Route.useRouteContext().user.id,
   )
-  const date =
-    outing.datePrecision === 'exact'
-      ? outing.occurredOn
-      : outing.datePrecision === 'month'
-        ? `${outing.occurredMonth}/${outing.occurredYear}`
-        : outing.datePrecision === 'year'
-          ? outing.occurredYear
-          : outing.datePrecision === 'approximate'
-            ? outing.approximateDate
-            : 'Date unknown'
+  const date = formatFuzzyDate(outing)
   return (
     <main>
       <section className="outing-hero">

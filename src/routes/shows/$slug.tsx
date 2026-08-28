@@ -6,6 +6,7 @@ import { ShowArtwork } from '../../components/ShowArtwork'
 import { getPublishedShow } from '../../server/catalog-functions'
 import { saveLibraryEntry } from '../../server/library-functions'
 import { getMyOutingsForShow } from '../../server/outing-functions'
+import { formatFuzzyDate } from '../../lib/fuzzy-date'
 
 export const Route = createFileRoute('/shows/$slug')({
   loader: ({ params }) => getPublishedShow({ data: { slug: params.slug } }),
@@ -68,20 +69,13 @@ function YourHistory({ showId }: { showId: string }) {
       {outings.map((outing) => (
         <li key={outing.id}>
           <Link to="/outings/$id" params={{ id: outing.id }}>
-            {formatOutingDate(outing)}
+            {formatFuzzyDate(outing)}
             {outing.venue ? ` · ${outing.venue}` : ''}
           </Link>
         </li>
       ))}
     </ul>
   )
-}
-
-function formatOutingDate(outing: Awaited<ReturnType<typeof getMyOutingsForShow>>[number]) {
-  if (outing.datePrecision === 'exact') return outing.occurredOn ?? 'Date unknown'
-  if (outing.datePrecision === 'month') return `${outing.occurredMonth}/${outing.occurredYear}`
-  if (outing.datePrecision === 'year') return String(outing.occurredYear)
-  return outing.approximateDate ?? 'Date unknown'
 }
 
 function LibraryButtons({ showId }: { showId: string }) {

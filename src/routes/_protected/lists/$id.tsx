@@ -4,17 +4,18 @@ import { useState, type FormEvent } from 'react'
 import { ShowArtwork } from '../../../components/ShowArtwork'
 import {
   addShowToList,
-  getMyList,
+  getListForViewer,
   moveListItem,
   removeShowFromList,
 } from '../../../server/list-functions'
 import { searchPublishedShows } from '../../../server/catalog-functions'
 
 export const Route = createFileRoute('/_protected/lists/$id')({
-  loader: async ({ params }) => ({
-    list: await getMyList({ data: { id: params.id } }),
-    shows: await searchPublishedShows({ data: { query: '' } }),
-  }),
+  loader: async ({ params }) => {
+    const list = await getListForViewer({ data: { id: params.id } })
+    // Only the owner can add shows, so skip the picker query for a friend's shelf.
+    return { list, shows: list.canEdit ? await searchPublishedShows({ data: { query: '' } }) : [] }
+  },
   component: ListDetail,
 })
 
@@ -40,26 +41,34 @@ function ListDetail() {
   return (
     <main className="lists-page page-wrap">
       <header className="settings-header">
-        <p className="eyebrow">{list.visibility === 'friends' ? 'Friends list' : 'Private list'}</p>
+        <p className="eyebrow">
+          {list.canEdit
+            ? list.visibility === 'friends'
+              ? 'Friends list'
+              : 'Private list'
+            : `Shared by ${list.owner?.name ?? 'a friend'}`}
+        </p>
         <h1>{list.title}</h1>
         <p>{list.description || 'A collected shelf of shows.'}</p>
       </header>
-      <form className="list-add-form" onSubmit={add}>
-        <label>
-          Add a show
-          <select name="showId" required>
-            <option value="">Choose a show</option>
-            {shows.map((show) => (
-              <option key={show.id} value={show.id}>
-                {show.title}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button className="button button-primary" type="submit">
-          Add show
-        </button>
-      </form>
+      {list.canEdit ? (
+        <form className="list-add-form" onSubmit={add}>
+          <label>
+            Add a show
+            <select name="showId" required>
+              <option value="">Choose a show</option>
+              {shows.map((show) => (
+                <option key={show.id} value={show.id}>
+                  {show.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="button button-primary" type="submit">
+            Add show
+          </button>
+        </form>
+      ) : null}
       {error ? (
         <p className="form-error" role="alert">
           {error}
@@ -75,25 +84,27 @@ function ListDetail() {
                 <p>{item.type}</p>
               </span>
             </Link>
-            <div>
-              <button
-                type="button"
-                onClick={() => update(item.showId, 'up')}
-                disabled={index === 0}
-              >
-                Up
-              </button>
-              <button
-                type="button"
-                onClick={() => update(item.showId, 'down')}
-                disabled={index === list.items.length - 1}
-              >
-                Down
-              </button>
-              <button type="button" onClick={() => update(item.showId, 'remove')}>
-                Remove
-              </button>
-            </div>
+            {list.canEdit ? (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => update(item.showId, 'up')}
+                  disabled={index === 0}
+                >
+                  Up
+                </button>
+                <button
+                  type="button"
+                  onClick={() => update(item.showId, 'down')}
+                  disabled={index === list.items.length - 1}
+                >
+                  Down
+                </button>
+                <button type="button" onClick={() => update(item.showId, 'remove')}>
+                  Remove
+                </button>
+              </div>
+            ) : null}
           </article>
         ))}
       </div>

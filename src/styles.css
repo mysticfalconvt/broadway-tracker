@@ -1260,3 +1260,172 @@ h3 {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* Build Your Theatre History -- rapid backfill of past performances. */
+.backfill-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20rem;
+  gap: 2rem;
+  align-items: start;
+  margin-top: 2.5rem;
+}
+.backfill-search {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+}
+.backfill-search input {
+  font-size: 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.backfill-results {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.backfill-results li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.backfill-results strong {
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1.15rem;
+  display: block;
+}
+.backfill-type {
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+  text-transform: capitalize;
+}
+.backfill-empty {
+  color: var(--ink-muted);
+  font-size: 0.88rem;
+  margin: 1rem 0 0;
+}
+.backfill-step {
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.backfill-step h2 {
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  margin: 0;
+  font-size: 1.75rem;
+}
+.backfill-step label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+}
+.backfill-step input {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 1rem;
+}
+.backfill-precision {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.backfill-precision button {
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--canvas);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.backfill-precision button.is-selected {
+  background: var(--midnight);
+  border-color: var(--midnight);
+  color: #fffdf8;
+}
+.backfill-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.backfill-details summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+.backfill-details .backfill-pair {
+  margin-top: 0.75rem;
+}
+.backfill-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.backfill-queue {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 1.25rem;
+}
+.backfill-queue ol {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+.backfill-queue li {
+  display: grid;
+  gap: 0.15rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+.backfill-queue li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.backfill-queue strong {
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1.05rem;
+}
+.backfill-queue span {
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+@media (max-width: 900px) {
+  .backfill-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .backfill-queue {
+    order: -1;
+  }
+}
+.backfill-production {
+  margin-top: 0.75rem;
+}
+.backfill-production select {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 1rem;
+}

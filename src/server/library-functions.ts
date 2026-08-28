@@ -1,4 +1,4 @@
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
 import { and, asc, eq } from 'drizzle-orm'
 import { z } from 'zod'
@@ -22,9 +22,12 @@ const libraryInput = z.object({
   visibility: z.enum(['private', 'friends']).default('private'),
 })
 
-export const getMyLibrary = createServerFn({ method: 'GET' }).handler(async () => {
-  const session = await requireSession()
-  return getDb()
+// The exported helpers below hold the authorization rules and take the acting
+// user explicitly, so they can be exercised without a request. `createServerOnlyFn`
+// keeps the database client out of the browser bundle.
+
+export const libraryForOwner = createServerOnlyFn(async (ownerId: string) =>
+  getDb()
     .select({
       id: libraryEntries.id,
       status: libraryEntries.status,
@@ -39,14 +42,12 @@ export const getMyLibrary = createServerFn({ method: 'GET' }).handler(async () =
     })
     .from(libraryEntries)
     .innerJoin(shows, eq(libraryEntries.showId, shows.id))
-    .where(eq(libraryEntries.userId, session.user.id))
-    .orderBy(asc(shows.title))
-})
+    .where(eq(libraryEntries.userId, ownerId))
+    .orderBy(asc(shows.title)),
+)
 
-export const saveLibraryEntry = createServerFn({ method: 'POST' })
-  .validator(libraryInput)
-  .handler(async ({ data }) => {
-    const session = await requireSession()
+export const saveEntryForOwner = createServerOnlyFn(
+  async (ownerId: string, data: z.infer<typeof libraryInput>) => {
     const [show] = await getDb()
       .select({ id: shows.id })
       .from(shows)
@@ -57,7 +58,7 @@ export const saveLibraryEntry = createServerFn({ method: 'POST' })
     await getDb()
       .insert(libraryEntries)
       .values({
-        userId: session.user.id,
+        userId: ownerId,
         showId: data.showId,
         status: data.status,
         favorite: data.favorite,
@@ -76,4 +77,13 @@ export const saveLibraryEntry = createServerFn({ method: 'POST' })
           updatedAt: new Date(),
         },
       })
-  })
+  },
+)
+
+export const getMyLibrary = createServerFn({ method: 'GET' }).handler(async () =>
+  libraryForOwner((await requireSession()).user.id),
+)
+
+export const saveLibraryEntry = createServerFn({ method: 'POST' })
+  .validator(libraryInput)
+  .handler(async ({ data }) => saveEntryForOwner((await requireSession()).user.id, data))

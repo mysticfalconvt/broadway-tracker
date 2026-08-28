@@ -65,13 +65,13 @@ function FriendProfile() {
         {lists.length ? (
           <div className="list-index">
             {lists.map((list) => (
-              <article key={list.id}>
-                <h3>{list.title}</h3>
+              <Link key={list.id} to="/lists/$id" params={{ id: list.id }}>
+                <h2>{list.title}</h2>
                 {list.description ? <p>{list.description}</p> : null}
                 <p>
                   {list.itemCount} {list.itemCount === 1 ? 'show' : 'shows'}
                 </p>
-              </article>
+              </Link>
             ))}
           </div>
         ) : (

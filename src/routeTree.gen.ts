@@ -16,6 +16,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SignUpRouteImport } from './routes/sign-up'
+import { Route as ProtectedBuildHistoryRouteImport } from './routes/_protected/build-history'
 import { Route as ProtectedFriendsRouteImport } from './routes/_protected/friends'
 import { Route as ProtectedLibraryRouteImport } from './routes/_protected/library'
 import { Route as ProtectedLogRouteImport } from './routes/_protected/log'
@@ -65,6 +66,11 @@ const SignUpRoute = SignUpRouteImport.update({
   id: '/sign-up',
   path: '/sign-up',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ProtectedBuildHistoryRoute = ProtectedBuildHistoryRouteImport.update({
+  id: '/build-history',
+  path: '/build-history',
+  getParentRoute: () => ProtectedRoute,
 } as any)
 const ProtectedFriendsRoute = ProtectedFriendsRouteImport.update({
   id: '/friends',
@@ -150,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/build-history': typeof ProtectedBuildHistoryRoute
   '/friends': typeof ProtectedFriendsRoute
   '/library': typeof ProtectedLibraryRoute
   '/log': typeof ProtectedLogRoute
@@ -173,6 +180,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/build-history': typeof ProtectedBuildHistoryRoute
   '/friends': typeof ProtectedFriendsRoute
   '/library': typeof ProtectedLibraryRoute
   '/log': typeof ProtectedLogRoute
@@ -198,6 +206,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/_protected/build-history': typeof ProtectedBuildHistoryRoute
   '/_protected/friends': typeof ProtectedFriendsRoute
   '/_protected/library': typeof ProtectedLibraryRoute
   '/_protected/log': typeof ProtectedLogRoute
@@ -223,6 +232,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/build-history'
     | '/friends'
     | '/library'
     | '/log'
@@ -246,6 +256,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/build-history'
     | '/friends'
     | '/library'
     | '/log'
@@ -270,6 +281,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/_protected/build-history'
     | '/_protected/friends'
     | '/_protected/library'
     | '/_protected/log'
@@ -350,6 +362,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/sign-up'
       preLoaderRoute: typeof SignUpRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_protected/build-history': {
+      id: '/_protected/build-history'
+      path: '/build-history'
+      fullPath: '/build-history'
+      preLoaderRoute: typeof ProtectedBuildHistoryRouteImport
+      parentRoute: typeof ProtectedRoute
     }
     '/_protected/friends': {
       id: '/_protected/friends'
@@ -460,6 +479,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface ProtectedRouteChildren {
+  ProtectedBuildHistoryRoute: typeof ProtectedBuildHistoryRoute
   ProtectedFriendsRoute: typeof ProtectedFriendsRoute
   ProtectedLibraryRoute: typeof ProtectedLibraryRoute
   ProtectedLogRoute: typeof ProtectedLogRoute
@@ -475,6 +495,7 @@ interface ProtectedRouteChildren {
 }
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
+  ProtectedBuildHistoryRoute: ProtectedBuildHistoryRoute,
   ProtectedFriendsRoute: ProtectedFriendsRoute,
   ProtectedLibraryRoute: ProtectedLibraryRoute,
   ProtectedLogRoute: ProtectedLogRoute,

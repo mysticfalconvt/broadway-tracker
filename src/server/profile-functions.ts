@@ -1,11 +1,12 @@
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
-import { and, asc, desc, eq, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { auth } from './auth'
 import { getDb } from './db/client'
-import { friendships, libraryEntries, listItems, lists, outings, shows, user } from './db/schema'
+import { areFriends } from './friend-functions'
+import { libraryEntries, listItems, lists, outings, shows, user } from './db/schema'
 
 export const getMyProfile = createServerFn({ method: 'GET' }).handler(async () => {
   const session = await auth.api.getSession({ headers: getRequestHeaders() })
@@ -54,32 +55,20 @@ export const getMyProfile = createServerFn({ method: 'GET' }).handler(async () =
   }
 })
 
-export const getFriendProfile = createServerFn({ method: 'GET' })
-  .validator(z.object({ handle: z.string().trim().min(1).max(30) }))
-  .handler(async ({ data }) => {
-    const session = await auth.api.getSession({ headers: getRequestHeaders() })
-    if (!session) throw new Error('Unauthorized')
+// Holds the authorization rules and takes the viewer explicitly so it can be
+// exercised without a request. `createServerOnlyFn` keeps the database client
+// out of the browser bundle.
+export const friendProfileForViewer = createServerOnlyFn(
+  async (viewerId: string, handle: string) => {
     const db = getDb()
     const [profile] = await db
       .select({ id: user.id, name: user.name, handle: user.handle })
       .from(user)
-      .where(and(eq(user.handle, data.handle.toLowerCase()), eq(user.profileVisibility, 'friends')))
+      .where(and(eq(user.handle, handle.toLowerCase()), eq(user.profileVisibility, 'friends')))
       .limit(1)
     if (!profile) throw new Error('This profile is unavailable.')
-    const [friendship] = await db
-      .select({ userOneId: friendships.userOneId })
-      .from(friendships)
-      .where(
-        and(
-          eq(friendships.status, 'accepted'),
-          or(
-            and(eq(friendships.userOneId, session.user.id), eq(friendships.userTwoId, profile.id)),
-            and(eq(friendships.userTwoId, session.user.id), eq(friendships.userOneId, profile.id)),
-          ),
-        ),
-      )
-      .limit(1)
-    if (!friendship) throw new Error('This profile is only available to friends.')
+    if (!(await areFriends(viewerId, profile.id)))
+      throw new Error('This profile is only available to friends.')
     const [seen, outingsCount, favorites, sharedLists] = await Promise.all([
       db
         .select({ count: sql<number>`count(*)::int` })
@@ -121,4 +110,13 @@ export const getFriendProfile = createServerFn({ method: 'GET' })
       favorites,
       lists: sharedLists,
     }
+  },
+)
+
+export const getFriendProfile = createServerFn({ method: 'GET' })
+  .validator(z.object({ handle: z.string().trim().min(1).max(30) }))
+  .handler(async ({ data }) => {
+    const session = await auth.api.getSession({ headers: getRequestHeaders() })
+    if (!session) throw new Error('Unauthorized')
+    return friendProfileForViewer(session.user.id, data.handle)
   })

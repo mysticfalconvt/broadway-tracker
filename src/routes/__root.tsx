@@ -47,6 +47,7 @@ function RootShell({ children }: { children: ReactNode }) {
               <Link to="/lists">Lists</Link>
               <Link to="/profile">Profile</Link>
               <Link to="/friends">Friends</Link>
+              <Link to="/build-history">Build history</Link>
             </div>
           </nav>
         </header>

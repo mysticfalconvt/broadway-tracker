@@ -30,6 +30,7 @@
 - [x] Run `pnpm install`; `pnpm-lock.yaml` is ready to commit.
 - [x] Run `pnpm build` and `pnpm lint`; both pass.
 - [ ] Create the remote Git repository and push the initial project.
+- [x] Add a test runner and a `pnpm test` script. *(Vitest against an isolated `broadway_tracker_test` database, created and migrated automatically.)*
 
 ## 1. Local and production infrastructure
 
@@ -48,36 +49,36 @@
 
 **Goal:** A user can safely create, verify, access, recover, and manage an account.
 
-- [ ] Configure Better Auth with the Drizzle/Postgres adapter.
-- [ ] Add the Better Auth API route/handler.
-- [ ] Create an SMTP mail transport from environment variables.
-- [ ] Implement email/password sign-up.
-- [ ] Require email verification before full account access.
-- [ ] Implement verification-email sending and resend flow.
-- [ ] Implement email/password sign-in and sign-out.
-- [ ] Implement a password-reset request and password-reset flow.
-- [ ] Add Google OAuth configuration behind `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
-- [ ] Create the Google Cloud OAuth client once the public hostname is known.
-- [ ] Configure the exact Google authorized redirect URI for the deployed hostname.
-- [ ] Define safe account-linking behavior for users who sign in with both password and Google.
-- [ ] Add protected-route/session middleware and an authenticated application layout.
-- [ ] Build settings for name, handle, profile image, and default profile visibility.
-- [ ] Add auth-flow and authorization tests.
+- [x] Configure Better Auth with the Drizzle/Postgres adapter.
+- [x] Add the Better Auth API route/handler.
+- [x] Create an SMTP mail transport from environment variables.
+- [x] Implement email/password sign-up.
+- [x] Require email verification before full account access.
+- [x] Implement verification-email sending and resend flow.
+- [x] Implement email/password sign-in and sign-out.
+- [x] Implement a password-reset request and password-reset flow.
+- [x] Add Google OAuth configuration behind `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+- [ ] Create the Google Cloud OAuth client once the public hostname is known. *(Blocked on deployment.)*
+- [ ] Configure the exact Google authorized redirect URI for the deployed hostname. *(Blocked on deployment.)*
+- [x] Define safe account-linking behavior for users who sign in with both password and Google.
+- [x] Add protected-route/session middleware and an authenticated application layout.
+- [ ] Build settings for name, handle, profile image, and default profile visibility. *(Name, handle, and visibility are done; profile image is blocked on section 8.)*
+- [ ] Add auth-flow and authorization tests. *(Authorization is covered across the server modules; the Better Auth flows themselves — sign-up, verification, reset — are not yet exercised.)*
 
 ## 3. Catalog and moderation
 
 **Goal:** Users can find reliable show records without depending on an external catalog provider.
 
-- [ ] Build a public-to-signed-in catalog search interface for published shows.
-- [ ] Add title, type (musical/play/other), synopsis, and optional image metadata to the show detail screen.
-- [ ] Build the show-submission form for signed-in users.
-- [ ] Generate URL-safe slugs and handle title collisions.
-- [ ] Keep user-submitted shows in `pending` status by default.
-- [ ] Build a minimal admin review queue for pending submissions.
-- [ ] Let admins publish, reject, edit, and merge duplicate show records.
+- [x] Build a public-to-signed-in catalog search interface for published shows.
+- [x] Add title, type (musical/play/other), synopsis, and optional image metadata to the show detail screen.
+- [x] Build the show-submission form for signed-in users.
+- [x] Generate URL-safe slugs and handle title collisions.
+- [x] Keep user-submitted shows in `pending` status by default.
+- [x] Build a minimal admin review queue for pending submissions.
+- [x] Let admins publish, reject, edit, and merge duplicate show records.
 - [x] Add a production editor for Broadway, Off-Broadway, touring, regional, local, and other productions.
 - [x] Seed a small initial catalog of popular shows after the admin workflow works.
-- [ ] Add tests for catalog visibility, submission, and moderation permissions.
+- [x] Add tests for catalog visibility, submission, and moderation permissions.
 
 ## 4. Shared outings and memory model
 
@@ -105,7 +106,18 @@
 - [x] Build a user-facing show detail page with their own library data and performance history.
 - [x] Add filters, sort order, and empty states to the library.
 - [x] Add server-side authorization checks for every library read/write operation.
-- [ ] Add tests for library status changes, privacy, ratings, and performance logging.
+- [x] Add tests for library status changes, privacy, ratings, and performance logging.
+
+### Build Your Theatre History (backfill)
+
+**Goal:** Reconstruct years of past theatre quickly, then enrich later — a separate flow from logging last night’s show (design brief §15).
+
+- [x] Build a dedicated rapid-entry route with persistently focused search.
+- [x] Add a date-precision step offering exact, month/year, year, approximate, and “I don’t remember”.
+- [x] Make production, venue, and city optional behind a prominent **Skip for now**.
+- [x] Return focus to search immediately after each entry.
+- [x] Show an **Added today** queue so backfilling feels progressive.
+- [ ] Verify a historical show can be added in roughly 5–10 seconds. *(Needs a real person at a keyboard; the flow is search → Enter → year → Add.)*
 
 ## 6. Lists and personal profile
 
@@ -115,22 +127,22 @@
 - [x] Add/remove shows from lists and support ordering.
 - [x] Build a personal profile page with library highlights and favorite shows.
 - [x] Add useful, non-competitive personal stats (for example: shows seen by year or type).
-- [ ] Ensure profile and list pages honor each owner’s privacy settings.
-- [ ] Add tests for custom-list authorization and visibility.
+- [x] Ensure profile and list pages honor each owner’s privacy settings.
+- [x] Add tests for custom-list authorization and visibility.
 
 ## 7. Friends and friends-only sharing
 
 **Goal:** Share thoughtfully with an approved inner circle, without public-social pressure.
 
-- [ ] Build friend search by handle.
-- [ ] Implement a send/cancel friend-request flow.
-- [ ] Implement incoming-request approval, rejection, and removal flows.
-- [ ] Enforce a single canonical friendship row per user pair.
-- [ ] Build a simple Friends page: requests, approved friends, and removal controls.
-- [ ] Allow friends to view only `friends`-visible profiles, entries, reviews, and lists.
+- [x] Build friend search by handle.
+- [x] Implement a send/cancel friend-request flow.
+- [x] Implement incoming-request approval, rejection, and removal flows.
+- [x] Enforce a single canonical friendship row per user pair.
+- [x] Build a simple Friends page: requests, approved friends, and removal controls.
+- [x] Allow friends to view only `friends`-visible profiles, entries, reviews, and lists.
 - [ ] Build a quiet, chronological friends activity view (optional after core sharing works).
-- [ ] Do not add follower counts, public leaderboards, or engagement-pressure mechanics.
-- [ ] Add thorough privacy/authorization tests, including rejected and blocked relationships.
+- [x] Do not add follower counts, public leaderboards, or engagement-pressure mechanics.
+- [x] Add thorough privacy/authorization tests, including rejected and blocked relationships.
 
 ## 8. RustFS image storage
 
@@ -208,4 +220,17 @@ pnpm dev
 pnpm build
 pnpm lint
 pnpm typecheck
+pnpm test          # vitest against broadway_tracker_test
+pnpm test:watch
 ```
+
+## Testing notes
+
+- Suites run against an isolated `broadway_tracker_test` database. `tests/setup.ts`
+  creates and migrates it on first run and refuses to run against any other database,
+  because each suite truncates every table.
+- Authorization lives in exported `createServerOnlyFn` helpers that take the acting
+  user explicitly (`listForViewer`, `areFriends`, `reviewShowAsAdmin`, …). Server
+  functions are thin adapters that resolve the session and call them, so the rules
+  can be tested without a request. `createServerOnlyFn` also keeps the database
+  client out of the browser bundle.

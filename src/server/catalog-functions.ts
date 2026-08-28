@@ -1,4 +1,4 @@
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { and, asc, eq, ilike, ne } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
@@ -34,47 +34,53 @@ const catalogShow = {
   coverImageKey: shows.coverImageKey,
 }
 
+export const searchCatalog = createServerOnlyFn(async (rawQuery: string) => {
+  const query = rawQuery.replace(/[%_\\]/g, '\\$&')
+  const conditions = [eq(shows.catalogStatus, 'published')]
+  if (query) conditions.push(ilike(shows.title, `%${query}%`))
+
+  return getDb()
+    .select(catalogShow)
+    .from(shows)
+    .where(and(...conditions))
+    .orderBy(asc(shows.title))
+    .limit(30)
+})
+
+export const publishedShowBySlug = createServerOnlyFn(async (slug: string) => {
+  const [show] = await getDb()
+    .select(catalogShow)
+    .from(shows)
+    .where(and(eq(shows.slug, slug), eq(shows.catalogStatus, 'published')))
+    .limit(1)
+  return show ?? null
+})
+
+export const publishedProductionsForShow = createServerOnlyFn(async (showId: string) =>
+  getDb()
+    .select({
+      id: productions.id,
+      name: productions.name,
+      venue: productions.venue,
+      city: productions.city,
+    })
+    .from(productions)
+    .innerJoin(shows, eq(productions.showId, shows.id))
+    .where(and(eq(productions.showId, showId), eq(shows.catalogStatus, 'published')))
+    .orderBy(asc(productions.name)),
+)
+
 export const searchPublishedShows = createServerFn({ method: 'GET' })
   .validator(z.object({ query: z.string().trim().max(100) }))
-  .handler(async ({ data }) => {
-    const query = data.query.replace(/[%_\\]/g, '\\$&')
-    const conditions = [eq(shows.catalogStatus, 'published')]
-    if (query) conditions.push(ilike(shows.title, `%${query}%`))
-
-    return getDb()
-      .select(catalogShow)
-      .from(shows)
-      .where(and(...conditions))
-      .orderBy(asc(shows.title))
-      .limit(30)
-  })
+  .handler(async ({ data }) => searchCatalog(data.query))
 
 export const getPublishedShow = createServerFn({ method: 'GET' })
   .validator(z.object({ slug: z.string().min(1).max(160) }))
-  .handler(async ({ data }) => {
-    const [show] = await getDb()
-      .select(catalogShow)
-      .from(shows)
-      .where(and(eq(shows.slug, data.slug), eq(shows.catalogStatus, 'published')))
-      .limit(1)
-    return show ?? null
-  })
+  .handler(async ({ data }) => publishedShowBySlug(data.slug))
 
 export const getPublishedProductions = createServerFn({ method: 'GET' })
   .validator(z.object({ showId: z.string().uuid() }))
-  .handler(async ({ data }) =>
-    getDb()
-      .select({
-        id: productions.id,
-        name: productions.name,
-        venue: productions.venue,
-        city: productions.city,
-      })
-      .from(productions)
-      .innerJoin(shows, eq(productions.showId, shows.id))
-      .where(and(eq(productions.showId, data.showId), eq(shows.catalogStatus, 'published')))
-      .orderBy(asc(productions.name)),
-  )
+  .handler(async ({ data }) => publishedProductionsForShow(data.showId))
 
 function toSlug(title: string) {
   const slug = title
@@ -96,8 +102,15 @@ async function requireSession() {
 
 async function requireAdmin() {
   const session = await requireSession()
-  if (session.user.role !== 'admin') throw new Error('Forbidden')
+  assertAdmin(session.user)
   return session
+}
+
+/** The acting user for a moderation action, as the core helpers below need it. */
+export type Actor = { id: string; role: 'member' | 'admin' }
+
+export function assertAdmin(actor: { role?: string | null }) {
+  if (actor.role !== 'admin') throw new Error('Forbidden')
 }
 
 async function insertWithUniqueSlug({
@@ -126,12 +139,14 @@ async function insertWithUniqueSlug({
   throw new Error('Unable to create a unique URL for this show.')
 }
 
+export const submitShowForUser = createServerOnlyFn(
+  async (userId: string, data: z.infer<typeof showInput>) =>
+    insertWithUniqueSlug({ ...data, submittedByUserId: userId }),
+)
+
 export const submitShow = createServerFn({ method: 'POST' })
   .validator(showInput)
-  .handler(async ({ data }) => {
-    const session = await requireSession()
-    return insertWithUniqueSlug({ ...data, submittedByUserId: session.user.id })
-  })
+  .handler(async ({ data }) => submitShowForUser((await requireSession()).user.id, data))
 
 const pendingShow = {
   ...catalogShow,
@@ -139,14 +154,18 @@ const pendingShow = {
   createdAt: shows.createdAt,
 }
 
-export const getPendingShows = createServerFn({ method: 'GET' }).handler(async () => {
-  await requireAdmin()
+export const pendingShowsForAdmin = createServerOnlyFn(async (actor: Actor) => {
+  assertAdmin(actor)
   return getDb()
     .select(pendingShow)
     .from(shows)
     .where(eq(shows.catalogStatus, 'pending'))
     .orderBy(asc(shows.createdAt))
 })
+
+export const getPendingShows = createServerFn({ method: 'GET' }).handler(async () =>
+  pendingShowsForAdmin((await requireSession()).user as Actor),
+)
 
 export const getPublishedShowsForAdmin = createServerFn({ method: 'GET' }).handler(async () => {
   await requireAdmin()
@@ -210,8 +229,18 @@ export const reviewShow = createServerFn({ method: 'POST' })
         .max(180),
     }),
   )
-  .handler(async ({ data }) => {
-    const session = await requireAdmin()
+  .handler(async ({ data }) => reviewShowAsAdmin((await requireSession()).user as Actor, data))
+
+export const reviewShowAsAdmin = createServerOnlyFn(
+  async (
+    actor: Actor,
+    data: z.infer<typeof showInput> & {
+      id: string
+      action: 'publish' | 'reject'
+      slug: string
+    },
+  ) => {
+    assertAdmin(actor)
     const [slugConflict] = await getDb()
       .select({ id: shows.id })
       .from(shows)
@@ -227,31 +256,37 @@ export const reviewShow = createServerFn({ method: 'POST' })
         synopsis: data.synopsis || null,
         slug: data.slug,
         catalogStatus: data.action === 'publish' ? 'published' : 'rejected',
-        reviewedByUserId: session.user.id,
+        reviewedByUserId: actor.id,
         reviewedAt: new Date(),
         updatedAt: new Date(),
       })
       .where(and(eq(shows.id, data.id), eq(shows.catalogStatus, 'pending')))
       .returning({ id: shows.id })
     if (!show) throw new Error('This submission is no longer awaiting review.')
-  })
+  },
+)
 
 export const mergeShowIntoPublishedShow = createServerFn({ method: 'POST' })
   .validator(z.object({ sourceShowId: z.string().uuid(), targetSlug: z.string().min(1).max(180) }))
-  .handler(async ({ data }) => {
-    await requireAdmin()
+  .handler(async ({ data }) =>
+    mergeShowAsAdmin((await requireSession()).user as Actor, data.sourceShowId, data.targetSlug),
+  )
+
+export const mergeShowAsAdmin = createServerOnlyFn(
+  async (actor: Actor, sourceShowId: string, targetSlug: string) => {
+    assertAdmin(actor)
     await getDb().transaction(async (tx) => {
       const targetLibraryEntries = alias(libraryEntries, 'target_library_entries')
       const targetListItems = alias(listItems, 'target_list_items')
       const [source] = await tx
         .select({ id: shows.id })
         .from(shows)
-        .where(eq(shows.id, data.sourceShowId))
+        .where(eq(shows.id, sourceShowId))
         .limit(1)
       const [target] = await tx
         .select({ id: shows.id })
         .from(shows)
-        .where(and(eq(shows.slug, data.targetSlug), eq(shows.catalogStatus, 'published')))
+        .where(and(eq(shows.slug, targetSlug), eq(shows.catalogStatus, 'published')))
         .limit(1)
       if (!source || !target) throw new Error('Choose an existing published show to merge into.')
       if (source.id === target.id) throw new Error('Choose a different show as the merge target.')
@@ -304,4 +339,5 @@ export const mergeShowIntoPublishedShow = createServerFn({ method: 'POST' })
         .where(eq(outings.showId, source.id))
       await tx.delete(shows).where(eq(shows.id, source.id))
     })
-  })
+  },
+)

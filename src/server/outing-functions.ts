@@ -1,4 +1,4 @@
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
 import { and, eq, inArray, or } from 'drizzle-orm'
 import { z } from 'zod'
@@ -70,10 +70,13 @@ async function requireSession() {
   return session
 }
 
-export const createOuting = createServerFn({ method: 'POST' })
-  .validator(outingInput)
-  .handler(async ({ data }) => {
-    const session = await requireSession()
+// The exported helpers below hold the authorization rules and take the acting
+// user explicitly, so they can be exercised without a request. `createServerOnlyFn`
+// keeps the database client out of the browser bundle.
+
+export const createOutingForUser = createServerOnlyFn(
+  async (actorId: string, data: z.infer<typeof outingInput>) => {
+    const session = { user: { id: actorId } }
     const attendeeIds = [...new Set(data.attendeeIds)].filter((id) => id !== session.user.id)
     const [show] = await getDb()
       .select({ id: shows.id })
@@ -192,88 +195,95 @@ export const createOuting = createServerFn({ method: 'POST' })
       ])
       return outing
     })
-  })
+  },
+)
+
+export const outingForAttendee = createServerOnlyFn(async (viewerId: string, outingId: string) => {
+  const session = { user: { id: viewerId } }
+  const data = { id: outingId }
+  const [attendance] = await getDb()
+    .select({ userId: outingAttendees.userId })
+    .from(outingAttendees)
+    .where(and(eq(outingAttendees.outingId, data.id), eq(outingAttendees.userId, session.user.id)))
+    .limit(1)
+  if (!attendance) throw new Error('Unauthorized')
+
+  const [outing] = await getDb()
+    .select({
+      id: outings.id,
+      datePrecision: outings.datePrecision,
+      occurredOn: outings.occurredOn,
+      occurredMonth: outings.occurredMonth,
+      occurredYear: outings.occurredYear,
+      approximateDate: outings.approximateDate,
+      venue: outings.venue,
+      city: outings.city,
+      country: outings.country,
+      sharedNotes: outings.sharedNotes,
+      showTitle: shows.title,
+      showType: shows.type,
+      productionName: productions.name,
+    })
+    .from(outings)
+    .innerJoin(shows, eq(outings.showId, shows.id))
+    .leftJoin(productions, eq(outings.productionId, productions.id))
+    .where(eq(outings.id, data.id))
+    .limit(1)
+  if (!outing) throw new Error('Outing not found')
+
+  const attendees = await getDb()
+    .select({
+      userId: outingAttendees.userId,
+      name: user.name,
+      attendanceStatus: outingAttendees.attendanceStatus,
+      rating: outingAttendees.rating,
+      favorite: outingAttendees.favorite,
+      review: outingAttendees.review,
+      reviewVisibility: outingAttendees.reviewVisibility,
+      privateNotes: outingAttendees.privateNotes,
+    })
+    .from(outingAttendees)
+    .innerJoin(user, eq(outingAttendees.userId, user.id))
+    .where(eq(outingAttendees.outingId, data.id))
+  return {
+    ...outing,
+    attendees: attendees.map((attendee) => ({
+      ...attendee,
+      privateNotes: attendee.userId === session.user.id ? attendee.privateNotes : null,
+      // Friends-only reviews require the friendship visibility layer before
+      // they can be exposed to other attendees.
+      review: attendee.userId === session.user.id ? attendee.review : null,
+    })),
+  }
+})
+
+export const outingsForUserAndShow = createServerOnlyFn(async (viewerId: string, showId: string) =>
+  getDb()
+    .select({
+      id: outings.id,
+      datePrecision: outings.datePrecision,
+      occurredOn: outings.occurredOn,
+      occurredMonth: outings.occurredMonth,
+      occurredYear: outings.occurredYear,
+      approximateDate: outings.approximateDate,
+      venue: outings.venue,
+      city: outings.city,
+      productionName: productions.name,
+    })
+    .from(outingAttendees)
+    .innerJoin(outings, eq(outingAttendees.outingId, outings.id))
+    .leftJoin(productions, eq(outings.productionId, productions.id))
+    .where(and(eq(outingAttendees.userId, viewerId), eq(outings.showId, showId))),
+)
+
+export const createOuting = createServerFn({ method: 'POST' })
+  .validator(outingInput)
+  .handler(async ({ data }) => createOutingForUser((await requireSession()).user.id, data))
 
 export const getOuting = createServerFn({ method: 'GET' })
   .validator(z.object({ id: z.string().uuid() }))
-  .handler(async ({ data }) => {
-    const session = await requireSession()
-    const [attendance] = await getDb()
-      .select({ userId: outingAttendees.userId })
-      .from(outingAttendees)
-      .where(
-        and(eq(outingAttendees.outingId, data.id), eq(outingAttendees.userId, session.user.id)),
-      )
-      .limit(1)
-    if (!attendance) throw new Error('Unauthorized')
-
-    const [outing] = await getDb()
-      .select({
-        id: outings.id,
-        datePrecision: outings.datePrecision,
-        occurredOn: outings.occurredOn,
-        occurredMonth: outings.occurredMonth,
-        occurredYear: outings.occurredYear,
-        approximateDate: outings.approximateDate,
-        venue: outings.venue,
-        city: outings.city,
-        country: outings.country,
-        sharedNotes: outings.sharedNotes,
-        showTitle: shows.title,
-        showType: shows.type,
-        productionName: productions.name,
-      })
-      .from(outings)
-      .innerJoin(shows, eq(outings.showId, shows.id))
-      .leftJoin(productions, eq(outings.productionId, productions.id))
-      .where(eq(outings.id, data.id))
-      .limit(1)
-    if (!outing) throw new Error('Outing not found')
-
-    const attendees = await getDb()
-      .select({
-        userId: outingAttendees.userId,
-        name: user.name,
-        attendanceStatus: outingAttendees.attendanceStatus,
-        rating: outingAttendees.rating,
-        favorite: outingAttendees.favorite,
-        review: outingAttendees.review,
-        reviewVisibility: outingAttendees.reviewVisibility,
-        privateNotes: outingAttendees.privateNotes,
-      })
-      .from(outingAttendees)
-      .innerJoin(user, eq(outingAttendees.userId, user.id))
-      .where(eq(outingAttendees.outingId, data.id))
-    return {
-      ...outing,
-      attendees: attendees.map((attendee) => ({
-        ...attendee,
-        privateNotes: attendee.userId === session.user.id ? attendee.privateNotes : null,
-        // Friends-only reviews require the friendship visibility layer before
-        // they can be exposed to other attendees.
-        review: attendee.userId === session.user.id ? attendee.review : null,
-      })),
-    }
-  })
+  .handler(async ({ data }) => outingForAttendee((await requireSession()).user.id, data.id))
 
 export const getMyOutingsForShow = createServerFn({ method: 'GET' })
   .validator(z.object({ showId: z.string().uuid() }))
-  .handler(async ({ data }) => {
-    const session = await requireSession()
-    return getDb()
-      .select({
-        id: outings.id,
-        datePrecision: outings.datePrecision,
-        occurredOn: outings.occurredOn,
-        occurredMonth: outings.occurredMonth,
-        occurredYear: outings.occurredYear,
-        approximateDate: outings.approximateDate,
-        venue: outings.venue,
-        city: outings.city,
-        productionName: productions.name,
-      })
-      .from(outingAttendees)
-      .innerJoin(outings, eq(outingAttendees.outingId, outings.id))
-      .leftJoin(productions, eq(outings.productionId, productions.id))
-      .where(and(eq(outingAttendees.userId, session.user.id), eq(outings.showId, data.showId)))
-  })
+  .handler(async ({ data }) => outingsForUserAndShow((await requireSession()).user.id, data.showId))
