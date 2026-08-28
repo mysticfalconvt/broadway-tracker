@@ -22,11 +22,12 @@
     "db:down": "docker compose -f compose.dev.yml down"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-router": "^1.139.10",
     "@tanstack/react-start": "^1.139.10",
-    "@tailwindcss/vite": "^4.1.18",
     "better-auth": "^1.6.5",
     "drizzle-orm": "^0.45.2",
+    "nodemailer": "^9.0.6",
     "postgres": "^3.4.9",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -36,6 +37,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.7",
     "@types/node": "^22.10.2",
+    "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.0",
