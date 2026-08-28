@@ -7,7 +7,7 @@
 ## Guiding decisions
 
 - **Audience:** Family and friends initially; designed to grow without becoming an engagement-driven social network.
-- **Privacy:** Profiles and all user-created content default to **private**. Friends-only sharing requires an approved friendship.
+- **Privacy:** Profiles and all user-created content default to **private**. Friends-only sharing requires an approved friendship. Public sharing is **anonymous** — a public page carries no name and no handle, and is addressed by an opaque account id rather than the email-derived handle.
 - **Catalog:** Start with a manually curated catalog. Signed-in users can submit missing shows; an administrator approves, rejects, or merges submissions.
 - **Data model:** A *show* is the work itself; a *production* is a particular Broadway, touring, regional, or local staging of that work.
 - **Images:** Use RustFS through its S3-compatible API. Do not store image uploads on a Coolify application volume.
@@ -141,6 +141,19 @@
 - [x] Build a simple Friends page: requests, approved friends, and removal controls.
 - [x] Allow friends to view only `friends`-visible profiles, entries, reviews, and lists.
 - [ ] Build a quiet, chronological friends activity view (optional after core sharing works).
+
+### Public sharing and the home dashboard
+
+**Goal:** Give a signed-out visitor something real to look at, without publishing anyone’s name.
+
+- [x] Add a third `public` visibility level for profiles, lists, and library entries/reviews.
+- [x] Keep shared outings out of public sharing — a memory names other attendees who never consented.
+- [x] Serve public lists and an anonymous public profile to signed-out visitors.
+- [x] Make public pages carry no name, handle, or email-derived identifier.
+- [x] Replace the home-page filler with real data for a signed-in user.
+- [x] Give signed-out visitors a real landing page with clearly labelled sample content.
+- [x] Wire the home page actions, which were dead buttons.
+- [ ] Reconsider the email-derived handle in `auth.ts` — it is no longer published, but friends still see it.
 - [x] Do not add follower counts, public leaderboards, or engagement-pressure mechanics.
 - [x] Add thorough privacy/authorization tests, including rejected and blocked relationships.
 
@@ -191,7 +204,6 @@
 
 These are intentionally outside the MVP until the personal library and privacy model are reliable.
 
-- Public profiles and public reviews
 - Ticketing/calendar imports
 - Notifications and email digests
 - Cast, creative team, and venue database
@@ -200,6 +212,39 @@ These are intentionally outside the MVP until the personal library and privacy m
 - Mobile native applications
 - Recommendations and discovery algorithms
 - Comments or reactions on friends’ entries
+
+### Assisted recall for vague memories (exploration)
+
+**The idea:** a user remembers *“I saw The Music Man, I think in Boston, around 1990.”* Offer an
+assisted lookup that searches for real productions matching that fuzzy description and proposes
+concrete candidates — venue, run dates, touring company — for the user to confirm.
+
+This would slot into the **Build Your Theatre History** backfill flow and the quick-log flow, as an
+optional “Help me remember” action beside the date-precision step. It is a natural fit for the fuzzy
+date model already in place: the answer to *“which production was that?”* is exactly what turns an
+`approximate` memory into an `exact` one.
+
+Open questions, roughly in the order they need answering:
+
+- **Trust.** This product is a personal archive; a confidently wrong venue or year is worse than a
+  blank field. Any result must arrive as a *suggestion the user confirms*, never an auto-filled
+  value, and the UI should show what it matched on so a wrong guess is obvious.
+- **Provenance.** Candidates should cite where they came from, and the app should record whether a
+  performance detail was user-entered or accepted from a suggestion.
+- **Sources and licensing.** Production archives (Playbill, IBDB, IOBDB, regional theatre archives)
+  each have their own terms. This has the same licensing question as the existing *External
+  show-data imports* idea above and should be evaluated alongside it.
+- **Privacy.** The query is a fragment of someone’s personal history. Sending it to an external
+  provider needs to be disclosed, opt-in, and ideally scoped to just the show/place/year rather than
+  any personal note attached to the memory.
+- **Cost and latency.** Per-lookup cost and response time decide whether this is a background
+  enrichment or an interactive step; the 5–10 second backfill target leaves little room for a slow
+  synchronous call.
+- **Model and provider.** Unevaluated. Also unclear whether this is better served by a search-backed
+  lookup with a model summarizing results, or a model with browsing/tool access.
+- **Graceful failure.** Regional, school, and community productions are poorly documented. The flow
+  must stay fast and pleasant when nothing is found, which is the common case for exactly the
+  memories users most want help with.
 
 ## Commands reference
 

@@ -20,7 +20,12 @@ function Lists() {
         data: {
           title: String(form.get('title')),
           description: String(form.get('description')).trim() || undefined,
-          visibility: form.get('visibility') === 'friends' ? 'friends' : 'private',
+          visibility:
+            form.get('visibility') === 'friends'
+              ? 'friends'
+              : form.get('visibility') === 'public'
+                ? 'public'
+                : 'private',
         },
       })
       window.location.assign(`/lists/${list.id}`)
@@ -51,6 +56,7 @@ function Lists() {
           <select name="visibility" defaultValue="private">
             <option value="private">Only me</option>
             <option value="friends">Friends</option>
+            <option value="public">Public — anonymous, no name attached</option>
           </select>
         </label>
         {error ? (
@@ -68,7 +74,11 @@ function Lists() {
             <h2>{list.title}</h2>
             <p>
               {list.itemCount} {list.itemCount === 1 ? 'show' : 'shows'} ·{' '}
-              {list.visibility === 'friends' ? 'Friends' : 'Only me'}
+              {list.visibility === 'friends'
+                ? 'Friends'
+                : list.visibility === 'public'
+                  ? 'Public'
+                  : 'Only me'}
             </p>
           </Link>
         ))}

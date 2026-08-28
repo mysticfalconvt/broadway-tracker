@@ -20,7 +20,7 @@ export const updateAccountSettings = createServerFn({ method: 'POST' })
         .trim()
         .toLowerCase()
         .regex(/^[a-z0-9][a-z0-9-]{2,29}$/, 'Use 3-30 lowercase letters, numbers, or hyphens.'),
-      profileVisibility: z.enum(['private', 'friends']),
+      profileVisibility: z.enum(['private', 'friends', 'public']),
     }),
   )
   .handler(async ({ data }) => {

@@ -1,23 +1,40 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute, notFound } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 
-import { ShowArtwork } from '../../../components/ShowArtwork'
+import { ShowArtwork } from '../../components/ShowArtwork'
 import {
   addShowToList,
   getListForViewer,
   moveListItem,
   removeShowFromList,
-} from '../../../server/list-functions'
-import { searchPublishedShows } from '../../../server/catalog-functions'
+} from '../../server/list-functions'
+import { searchPublishedShows } from '../../server/catalog-functions'
 
-export const Route = createFileRoute('/_protected/lists/$id')({
+export const Route = createFileRoute('/lists/$id')({
   loader: async ({ params }) => {
-    const list = await getListForViewer({ data: { id: params.id } })
+    const list = await getListForViewer({ data: { id: params.id } }).catch(() => {
+      // Forbidden and missing are the same answer here, so both read as a dead link.
+      throw notFound()
+    })
     // Only the owner can add shows, so skip the picker query for a friend's shelf.
     return { list, shows: list.canEdit ? await searchPublishedShows({ data: { query: '' } }) : [] }
   },
   component: ListDetail,
+  notFoundComponent: ListNotFound,
 })
+
+function ListNotFound() {
+  return (
+    <main className="page-wrap empty-state">
+      <p className="eyebrow">Nothing here</p>
+      <h1>This list isn’t available.</h1>
+      <p>It may be private, shared only with friends, or no longer exist.</p>
+      <Link className="button button-primary" to="/">
+        Back to Broadway Tracker
+      </Link>
+    </main>
+  )
+}
 
 function ListDetail() {
   const { list, shows } = Route.useLoaderData()
@@ -43,10 +60,14 @@ function ListDetail() {
       <header className="settings-header">
         <p className="eyebrow">
           {list.canEdit
-            ? list.visibility === 'friends'
-              ? 'Friends list'
-              : 'Private list'
-            : `Shared by ${list.owner?.name ?? 'a friend'}`}
+            ? list.visibility === 'public'
+              ? 'Public list'
+              : list.visibility === 'friends'
+                ? 'Friends list'
+                : 'Private list'
+            : list.owner
+              ? `Shared by ${list.owner.name}`
+              : 'A public shelf'}
         </p>
         <h1>{list.title}</h1>
         <p>{list.description || 'A collected shelf of shows.'}</p>

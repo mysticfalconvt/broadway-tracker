@@ -24,11 +24,12 @@ import { Route as ProtectedProfileRouteImport } from './routes/_protected/profil
 import { Route as ProtectedSettingsRouteImport } from './routes/_protected/settings'
 import { Route as ProtectedSubmitShowRouteImport } from './routes/_protected/submit-show'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ListsIdRouteImport } from './routes/lists/$id'
+import { Route as PIdRouteImport } from './routes/p/$id'
 import { Route as ShowsSlugRouteImport } from './routes/shows/$slug'
 import { Route as ProtectedAdminCatalogRouteImport } from './routes/_protected/admin/catalog'
 import { Route as ProtectedAdminProductionsRouteImport } from './routes/_protected/admin/productions'
 import { Route as ProtectedListsIndexRouteImport } from './routes/_protected/lists/index'
-import { Route as ProtectedListsIdRouteImport } from './routes/_protected/lists/$id'
 import { Route as ProtectedOutingsIdRouteImport } from './routes/_protected/outings/$id'
 import { Route as ProtectedPeopleHandleRouteImport } from './routes/_protected/people/$handle'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -107,6 +108,16 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ListsIdRoute = ListsIdRouteImport.update({
+  id: '/lists/$id',
+  path: '/lists/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PIdRoute = PIdRouteImport.update({
+  id: '/p/$id',
+  path: '/p/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShowsSlugRoute = ShowsSlugRouteImport.update({
   id: '/shows/$slug',
   path: '/shows/$slug',
@@ -126,11 +137,6 @@ const ProtectedAdminProductionsRoute =
 const ProtectedListsIndexRoute = ProtectedListsIndexRouteImport.update({
   id: '/lists/',
   path: '/lists/',
-  getParentRoute: () => ProtectedRoute,
-} as any)
-const ProtectedListsIdRoute = ProtectedListsIdRouteImport.update({
-  id: '/lists/$id',
-  path: '/lists/$id',
   getParentRoute: () => ProtectedRoute,
 } as any)
 const ProtectedOutingsIdRoute = ProtectedOutingsIdRouteImport.update({
@@ -164,10 +170,11 @@ export interface FileRoutesByFullPath {
   '/settings': typeof ProtectedSettingsRoute
   '/submit-show': typeof ProtectedSubmitShowRoute
   '/api/health': typeof ApiHealthRoute
+  '/lists/$id': typeof ListsIdRoute
+  '/p/$id': typeof PIdRoute
   '/shows/$slug': typeof ShowsSlugRoute
   '/admin/catalog': typeof ProtectedAdminCatalogRoute
   '/admin/productions': typeof ProtectedAdminProductionsRoute
-  '/lists/$id': typeof ProtectedListsIdRoute
   '/outings/$id': typeof ProtectedOutingsIdRoute
   '/people/$handle': typeof ProtectedPeopleHandleRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -188,10 +195,11 @@ export interface FileRoutesByTo {
   '/settings': typeof ProtectedSettingsRoute
   '/submit-show': typeof ProtectedSubmitShowRoute
   '/api/health': typeof ApiHealthRoute
+  '/lists/$id': typeof ListsIdRoute
+  '/p/$id': typeof PIdRoute
   '/shows/$slug': typeof ShowsSlugRoute
   '/admin/catalog': typeof ProtectedAdminCatalogRoute
   '/admin/productions': typeof ProtectedAdminProductionsRoute
-  '/lists/$id': typeof ProtectedListsIdRoute
   '/outings/$id': typeof ProtectedOutingsIdRoute
   '/people/$handle': typeof ProtectedPeopleHandleRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -214,10 +222,11 @@ export interface FileRoutesById {
   '/_protected/settings': typeof ProtectedSettingsRoute
   '/_protected/submit-show': typeof ProtectedSubmitShowRoute
   '/api/health': typeof ApiHealthRoute
+  '/lists/$id': typeof ListsIdRoute
+  '/p/$id': typeof PIdRoute
   '/shows/$slug': typeof ShowsSlugRoute
   '/_protected/admin/catalog': typeof ProtectedAdminCatalogRoute
   '/_protected/admin/productions': typeof ProtectedAdminProductionsRoute
-  '/_protected/lists/$id': typeof ProtectedListsIdRoute
   '/_protected/outings/$id': typeof ProtectedOutingsIdRoute
   '/_protected/people/$handle': typeof ProtectedPeopleHandleRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -240,10 +249,11 @@ export interface FileRouteTypes {
     | '/settings'
     | '/submit-show'
     | '/api/health'
+    | '/lists/$id'
+    | '/p/$id'
     | '/shows/$slug'
     | '/admin/catalog'
     | '/admin/productions'
-    | '/lists/$id'
     | '/outings/$id'
     | '/people/$handle'
     | '/api/auth/$'
@@ -264,10 +274,11 @@ export interface FileRouteTypes {
     | '/settings'
     | '/submit-show'
     | '/api/health'
+    | '/lists/$id'
+    | '/p/$id'
     | '/shows/$slug'
     | '/admin/catalog'
     | '/admin/productions'
-    | '/lists/$id'
     | '/outings/$id'
     | '/people/$handle'
     | '/api/auth/$'
@@ -289,10 +300,11 @@ export interface FileRouteTypes {
     | '/_protected/settings'
     | '/_protected/submit-show'
     | '/api/health'
+    | '/lists/$id'
+    | '/p/$id'
     | '/shows/$slug'
     | '/_protected/admin/catalog'
     | '/_protected/admin/productions'
-    | '/_protected/lists/$id'
     | '/_protected/outings/$id'
     | '/_protected/people/$handle'
     | '/api/auth/$'
@@ -308,6 +320,8 @@ export interface RootRouteChildren {
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ListsIdRoute: typeof ListsIdRoute
+  PIdRoute: typeof PIdRoute
   ShowsSlugRoute: typeof ShowsSlugRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -419,6 +433,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lists/$id': {
+      id: '/lists/$id'
+      path: '/lists/$id'
+      fullPath: '/lists/$id'
+      preLoaderRoute: typeof ListsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/p/$id': {
+      id: '/p/$id'
+      path: '/p/$id'
+      fullPath: '/p/$id'
+      preLoaderRoute: typeof PIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/shows/$slug': {
       id: '/shows/$slug'
       path: '/shows/$slug'
@@ -445,13 +473,6 @@ declare module '@tanstack/react-router' {
       path: '/lists'
       fullPath: '/lists/'
       preLoaderRoute: typeof ProtectedListsIndexRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/lists/$id': {
-      id: '/_protected/lists/$id'
-      path: '/lists/$id'
-      fullPath: '/lists/$id'
-      preLoaderRoute: typeof ProtectedListsIdRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/_protected/outings/$id': {
@@ -488,7 +509,6 @@ interface ProtectedRouteChildren {
   ProtectedSubmitShowRoute: typeof ProtectedSubmitShowRoute
   ProtectedAdminCatalogRoute: typeof ProtectedAdminCatalogRoute
   ProtectedAdminProductionsRoute: typeof ProtectedAdminProductionsRoute
-  ProtectedListsIdRoute: typeof ProtectedListsIdRoute
   ProtectedOutingsIdRoute: typeof ProtectedOutingsIdRoute
   ProtectedPeopleHandleRoute: typeof ProtectedPeopleHandleRoute
   ProtectedListsIndexRoute: typeof ProtectedListsIndexRoute
@@ -504,7 +524,6 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedSubmitShowRoute: ProtectedSubmitShowRoute,
   ProtectedAdminCatalogRoute: ProtectedAdminCatalogRoute,
   ProtectedAdminProductionsRoute: ProtectedAdminProductionsRoute,
-  ProtectedListsIdRoute: ProtectedListsIdRoute,
   ProtectedOutingsIdRoute: ProtectedOutingsIdRoute,
   ProtectedPeopleHandleRoute: ProtectedPeopleHandleRoute,
   ProtectedListsIndexRoute: ProtectedListsIndexRoute,
@@ -523,6 +542,8 @@ const rootRouteChildren: RootRouteChildren = {
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ListsIdRoute: ListsIdRoute,
+  PIdRoute: PIdRoute,
   ShowsSlugRoute: ShowsSlugRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }

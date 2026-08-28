@@ -14,6 +14,12 @@ async function requireSession() {
   return session
 }
 
+/** Public lists are readable signed out, so this read tolerates no session. */
+async function optionalViewerId() {
+  const session = await auth.api.getSession({ headers: getRequestHeaders() })
+  return session?.user.id ?? null
+}
+
 // The exported `*ForOwner` / `*ForViewer` helpers hold the authorization rules and
 // take the acting user explicitly, so they can be exercised without a request.
 // Each server function below is a thin adapter that resolves the session.
@@ -21,7 +27,7 @@ async function requireSession() {
 const listInput = z.object({
   title: z.string().trim().min(1).max(120),
   description: z.string().trim().max(1000).optional(),
-  visibility: z.enum(['private', 'friends']).default('private'),
+  visibility: z.enum(['private', 'friends', 'public']).default('private'),
 })
 
 export const listsForOwner = createServerOnlyFn(async (ownerId: string) => {
@@ -68,22 +74,30 @@ const requireOwnedList = createServerOnlyFn(async (ownerId: string, listId: stri
   return list
 })
 
-export const listForViewer = createServerOnlyFn(async (viewerId: string, listId: string) => {
+/**
+ * `viewerId` is null for a signed-out visitor, who may only reach a public list.
+ * A public list is deliberately anonymous: it carries no owner name or handle.
+ */
+export const listForViewer = createServerOnlyFn(async (viewerId: string | null, listId: string) => {
   const [list] = await getDb().select().from(lists).where(eq(lists.id, listId)).limit(1)
   // A viewer who may not read the list gets the same answer as one asking for a
   // list that does not exist, so the response never confirms it is there.
   if (!list) throw new Error('List not found')
-  const canEdit = list.userId === viewerId
-  // Public lists are deferred, so a shared shelf reaches approved friends only.
-  const isSharedWithViewer =
-    list.visibility !== 'private' && (await areFriends(viewerId, list.userId))
-  if (!canEdit && !isSharedWithViewer) throw new Error('List not found')
+  const canEdit = viewerId !== null && list.userId === viewerId
+  const isPublic = list.visibility === 'public'
+  const isSharedWithFriend =
+    list.visibility === 'friends' && viewerId !== null && (await areFriends(viewerId, list.userId))
+  if (!canEdit && !isPublic && !isSharedWithFriend) throw new Error('List not found')
 
-  const [owner] = await getDb()
-    .select({ name: user.name, handle: user.handle })
-    .from(user)
-    .where(eq(user.id, list.userId))
-    .limit(1)
+  // Only someone who already knows the owner sees who they are.
+  const identified = canEdit || isSharedWithFriend
+  const [owner] = identified
+    ? await getDb()
+        .select({ name: user.name, handle: user.handle })
+        .from(user)
+        .where(eq(user.id, list.userId))
+        .limit(1)
+    : [null]
   const items = await getDb()
     .select({
       showId: shows.id,
@@ -166,7 +180,7 @@ export const createList = createServerFn({ method: 'POST' })
 
 export const getListForViewer = createServerFn({ method: 'GET' })
   .validator(z.object({ id: z.string().uuid() }))
-  .handler(async ({ data }) => listForViewer((await requireSession()).user.id, data.id))
+  .handler(async ({ data }) => listForViewer(await optionalViewerId(), data.id))
 
 export const addShowToList = createServerFn({ method: 'POST' })
   .validator(z.object({ listId: z.string().uuid(), showId: z.string().uuid() }))

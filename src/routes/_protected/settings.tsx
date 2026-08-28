@@ -4,6 +4,12 @@ import { useState, type FormEvent } from 'react'
 import { authClient } from '../../lib/auth-client'
 import { updateAccountSettings } from '../../server/auth-functions'
 
+function profileVisibilityFrom(value: FormDataEntryValue | null) {
+  if (value === 'friends') return 'friends' as const
+  if (value === 'public') return 'public' as const
+  return 'private' as const
+}
+
 export const Route = createFileRoute('/_protected/settings')({ component: Settings })
 
 function Settings() {
@@ -24,7 +30,7 @@ function Settings() {
         data: {
           name: String(form.get('name')),
           handle: String(form.get('handle')),
-          profileVisibility: form.get('profileVisibility') === 'friends' ? 'friends' : 'private',
+          profileVisibility: profileVisibilityFrom(form.get('profileVisibility')),
         },
       })
       setMessage('Settings saved.')
@@ -72,7 +78,9 @@ function Settings() {
               type="radio"
               name="profileVisibility"
               value="private"
-              defaultChecked={user.profileVisibility !== 'friends'}
+              defaultChecked={
+                user.profileVisibility !== 'friends' && user.profileVisibility !== 'public'
+              }
             />
             <span>
               <strong>Only me</strong>
@@ -89,6 +97,19 @@ function Settings() {
             <span>
               <strong>Friends</strong>
               Share profile details with approved friends.
+            </span>
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="profileVisibility"
+              value="public"
+              defaultChecked={user.profileVisibility === 'public'}
+            />
+            <span>
+              <strong>Public</strong>
+              Publish an anonymous page of whatever you mark public. It carries no name and no
+              handle — only the shows.
             </span>
           </label>
         </fieldset>

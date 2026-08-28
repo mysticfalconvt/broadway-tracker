@@ -1429,3 +1429,18 @@ h3 {
   color: var(--ink);
   font-size: 1rem;
 }
+
+/* Sample content on the signed-out home page. It must never read as real
+   activity, so it is labelled and visually set apart from live data. */
+.sample-note {
+  margin: 0 0 0.75rem;
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  font-style: italic;
+}
+.is-sample {
+  position: relative;
+  opacity: 0.92;
+  border-left: 2px solid var(--brass);
+  padding-left: 1rem;
+}

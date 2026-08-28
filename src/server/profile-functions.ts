@@ -6,7 +6,77 @@ import { z } from 'zod'
 import { auth } from './auth'
 import { getDb } from './db/client'
 import { areFriends } from './friend-functions'
-import { libraryEntries, listItems, lists, outings, shows, user } from './db/schema'
+import {
+  libraryEntries,
+  listItems,
+  lists,
+  outingAttendees,
+  outings,
+  shows,
+  user,
+} from './db/schema'
+
+/** Everything the signed-in home dashboard shows, in one round trip. */
+export const homeForUser = createServerOnlyFn(async (userId: string) => {
+  const db = getDb()
+  const [seen, favoriteCount, performanceCount, wantToSee, recent] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(libraryEntries)
+      .where(and(eq(libraryEntries.userId, userId), eq(libraryEntries.status, 'seen'))),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(libraryEntries)
+      .where(and(eq(libraryEntries.userId, userId), eq(libraryEntries.favorite, true))),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(outingAttendees)
+      .where(eq(outingAttendees.userId, userId)),
+    db
+      .select({ id: shows.id, title: shows.title, slug: shows.slug, type: shows.type })
+      .from(libraryEntries)
+      .innerJoin(shows, eq(libraryEntries.showId, shows.id))
+      .where(and(eq(libraryEntries.userId, userId), eq(libraryEntries.status, 'want_to_see')))
+      .orderBy(desc(libraryEntries.updatedAt))
+      .limit(3),
+    db
+      .select({
+        id: outings.id,
+        showTitle: shows.title,
+        showType: shows.type,
+        venue: outings.venue,
+        city: outings.city,
+        datePrecision: outings.datePrecision,
+        occurredOn: outings.occurredOn,
+        occurredMonth: outings.occurredMonth,
+        occurredYear: outings.occurredYear,
+        approximateDate: outings.approximateDate,
+        rating: outingAttendees.rating,
+        review: outingAttendees.review,
+      })
+      .from(outingAttendees)
+      .innerJoin(outings, eq(outingAttendees.outingId, outings.id))
+      .innerJoin(shows, eq(outings.showId, shows.id))
+      .where(eq(outingAttendees.userId, userId))
+      .orderBy(desc(outings.createdAt))
+      .limit(2),
+  ])
+  return {
+    stats: {
+      performances: performanceCount[0]?.count ?? 0,
+      shows: seen[0]?.count ?? 0,
+      favorites: favoriteCount[0]?.count ?? 0,
+    },
+    wantToSee,
+    recent,
+  }
+})
+
+export const getHome = createServerFn({ method: 'GET' }).handler(async () => {
+  const session = await auth.api.getSession({ headers: getRequestHeaders() })
+  if (!session) return null
+  return { name: session.user.name, ...(await homeForUser(session.user.id)) }
+})
 
 export const getMyProfile = createServerFn({ method: 'GET' }).handler(async () => {
   const session = await auth.api.getSession({ headers: getRequestHeaders() })
@@ -112,6 +182,69 @@ export const friendProfileForViewer = createServerOnlyFn(
     }
   },
 )
+
+/**
+ * A public profile is deliberately anonymous: it carries no name and no handle,
+ * only the theatre itself. It is addressed by the opaque account id rather than
+ * the handle, because handles are derived from an email address.
+ */
+export const publicProfileById = createServerOnlyFn(async (userId: string) => {
+  const db = getDb()
+  const [profile] = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(and(eq(user.id, userId), eq(user.profileVisibility, 'public')))
+    .limit(1)
+  if (!profile) throw new Error('This profile is unavailable.')
+
+  const [seen, favorites, publicLists] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(libraryEntries)
+      .where(and(eq(libraryEntries.userId, profile.id), eq(libraryEntries.status, 'seen'))),
+    db
+      .select({
+        id: shows.id,
+        title: shows.title,
+        slug: shows.slug,
+        type: shows.type,
+        rating: libraryEntries.rating,
+        review: libraryEntries.review,
+      })
+      .from(libraryEntries)
+      .innerJoin(shows, eq(libraryEntries.showId, shows.id))
+      .where(
+        and(
+          eq(libraryEntries.userId, profile.id),
+          eq(libraryEntries.favorite, true),
+          eq(libraryEntries.visibility, 'public'),
+        ),
+      )
+      .orderBy(desc(libraryEntries.updatedAt))
+      .limit(6),
+    db
+      .select({
+        id: lists.id,
+        title: lists.title,
+        description: lists.description,
+        itemCount: sql<number>`count(${listItems.showId})::int`,
+      })
+      .from(lists)
+      .leftJoin(listItems, eq(listItems.listId, lists.id))
+      .where(and(eq(lists.userId, profile.id), eq(lists.visibility, 'public')))
+      .groupBy(lists.id)
+      .orderBy(asc(lists.title)),
+  ])
+  return {
+    stats: { seen: seen[0]?.count ?? 0 },
+    favorites,
+    lists: publicLists,
+  }
+})
+
+export const getPublicProfile = createServerFn({ method: 'GET' })
+  .validator(z.object({ id: z.string().min(1).max(80) }))
+  .handler(async ({ data }) => publicProfileById(data.id))
 
 export const getFriendProfile = createServerFn({ method: 'GET' })
   .validator(z.object({ handle: z.string().trim().min(1).max(30) }))

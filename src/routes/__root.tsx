@@ -1,6 +1,8 @@
 import { HeadContent, Link, Scripts, createRootRoute } from '@tanstack/react-router'
 import { type ReactNode } from 'react'
 
+import { authClient } from '../lib/auth-client'
+
 import '../styles.css'
 
 export const Route = createRootRoute({
@@ -41,20 +43,41 @@ function RootShell({ children }: { children: ReactNode }) {
             <Link to="/" className="brand">
               Broadway Tracker
             </Link>
-            <div className="nav-links" aria-label="Product areas">
-              <Link to="/library">My Theatre</Link>
-              <Link to="/discover">Discover</Link>
-              <Link to="/lists">Lists</Link>
-              <Link to="/profile">Profile</Link>
-              <Link to="/friends">Friends</Link>
-              <Link to="/build-history">Build history</Link>
-            </div>
+            <NavLinks />
           </nav>
         </header>
         {children}
         <Scripts />
       </body>
     </html>
+  )
+}
+
+/**
+ * Every product area behind these links requires an account, so a signed-out
+ * visitor is offered the catalog and a way in rather than links that bounce
+ * them to the sign-in page.
+ */
+function NavLinks() {
+  const { data: session, isPending } = authClient.useSession()
+  if (isPending || !session) {
+    return (
+      <div className="nav-links" aria-label="Product areas">
+        <Link to="/discover">Discover</Link>
+        <Link to="/sign-in">Sign in</Link>
+        <Link to="/sign-up">Create account</Link>
+      </div>
+    )
+  }
+  return (
+    <div className="nav-links" aria-label="Product areas">
+      <Link to="/library">My Theatre</Link>
+      <Link to="/discover">Discover</Link>
+      <Link to="/lists">Lists</Link>
+      <Link to="/profile">Profile</Link>
+      <Link to="/friends">Friends</Link>
+      <Link to="/build-history">Build history</Link>
+    </div>
   )
 }
 

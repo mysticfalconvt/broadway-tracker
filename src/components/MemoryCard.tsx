@@ -6,8 +6,8 @@ type MemoryCardProps = {
   title: string
   type: string
   date: string
-  venue: string
-  city: string
+  venue?: string | null
+  city?: string | null
   attendees: string[]
   rating?: number
   review?: string
@@ -23,17 +23,18 @@ export function MemoryCard({
   rating,
   review,
 }: MemoryCardProps) {
+  const place = [venue, city].filter(Boolean).join(' · ')
   return (
     <article className="memory-card">
       <ShowArtwork title={title} type={type} tone="oxblood" />
       <div className="memory-content">
         <p className="memory-date">{date}</p>
         <h3>{title}</h3>
-        <p className="memory-place">
-          {venue} · {city}
-        </p>
+        {/* A backfilled memory often has no venue. Let the type carry the space
+            rather than leaving a dangling separator. */}
+        {place ? <p className="memory-place">{place}</p> : null}
         <AvatarGroup names={attendees} />
-        <Rating value={rating} />
+        {rating === undefined ? null : <Rating value={rating} />}
         {review ? <p className="memory-review">“{review}”</p> : null}
       </div>
     </article>
