@@ -10,9 +10,7 @@ async function handleAuthRequest(request: Request) {
       path: new URL(request.url).pathname,
       baseUrlConfigured: Boolean(process.env.BETTER_AUTH_URL),
       secretConfigured: Boolean(process.env.BETTER_AUTH_SECRET),
-      smtpConfigured: Boolean(
-        process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD,
-      ),
+      smtpConfigured: Boolean(process.env.SMTP_HOST),
     })
   }
   try {

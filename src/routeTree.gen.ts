@@ -24,6 +24,7 @@ import { Route as ProtectedProfileRouteImport } from './routes/_protected/profil
 import { Route as ProtectedSettingsRouteImport } from './routes/_protected/settings'
 import { Route as ProtectedSubmitShowRouteImport } from './routes/_protected/submit-show'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ApiUploadsRouteImport } from './routes/api/uploads'
 import { Route as ListsIdRouteImport } from './routes/lists/$id'
 import { Route as PIdRouteImport } from './routes/p/$id'
 import { Route as ShowsSlugRouteImport } from './routes/shows/$slug'
@@ -33,6 +34,7 @@ import { Route as ProtectedListsIndexRouteImport } from './routes/_protected/lis
 import { Route as ProtectedOutingsIdRouteImport } from './routes/_protected/outings/$id'
 import { Route as ProtectedPeopleHandleRouteImport } from './routes/_protected/people/$handle'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiImagesSplatRouteImport } from './routes/api/images/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -108,6 +110,11 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiUploadsRoute = ApiUploadsRouteImport.update({
+  id: '/api/uploads',
+  path: '/api/uploads',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ListsIdRoute = ListsIdRouteImport.update({
   id: '/lists/$id',
   path: '/lists/$id',
@@ -154,6 +161,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiImagesSplatRoute = ApiImagesSplatRouteImport.update({
+  id: '/api/images/$',
+  path: '/api/images/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -170,6 +182,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof ProtectedSettingsRoute
   '/submit-show': typeof ProtectedSubmitShowRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/uploads': typeof ApiUploadsRoute
   '/lists/$id': typeof ListsIdRoute
   '/p/$id': typeof PIdRoute
   '/shows/$slug': typeof ShowsSlugRoute
@@ -178,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/outings/$id': typeof ProtectedOutingsIdRoute
   '/people/$handle': typeof ProtectedPeopleHandleRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/images/$': typeof ApiImagesSplatRoute
   '/lists/': typeof ProtectedListsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -195,6 +209,7 @@ export interface FileRoutesByTo {
   '/settings': typeof ProtectedSettingsRoute
   '/submit-show': typeof ProtectedSubmitShowRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/uploads': typeof ApiUploadsRoute
   '/lists/$id': typeof ListsIdRoute
   '/p/$id': typeof PIdRoute
   '/shows/$slug': typeof ShowsSlugRoute
@@ -203,6 +218,7 @@ export interface FileRoutesByTo {
   '/outings/$id': typeof ProtectedOutingsIdRoute
   '/people/$handle': typeof ProtectedPeopleHandleRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/images/$': typeof ApiImagesSplatRoute
   '/lists': typeof ProtectedListsIndexRoute
 }
 export interface FileRoutesById {
@@ -222,6 +238,7 @@ export interface FileRoutesById {
   '/_protected/settings': typeof ProtectedSettingsRoute
   '/_protected/submit-show': typeof ProtectedSubmitShowRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/uploads': typeof ApiUploadsRoute
   '/lists/$id': typeof ListsIdRoute
   '/p/$id': typeof PIdRoute
   '/shows/$slug': typeof ShowsSlugRoute
@@ -230,6 +247,7 @@ export interface FileRoutesById {
   '/_protected/outings/$id': typeof ProtectedOutingsIdRoute
   '/_protected/people/$handle': typeof ProtectedPeopleHandleRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/images/$': typeof ApiImagesSplatRoute
   '/_protected/lists/': typeof ProtectedListsIndexRoute
 }
 export interface FileRouteTypes {
@@ -249,6 +267,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/submit-show'
     | '/api/health'
+    | '/api/uploads'
     | '/lists/$id'
     | '/p/$id'
     | '/shows/$slug'
@@ -257,6 +276,7 @@ export interface FileRouteTypes {
     | '/outings/$id'
     | '/people/$handle'
     | '/api/auth/$'
+    | '/api/images/$'
     | '/lists/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -274,6 +294,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/submit-show'
     | '/api/health'
+    | '/api/uploads'
     | '/lists/$id'
     | '/p/$id'
     | '/shows/$slug'
@@ -282,6 +303,7 @@ export interface FileRouteTypes {
     | '/outings/$id'
     | '/people/$handle'
     | '/api/auth/$'
+    | '/api/images/$'
     | '/lists'
   id:
     | '__root__'
@@ -300,6 +322,7 @@ export interface FileRouteTypes {
     | '/_protected/settings'
     | '/_protected/submit-show'
     | '/api/health'
+    | '/api/uploads'
     | '/lists/$id'
     | '/p/$id'
     | '/shows/$slug'
@@ -308,6 +331,7 @@ export interface FileRouteTypes {
     | '/_protected/outings/$id'
     | '/_protected/people/$handle'
     | '/api/auth/$'
+    | '/api/images/$'
     | '/_protected/lists/'
   fileRoutesById: FileRoutesById
 }
@@ -320,10 +344,12 @@ export interface RootRouteChildren {
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiUploadsRoute: typeof ApiUploadsRoute
   ListsIdRoute: typeof ListsIdRoute
   PIdRoute: typeof PIdRoute
   ShowsSlugRoute: typeof ShowsSlugRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiImagesSplatRoute: typeof ApiImagesSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -433,6 +459,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/uploads': {
+      id: '/api/uploads'
+      path: '/api/uploads'
+      fullPath: '/api/uploads'
+      preLoaderRoute: typeof ApiUploadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lists/$id': {
       id: '/lists/$id'
       path: '/lists/$id'
@@ -496,6 +529,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/images/$': {
+      id: '/api/images/$'
+      path: '/api/images/$'
+      fullPath: '/api/images/$'
+      preLoaderRoute: typeof ApiImagesSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -542,10 +582,12 @@ const rootRouteChildren: RootRouteChildren = {
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ApiUploadsRoute: ApiUploadsRoute,
   ListsIdRoute: ListsIdRoute,
   PIdRoute: PIdRoute,
   ShowsSlugRoute: ShowsSlugRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiImagesSplatRoute: ApiImagesSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

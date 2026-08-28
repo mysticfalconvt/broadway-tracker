@@ -161,16 +161,32 @@
 
 **Goal:** Add images without making the Node application or Coolify volume responsible for file persistence.
 
-- [ ] Create a dedicated RustFS bucket for Broadway Tracker.
-- [ ] Create restricted credentials for only the bucket/actions the app needs.
+**Architecture:** RustFS listens on a private address reachable by the Node server and by Coolify,
+but **not by users' browsers**, and the bucket has no public read access. Every byte therefore
+travels through the backend in both directions — the app uploads on the user's behalf and streams
+reads back out. Presigned URLs are not an option here: a signed URL would point at a host the
+browser cannot resolve. This is more server work than direct-to-storage uploads, but it means an
+object is only ever served after an authorization check, which suits a private-by-default product.
+
+- [x] Create a dedicated RustFS bucket for Broadway Tracker.
+- [ ] Create restricted credentials for only this bucket and only the actions the app needs.
+      *(Current keys can list unrelated infrastructure backup buckets — see below.)*
 - [ ] Configure `S3_ENDPOINT`, bucket, credentials, and region in Coolify secrets.
-- [ ] Build a server endpoint that issues short-lived presigned upload URLs.
-- [ ] Upload files directly from the browser to RustFS.
-- [ ] Persist only the object key and safe metadata in Postgres.
-- [ ] Add file-size, MIME-type, and image-dimension validation.
-- [ ] Decide whether show covers and user-uploaded media are public or require signed read URLs.
-- [ ] Implement image replacement and deletion without orphaning objects.
+- [x] Build a typed storage client (endpoint, path-style addressing, no public URL).
+- [x] Accept uploads at a server route that authorizes, validates, then writes to RustFS.
+- [x] Serve reads through an authorizing backend proxy route that streams from RustFS.
+- [x] Persist only the object key and safe metadata in Postgres.
+- [x] Add file-size, MIME-type, and image-dimension validation; never trust the client's declared type.
+- [x] Generate storage keys server-side so a user can never choose or traverse a path.
+- [x] Apply the existing visibility rules to image reads, including the anonymous public tier.
+- [x] Add caching/ETag handling so the proxy does not re-fetch an unchanged object every request.
+- [x] Implement image replacement and deletion without orphaning objects.
 - [ ] Document RustFS backup/restore expectations separately from Postgres backups.
+
+> **Security note.** The credentials currently in `.env` can list every bucket on the RustFS
+> instance, including `vaultwarden-backups` and several infrastructure backup buckets. If this
+> application is ever compromised, those keys are a path to unrelated backups. Scope the credentials
+> to the single application bucket before anything is deployed.
 
 ## 9. Styling, usability, and accessibility
 
@@ -181,10 +197,10 @@
 - [x] Add initial reusable `ShowArtwork`, `Rating`, `ShowStatus`, `PrivacyBadge`, `AvatarGroup`, and `MemoryCard` primitives.
 - [x] Ensure graceful cover-image placeholders and image-free layouts.
 - [x] Build a responsive home-dashboard design preview around collected nights and trusted-circle context.
-- [ ] Make quick-add and performance logging comfortable on mobile.
-- [ ] Confirm keyboard navigation, visible focus styles, semantic headings, and form labels.
-- [ ] Meet WCAG color-contrast expectations; never rely only on color for status or privacy.
-- [ ] Test primary flows at mobile, tablet, and desktop widths.
+- [x] Make quick-add and performance logging comfortable on mobile. *(44px touch targets under `pointer: coarse`; paired date and place fields stack.)*
+- [x] Confirm keyboard navigation, visible focus styles, semantic headings, and form labels. *(Global `:focus-visible` ring so a new control cannot ship without one; headings and labels audited across all 23 route files.)*
+- [x] Meet WCAG color-contrast expectations; never rely only on color for status or privacy. *(Guarded by `tests/contrast.test.ts`.)*
+- [ ] Test primary flows at mobile, tablet, and desktop widths. *(Every multi-column grid now has a responsive rule, verified by audit; a real device pass is still worth doing.)*
 
 ## 10. Launch readiness
 
