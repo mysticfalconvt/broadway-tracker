@@ -5,7 +5,15 @@ import { z } from 'zod'
 
 import { auth } from './auth'
 import { getDb } from './db/client'
-import { friendships, outingAttendees, outings, productions, shows, user } from './db/schema'
+import {
+  friendships,
+  libraryEntries,
+  outingAttendees,
+  outings,
+  productions,
+  shows,
+  user,
+} from './db/schema'
 
 const datePrecision = z.enum(['exact', 'month', 'year', 'approximate', 'unknown'])
 const outingInput = z
@@ -115,6 +123,32 @@ export const createOuting = createServerFn({ method: 'POST' })
     }
 
     return getDb().transaction(async (tx) => {
+      const [libraryEntry] = await tx
+        .select({ id: libraryEntries.id, favorite: libraryEntries.favorite })
+        .from(libraryEntries)
+        .where(
+          and(eq(libraryEntries.userId, session.user.id), eq(libraryEntries.showId, data.showId)),
+        )
+        .limit(1)
+      if (libraryEntry) {
+        await tx
+          .update(libraryEntries)
+          .set({
+            status: 'seen',
+            favorite: libraryEntry.favorite || data.favorite,
+            updatedAt: new Date(),
+          })
+          .where(eq(libraryEntries.id, libraryEntry.id))
+      } else {
+        await tx.insert(libraryEntries).values({
+          userId: session.user.id,
+          showId: data.showId,
+          status: 'seen',
+          favorite: data.favorite,
+          visibility: 'private',
+        })
+      }
+
       const [outing] = await tx
         .insert(outings)
         .values({
