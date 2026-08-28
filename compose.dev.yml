@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: broadway_tracker
+      POSTGRES_USER: broadway_tracker
+      POSTGRES_PASSWORD: broadway_tracker_dev
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - broadway_tracker_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U broadway_tracker -d broadway_tracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  broadway_tracker_postgres_data:

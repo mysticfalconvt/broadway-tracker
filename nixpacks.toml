@@ -1,0 +1,5 @@
+[phases.setup]
+nixPkgs = ["nodejs_23", "pnpm-9_x"]
+
+[start]
+cmd = "pnpm db:migrate && node .output/server/index.mjs"

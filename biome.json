@@ -1,0 +1,26 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true, "defaultBranch": "main" },
+  "files": {
+    "includes": [
+      "**",
+      "!src/routeTree.gen.ts",
+      "!.output",
+      "!.tanstack",
+      "!src/server/db/migrations",
+      "!pnpm-lock.yaml"
+    ]
+  },
+  "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "jsxQuoteStyle": "double",
+      "semicolons": "asNeeded",
+      "trailingCommas": "all",
+      "arrowParentheses": "always"
+    }
+  },
+  "linter": { "enabled": true, "rules": { "preset": "none" } },
+  "assist": { "actions": { "source": { "organizeImports": "off" } } }
+}

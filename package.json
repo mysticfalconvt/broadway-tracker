@@ -1,0 +1,48 @@
+{
+  "name": "broadway-tracker",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "scripts": {
+    "dev": "vite dev --port 3000",
+    "dev:lan": "vite dev --host 0.0.0.0 --port 3000",
+    "build": "vite build && tsc --noEmit",
+    "start": "node .output/server/index.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "db:up": "docker compose -f compose.dev.yml up -d",
+    "db:down": "docker compose -f compose.dev.yml down"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "^1.139.10",
+    "@tanstack/react-start": "^1.139.10",
+    "@tailwindcss/vite": "^4.1.18",
+    "better-auth": "^1.6.5",
+    "drizzle-orm": "^0.45.2",
+    "postgres": "^3.4.9",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwindcss": "^4.1.18",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.7",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "drizzle-kit": "^0.31.10",
+    "nitro": "3.0.260415-beta",
+    "typescript": "^5.7.2",
+    "vite": "^7.0.0"
+  },
+  "packageManager": "pnpm@9.15.4"
+}
