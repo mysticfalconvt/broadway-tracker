@@ -60,12 +60,18 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^5.0.0
         version: 5.2.0(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.12))
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
       nitro:
         specifier: 3.0.260415-beta
-        version: 3.0.260415-beta(drizzle-orm@0.45.2(kysely@0.29.5)(postgres@3.4.9))(jiti@2.7.0)(rollup@4.63.0)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.12))
+        version: 3.0.260415-beta(dotenv@17.4.2)(drizzle-orm@0.45.2(kysely@0.29.5)(postgres@3.4.9))(jiti@2.7.0)(rollup@4.63.0)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.12))
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -1450,6 +1456,10 @@ packages:
   diff@8.0.4:
     resolution: {integrity: sha512-DPi0FmjiSU5EvQV0++GFDOJ9ASQUVFh5kD+OzOnYdi7n3Wpm9hWWGfB/O2blfHcMVTL5WkQXSnRiK9makhrcnw==}
     engines: {node: '>=0.3.1'}
+
+  dotenv@17.4.2:
+    resolution: {integrity: sha512-nI4U3TottKAcAD9LLud4Cb7b2QztQMUEfHbvhTH09bqXTxnSie8WnjPALV/WMCrJZ6UV/qHJ6L03OqO3LcdYZw==}
+    engines: {node: '>=12'}
 
   drizzle-kit@0.31.10:
     resolution: {integrity: sha512-7OZcmQUrdGI+DUNNsKBn1aW8qSoKuTH7d0mYgSP8bAzdFzKoovxEFnoGQp2dVs82EOJeYycqRtciopszwUf8bw==}
@@ -3181,6 +3191,8 @@ snapshots:
 
   diff@8.0.4: {}
 
+  dotenv@17.4.2: {}
+
   drizzle-kit@0.31.10:
     dependencies:
       '@drizzle-team/brocli': 0.10.2
@@ -3462,7 +3474,7 @@ snapshots:
 
   nf3@0.3.24: {}
 
-  nitro@3.0.260415-beta(drizzle-orm@0.45.2(kysely@0.29.5)(postgres@3.4.9))(jiti@2.7.0)(rollup@4.63.0)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.12)):
+  nitro@3.0.260415-beta(dotenv@17.4.2)(drizzle-orm@0.45.2(kysely@0.29.5)(postgres@3.4.9))(jiti@2.7.0)(rollup@4.63.0)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.12)):
     dependencies:
       consola: 3.4.2
       crossws: 0.4.12(srvx@0.11.22)
@@ -3479,6 +3491,7 @@ snapshots:
       unenv: 2.0.0-rc.24
       unstorage: 2.0.0-alpha.9
     optionalDependencies:
+      dotenv: 17.4.2
       jiti: 2.7.0
       rollup: 4.63.0
       vite: 7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.12)

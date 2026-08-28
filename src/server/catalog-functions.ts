@@ -14,6 +14,17 @@ const showInput = z.object({
   synopsis: z.string().trim().max(5_000).optional(),
 })
 
+const productionInput = z.object({
+  showId: z.string().uuid(),
+  name: z.string().trim().min(1).max(200),
+  productionType: z.enum(['broadway', 'off_broadway', 'tour', 'regional', 'local', 'other']),
+  venue: z.string().trim().max(200).optional(),
+  city: z.string().trim().max(120).optional(),
+  country: z.string().trim().max(120).optional(),
+  openedOn: z.string().date().optional(),
+  closedOn: z.string().date().optional(),
+})
+
 const catalogShow = {
   id: shows.id,
   title: shows.title,
@@ -120,6 +131,55 @@ export const getPendingShows = createServerFn({ method: 'GET' }).handler(async (
     .where(eq(shows.catalogStatus, 'pending'))
     .orderBy(asc(shows.createdAt))
 })
+
+export const getPublishedShowsForAdmin = createServerFn({ method: 'GET' }).handler(async () => {
+  await requireAdmin()
+  return getDb()
+    .select({ id: shows.id, title: shows.title })
+    .from(shows)
+    .where(eq(shows.catalogStatus, 'published'))
+    .orderBy(asc(shows.title))
+})
+
+export const getProductionsForAdmin = createServerFn({ method: 'GET' })
+  .validator(z.object({ showId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    await requireAdmin()
+    return getDb()
+      .select()
+      .from(productions)
+      .where(eq(productions.showId, data.showId))
+      .orderBy(asc(productions.name))
+  })
+
+export const saveProduction = createServerFn({ method: 'POST' })
+  .validator(productionInput.extend({ id: z.string().uuid().optional() }))
+  .handler(async ({ data }) => {
+    await requireAdmin()
+    const values = {
+      showId: data.showId,
+      name: data.name,
+      productionType: data.productionType,
+      venue: data.venue || null,
+      city: data.city || null,
+      country: data.country || null,
+      openedOn: data.openedOn || null,
+      closedOn: data.closedOn || null,
+      updatedAt: new Date(),
+    }
+    if (data.id) {
+      await getDb().update(productions).set(values).where(eq(productions.id, data.id))
+      return
+    }
+    await getDb().insert(productions).values(values)
+  })
+
+export const deleteProduction = createServerFn({ method: 'POST' })
+  .validator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    await requireAdmin()
+    await getDb().delete(productions).where(eq(productions.id, data.id))
+  })
 
 export const reviewShow = createServerFn({ method: 'POST' })
   .validator(

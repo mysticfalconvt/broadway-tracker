@@ -75,8 +75,8 @@
 - [ ] Keep user-submitted shows in `pending` status by default.
 - [ ] Build a minimal admin review queue for pending submissions.
 - [ ] Let admins publish, reject, edit, and merge duplicate show records.
-- [ ] Add a production editor for Broadway, Off-Broadway, touring, regional, local, and other productions.
-- [ ] Seed a small initial catalog of popular shows after the admin workflow works.
+- [x] Add a production editor for Broadway, Off-Broadway, touring, regional, local, and other productions.
+- [x] Seed a small initial catalog of popular shows after the admin workflow works.
 - [ ] Add tests for catalog visibility, submission, and moderation permissions.
 
 ## 4. Shared outings and memory model
@@ -86,9 +86,9 @@
 - [x] Add `outings` for shared show/production, venue, city, fuzzy date, and shared context.
 - [x] Add `outing_attendees` for invitation state and attendee-owned rating, favorite, review, privacy, and private notes.
 - [x] Support exact, month, year, approximate, and unknown date precision at the data-model layer.
-- [ ] Build server-side service functions that validate date precision and authorize attendee invitations.
-- [ ] Build the quick-log flow and make the creator an accepted attendee automatically.
-- [ ] Build the shared-memory detail page, separating shared facts from personal and private content.
+- [x] Build server-side service functions that validate date precision and authorize attendee invitations.
+- [x] Build the quick-log flow and make the creator an accepted attendee automatically.
+- [x] Build the shared-memory detail page, separating shared facts from personal and private content.
 - [ ] Migrate/drop the legacy one-person `performances` table after the new logging flow is live.
 
 ## 5. Personal theatre library — MVP core
@@ -200,6 +200,8 @@ pnpm install
 pnpm db:migrate
 pnpm db:generate
 pnpm db:studio
+pnpm db:seed-catalog
+pnpm db:grant-admin <email>
 
 # App quality checks
 pnpm dev

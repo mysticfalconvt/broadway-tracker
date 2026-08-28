@@ -390,6 +390,113 @@ h3 {
   border-top: 1px solid var(--border);
   padding-top: 1.25rem;
 }
+.admin-show-picker {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+.admin-show-picker select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0.75rem 0.85rem;
+  color: var(--ink);
+  font: inherit;
+}
+.production-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+.production-editor {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+.production-editor + .production-editor {
+  border-left: 3px solid var(--brass);
+}
+.production-editor h2 {
+  font-size: 1.6rem;
+}
+.production-editor form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.production-editor label {
+  display: grid;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+.production-editor input,
+.production-editor select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--canvas);
+  padding: 0.75rem 0.85rem;
+  color: var(--ink);
+  font: inherit;
+}
+.production-editor .settings-actions,
+.production-editor .form-error {
+  grid-column: 1 / -1;
+}
+.log-page {
+  width: min(100% - 3rem, 44rem);
+  padding: clamp(3.5rem, 8vw, 7rem) 0;
+}
+.outing-hero {
+  background: var(--midnight);
+  color: var(--surface);
+  padding: clamp(3.5rem, 9vw, 7rem) 0;
+}
+.outing-hero .eyebrow {
+  color: var(--brass);
+}
+.outing-hero h1 {
+  margin-bottom: 0.8rem;
+  font-size: clamp(3.2rem, 9vw, 6.5rem);
+  line-height: 0.87;
+}
+.outing-hero p:not(.eyebrow) {
+  color: color-mix(in srgb, var(--surface) 75%, transparent);
+  line-height: 1.6;
+}
+.outing-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(15rem, 0.7fr);
+  gap: clamp(2rem, 8vw, 7rem);
+  padding: clamp(3rem, 8vw, 6rem) 0;
+}
+.outing-detail > div > p:last-child,
+.outing-detail blockquote {
+  color: var(--ink-muted);
+  line-height: 1.7;
+}
+.outing-detail blockquote {
+  margin: 1rem 0;
+  border-left: 2px solid var(--brass);
+  padding-left: 1rem;
+  font-family: Newsreader, Georgia, serif;
+  font-size: 1.25rem;
+}
+.private-note {
+  margin-top: 1.5rem;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  padding: 1rem;
+}
+.private-note p {
+  margin: 0.7rem 0 0;
+  line-height: 1.6;
+}
 
 .discover-page {
   padding: clamp(3.5rem, 8vw, 7rem) 0;
@@ -900,6 +1007,12 @@ h3 {
     border-left: 0;
     padding-top: 1.5rem;
     padding-left: 0;
+  }
+  .production-editor form {
+    grid-template-columns: 1fr;
+  }
+  .outing-detail {
+    grid-template-columns: 1fr;
   }
 }
 

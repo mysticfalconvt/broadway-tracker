@@ -16,11 +16,14 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SignUpRouteImport } from './routes/sign-up'
+import { Route as ProtectedLogRouteImport } from './routes/_protected/log'
 import { Route as ProtectedSettingsRouteImport } from './routes/_protected/settings'
 import { Route as ProtectedSubmitShowRouteImport } from './routes/_protected/submit-show'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ShowsSlugRouteImport } from './routes/shows/$slug'
 import { Route as ProtectedAdminCatalogRouteImport } from './routes/_protected/admin/catalog'
+import { Route as ProtectedAdminProductionsRouteImport } from './routes/_protected/admin/productions'
+import { Route as ProtectedOutingsIdRouteImport } from './routes/_protected/outings/$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -57,6 +60,11 @@ const SignUpRoute = SignUpRouteImport.update({
   path: '/sign-up',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProtectedLogRoute = ProtectedLogRouteImport.update({
+  id: '/log',
+  path: '/log',
+  getParentRoute: () => ProtectedRoute,
+} as any)
 const ProtectedSettingsRoute = ProtectedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -82,6 +90,17 @@ const ProtectedAdminCatalogRoute = ProtectedAdminCatalogRouteImport.update({
   path: '/admin/catalog',
   getParentRoute: () => ProtectedRoute,
 } as any)
+const ProtectedAdminProductionsRoute =
+  ProtectedAdminProductionsRouteImport.update({
+    id: '/admin/productions',
+    path: '/admin/productions',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedOutingsIdRoute = ProtectedOutingsIdRouteImport.update({
+  id: '/outings/$id',
+  path: '/outings/$id',
+  getParentRoute: () => ProtectedRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -95,11 +114,14 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/log': typeof ProtectedLogRoute
   '/settings': typeof ProtectedSettingsRoute
   '/submit-show': typeof ProtectedSubmitShowRoute
   '/api/health': typeof ApiHealthRoute
   '/shows/$slug': typeof ShowsSlugRoute
   '/admin/catalog': typeof ProtectedAdminCatalogRoute
+  '/admin/productions': typeof ProtectedAdminProductionsRoute
+  '/outings/$id': typeof ProtectedOutingsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
@@ -109,11 +131,14 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/log': typeof ProtectedLogRoute
   '/settings': typeof ProtectedSettingsRoute
   '/submit-show': typeof ProtectedSubmitShowRoute
   '/api/health': typeof ApiHealthRoute
   '/shows/$slug': typeof ShowsSlugRoute
   '/admin/catalog': typeof ProtectedAdminCatalogRoute
+  '/admin/productions': typeof ProtectedAdminProductionsRoute
+  '/outings/$id': typeof ProtectedOutingsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
@@ -125,11 +150,14 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/_protected/log': typeof ProtectedLogRoute
   '/_protected/settings': typeof ProtectedSettingsRoute
   '/_protected/submit-show': typeof ProtectedSubmitShowRoute
   '/api/health': typeof ApiHealthRoute
   '/shows/$slug': typeof ShowsSlugRoute
   '/_protected/admin/catalog': typeof ProtectedAdminCatalogRoute
+  '/_protected/admin/productions': typeof ProtectedAdminProductionsRoute
+  '/_protected/outings/$id': typeof ProtectedOutingsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
@@ -141,11 +169,14 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/log'
     | '/settings'
     | '/submit-show'
     | '/api/health'
     | '/shows/$slug'
     | '/admin/catalog'
+    | '/admin/productions'
+    | '/outings/$id'
     | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -155,11 +186,14 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/log'
     | '/settings'
     | '/submit-show'
     | '/api/health'
     | '/shows/$slug'
     | '/admin/catalog'
+    | '/admin/productions'
+    | '/outings/$id'
     | '/api/auth/$'
   id:
     | '__root__'
@@ -170,11 +204,14 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/_protected/log'
     | '/_protected/settings'
     | '/_protected/submit-show'
     | '/api/health'
     | '/shows/$slug'
     | '/_protected/admin/catalog'
+    | '/_protected/admin/productions'
+    | '/_protected/outings/$id'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
@@ -242,6 +279,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignUpRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_protected/log': {
+      id: '/_protected/log'
+      path: '/log'
+      fullPath: '/log'
+      preLoaderRoute: typeof ProtectedLogRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/_protected/settings': {
       id: '/_protected/settings'
       path: '/settings'
@@ -277,6 +321,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedAdminCatalogRouteImport
       parentRoute: typeof ProtectedRoute
     }
+    '/_protected/admin/productions': {
+      id: '/_protected/admin/productions'
+      path: '/admin/productions'
+      fullPath: '/admin/productions'
+      preLoaderRoute: typeof ProtectedAdminProductionsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/outings/$id': {
+      id: '/_protected/outings/$id'
+      path: '/outings/$id'
+      fullPath: '/outings/$id'
+      preLoaderRoute: typeof ProtectedOutingsIdRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -288,15 +346,21 @@ declare module '@tanstack/react-router' {
 }
 
 interface ProtectedRouteChildren {
+  ProtectedLogRoute: typeof ProtectedLogRoute
   ProtectedSettingsRoute: typeof ProtectedSettingsRoute
   ProtectedSubmitShowRoute: typeof ProtectedSubmitShowRoute
   ProtectedAdminCatalogRoute: typeof ProtectedAdminCatalogRoute
+  ProtectedAdminProductionsRoute: typeof ProtectedAdminProductionsRoute
+  ProtectedOutingsIdRoute: typeof ProtectedOutingsIdRoute
 }
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
+  ProtectedLogRoute: ProtectedLogRoute,
   ProtectedSettingsRoute: ProtectedSettingsRoute,
   ProtectedSubmitShowRoute: ProtectedSubmitShowRoute,
   ProtectedAdminCatalogRoute: ProtectedAdminCatalogRoute,
+  ProtectedAdminProductionsRoute: ProtectedAdminProductionsRoute,
+  ProtectedOutingsIdRoute: ProtectedOutingsIdRoute,
 }
 
 const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(
