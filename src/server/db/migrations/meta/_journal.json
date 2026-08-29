@@ -43,6 +43,13 @@
       "when": 1787963176934,
       "tag": "0005_slippery_rattler",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787998384018,
+      "tag": "0006_sharp_toad_men",
+      "breakpoints": true
     }
   ]
 }

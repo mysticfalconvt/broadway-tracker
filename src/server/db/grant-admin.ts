@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 
+import { isEnforcing, parseAdminEmails } from '../../lib/admin-roles'
 import { user } from './schema'
 
 const email = process.argv[2]?.trim().toLowerCase()
@@ -22,6 +23,19 @@ try {
     .returning({ email: user.email })
   if (!admin) throw new Error(`No account exists for ${email}.`)
   console.log(`${admin.email} is now an administrator.`)
+
+  // ADMIN_EMAILS wins at the next sign-in, so say so rather than letting the
+  // grant quietly disappear later.
+  if (
+    isEnforcing(process.env.ADMIN_EMAILS) &&
+    !parseAdminEmails(process.env.ADMIN_EMAILS).includes(email)
+  ) {
+    console.warn(
+      `\nWarning: ADMIN_EMAILS is set and does not include ${email}.\n` +
+        'This grant will be reverted the next time they sign in.\n' +
+        'Add the address to ADMIN_EMAILS to make it stick.',
+    )
+  }
 } finally {
   await client.end({ timeout: 5 })
 }

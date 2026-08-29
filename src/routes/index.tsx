@@ -2,7 +2,6 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
 import { MemoryCard } from '../components/MemoryCard'
-import { PrivacyBadge } from '../components/PrivacyBadge'
 import { Rating } from '../components/Rating'
 import { ShowArtwork } from '../components/ShowArtwork'
 import { ShowStatus } from '../components/ShowStatus'
@@ -71,25 +70,36 @@ function SignedInHome({ home }: { home: NonNullable<Awaited<ReturnType<typeof ge
         </dl>
       </section>
 
-      <section className="page-wrap content-grid" aria-label="Theatre dashboard">
+      <section className="page-wrap" aria-label="Theatre dashboard">
         <div className="primary-column">
           <SectionHeading eyebrow="Recently remembered" title="Collected nights" />
           {recent.length ? (
             recent.map((outing, index) =>
               index === 0 ? (
-                <MemoryCard
+                <Link
                   key={outing.id}
-                  title={outing.showTitle}
-                  type={outing.showType}
-                  date={formatFuzzyDateShort(outing)}
-                  venue={outing.venue}
-                  city={outing.city}
-                  attendees={['You']}
-                  rating={outing.rating ? outing.rating / 2 : undefined}
-                  review={outing.review ?? undefined}
-                />
+                  className="memory-card-link"
+                  to="/outings/$id"
+                  params={{ id: outing.id }}
+                >
+                  <MemoryCard
+                    title={outing.showTitle}
+                    type={outing.showType}
+                    date={formatFuzzyDateShort(outing)}
+                    venue={outing.venue}
+                    city={outing.city}
+                    attendees={['You']}
+                    rating={outing.rating ? outing.rating / 2 : undefined}
+                    review={outing.review ?? undefined}
+                  />
+                </Link>
               ) : (
-                <article className="recent-entry" key={outing.id}>
+                <Link
+                  className="recent-entry"
+                  key={outing.id}
+                  to="/outings/$id"
+                  params={{ id: outing.id }}
+                >
                   <ShowArtwork
                     title={outing.showTitle}
                     type={outing.showType}
@@ -102,7 +112,7 @@ function SignedInHome({ home }: { home: NonNullable<Awaited<ReturnType<typeof ge
                     <ShowStatus status="seen" />
                   </div>
                   {outing.rating ? <Rating value={outing.rating / 2} size="small" /> : null}
-                </article>
+                </Link>
               ),
             )
           ) : (
@@ -111,13 +121,6 @@ function SignedInHome({ home }: { home: NonNullable<Awaited<ReturnType<typeof ge
             </p>
           )}
         </div>
-
-        <aside className="secondary-column">
-          <section className="privacy-panel">
-            <PrivacyBadge visibility="private" />
-            <p>Your library is private by default. You choose what to share.</p>
-          </section>
-        </aside>
       </section>
 
       <section className="page-wrap wants-section" aria-labelledby="wants-heading">
@@ -232,12 +235,24 @@ function VisitorHome() {
             </div>
           </section>
 
-          <section className="privacy-panel">
-            <PrivacyBadge visibility="private" />
-            <p>
-              Everything starts private. Share a shelf with friends, or publish one anonymously —
-              public pages never carry your name.
-            </p>
+          {/* The hero already promises privacy; this shows the actual levels
+              rather than restating it in prose. */}
+          <section className="sharing-levels">
+            <p className="eyebrow">Who sees what</p>
+            <dl>
+              <div>
+                <dt>Only you</dt>
+                <dd>Everything, until you say otherwise</dd>
+              </div>
+              <div>
+                <dt>Friends</dt>
+                <dd>People you have approved</dd>
+              </div>
+              <div>
+                <dt>Anyone</dt>
+                <dd>Published pages, never your name</dd>
+              </div>
+            </dl>
           </section>
         </aside>
       </section>

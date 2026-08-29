@@ -1,5 +1,5 @@
 import { HeadContent, Link, Scripts, createRootRoute } from '@tanstack/react-router'
-import { type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 import { authClient } from '../lib/auth-client'
 import { getAdminNav } from '../server/admin-functions'
@@ -52,9 +52,35 @@ function RootShell({ children }: { children: ReactNode }) {
           </nav>
         </header>
         {children}
+        <ReportLink />
         <Scripts />
       </body>
     </html>
+  )
+}
+
+/**
+ * A quiet, always-present way to say something is broken. It sits outside the
+ * navigation so the product areas stay short, and it carries the page it was
+ * pressed on, which is usually the detail a reporter forgets to mention.
+ */
+function ReportLink() {
+  // The server session, not the client hook: the hook is empty during SSR, so
+  // the link would only appear after hydration.
+  const { session } = Route.useLoaderData()
+  const [path, setPath] = useState<string | null>(null)
+  // Read after mount, so the rendered href matches on both sides at hydration.
+  useEffect(() => setPath(window.location.pathname), [])
+  if (!session) return null
+  return (
+    <Link
+      className="report-link"
+      to="/feedback"
+      search={{ from: path ?? undefined }}
+      aria-label="Report a problem or suggest something"
+    >
+      Feedback
+    </Link>
   )
 }
 

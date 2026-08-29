@@ -17,6 +17,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as ProtectedBuildHistoryRouteImport } from './routes/_protected/build-history'
+import { Route as ProtectedFeedbackRouteImport } from './routes/_protected/feedback'
 import { Route as ProtectedFriendsRouteImport } from './routes/_protected/friends'
 import { Route as ProtectedLibraryRouteImport } from './routes/_protected/library'
 import { Route as ProtectedLogRouteImport } from './routes/_protected/log'
@@ -32,6 +33,7 @@ import { Route as ProtectedAdminIndexRouteImport } from './routes/_protected/adm
 import { Route as ProtectedAdminCatalogRouteImport } from './routes/_protected/admin/catalog'
 import { Route as ProtectedAdminPhotosRouteImport } from './routes/_protected/admin/photos'
 import { Route as ProtectedAdminProductionsRouteImport } from './routes/_protected/admin/productions'
+import { Route as ProtectedAdminReportsRouteImport } from './routes/_protected/admin/reports'
 import { Route as ProtectedAdminShowsRouteImport } from './routes/_protected/admin/shows'
 import { Route as ProtectedAdminVenuesRouteImport } from './routes/_protected/admin/venues'
 import { Route as ProtectedListsIndexRouteImport } from './routes/_protected/lists/index'
@@ -77,6 +79,11 @@ const SignUpRoute = SignUpRouteImport.update({
 const ProtectedBuildHistoryRoute = ProtectedBuildHistoryRouteImport.update({
   id: '/build-history',
   path: '/build-history',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedFeedbackRoute = ProtectedFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
   getParentRoute: () => ProtectedRoute,
 } as any)
 const ProtectedFriendsRoute = ProtectedFriendsRouteImport.update({
@@ -155,6 +162,11 @@ const ProtectedAdminProductionsRoute =
     path: '/admin/productions',
     getParentRoute: () => ProtectedRoute,
   } as any)
+const ProtectedAdminReportsRoute = ProtectedAdminReportsRouteImport.update({
+  id: '/admin/reports',
+  path: '/admin/reports',
+  getParentRoute: () => ProtectedRoute,
+} as any)
 const ProtectedAdminShowsRoute = ProtectedAdminShowsRouteImport.update({
   id: '/admin/shows',
   path: '/admin/shows',
@@ -199,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/build-history': typeof ProtectedBuildHistoryRoute
+  '/feedback': typeof ProtectedFeedbackRoute
   '/friends': typeof ProtectedFriendsRoute
   '/library': typeof ProtectedLibraryRoute
   '/log': typeof ProtectedLogRoute
@@ -213,6 +226,7 @@ export interface FileRoutesByFullPath {
   '/admin/catalog': typeof ProtectedAdminCatalogRoute
   '/admin/photos': typeof ProtectedAdminPhotosRoute
   '/admin/productions': typeof ProtectedAdminProductionsRoute
+  '/admin/reports': typeof ProtectedAdminReportsRoute
   '/admin/shows': typeof ProtectedAdminShowsRoute
   '/admin/venues': typeof ProtectedAdminVenuesRoute
   '/outings/$id': typeof ProtectedOutingsIdRoute
@@ -230,6 +244,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/build-history': typeof ProtectedBuildHistoryRoute
+  '/feedback': typeof ProtectedFeedbackRoute
   '/friends': typeof ProtectedFriendsRoute
   '/library': typeof ProtectedLibraryRoute
   '/log': typeof ProtectedLogRoute
@@ -244,6 +259,7 @@ export interface FileRoutesByTo {
   '/admin/catalog': typeof ProtectedAdminCatalogRoute
   '/admin/photos': typeof ProtectedAdminPhotosRoute
   '/admin/productions': typeof ProtectedAdminProductionsRoute
+  '/admin/reports': typeof ProtectedAdminReportsRoute
   '/admin/shows': typeof ProtectedAdminShowsRoute
   '/admin/venues': typeof ProtectedAdminVenuesRoute
   '/outings/$id': typeof ProtectedOutingsIdRoute
@@ -263,6 +279,7 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/_protected/build-history': typeof ProtectedBuildHistoryRoute
+  '/_protected/feedback': typeof ProtectedFeedbackRoute
   '/_protected/friends': typeof ProtectedFriendsRoute
   '/_protected/library': typeof ProtectedLibraryRoute
   '/_protected/log': typeof ProtectedLogRoute
@@ -277,6 +294,7 @@ export interface FileRoutesById {
   '/_protected/admin/catalog': typeof ProtectedAdminCatalogRoute
   '/_protected/admin/photos': typeof ProtectedAdminPhotosRoute
   '/_protected/admin/productions': typeof ProtectedAdminProductionsRoute
+  '/_protected/admin/reports': typeof ProtectedAdminReportsRoute
   '/_protected/admin/shows': typeof ProtectedAdminShowsRoute
   '/_protected/admin/venues': typeof ProtectedAdminVenuesRoute
   '/_protected/outings/$id': typeof ProtectedOutingsIdRoute
@@ -296,6 +314,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/build-history'
+    | '/feedback'
     | '/friends'
     | '/library'
     | '/log'
@@ -310,6 +329,7 @@ export interface FileRouteTypes {
     | '/admin/catalog'
     | '/admin/photos'
     | '/admin/productions'
+    | '/admin/reports'
     | '/admin/shows'
     | '/admin/venues'
     | '/outings/$id'
@@ -327,6 +347,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/build-history'
+    | '/feedback'
     | '/friends'
     | '/library'
     | '/log'
@@ -341,6 +362,7 @@ export interface FileRouteTypes {
     | '/admin/catalog'
     | '/admin/photos'
     | '/admin/productions'
+    | '/admin/reports'
     | '/admin/shows'
     | '/admin/venues'
     | '/outings/$id'
@@ -359,6 +381,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/_protected/build-history'
+    | '/_protected/feedback'
     | '/_protected/friends'
     | '/_protected/library'
     | '/_protected/log'
@@ -373,6 +396,7 @@ export interface FileRouteTypes {
     | '/_protected/admin/catalog'
     | '/_protected/admin/photos'
     | '/_protected/admin/productions'
+    | '/_protected/admin/reports'
     | '/_protected/admin/shows'
     | '/_protected/admin/venues'
     | '/_protected/outings/$id'
@@ -456,6 +480,13 @@ declare module '@tanstack/react-router' {
       path: '/build-history'
       fullPath: '/build-history'
       preLoaderRoute: typeof ProtectedBuildHistoryRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/feedback': {
+      id: '/_protected/feedback'
+      path: '/feedback'
+      fullPath: '/feedback'
+      preLoaderRoute: typeof ProtectedFeedbackRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/_protected/friends': {
@@ -563,6 +594,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedAdminProductionsRouteImport
       parentRoute: typeof ProtectedRoute
     }
+    '/_protected/admin/reports': {
+      id: '/_protected/admin/reports'
+      path: '/admin/reports'
+      fullPath: '/admin/reports'
+      preLoaderRoute: typeof ProtectedAdminReportsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/_protected/admin/shows': {
       id: '/_protected/admin/shows'
       path: '/admin/shows'
@@ -617,6 +655,7 @@ declare module '@tanstack/react-router' {
 
 interface ProtectedRouteChildren {
   ProtectedBuildHistoryRoute: typeof ProtectedBuildHistoryRoute
+  ProtectedFeedbackRoute: typeof ProtectedFeedbackRoute
   ProtectedFriendsRoute: typeof ProtectedFriendsRoute
   ProtectedLibraryRoute: typeof ProtectedLibraryRoute
   ProtectedLogRoute: typeof ProtectedLogRoute
@@ -626,6 +665,7 @@ interface ProtectedRouteChildren {
   ProtectedAdminCatalogRoute: typeof ProtectedAdminCatalogRoute
   ProtectedAdminPhotosRoute: typeof ProtectedAdminPhotosRoute
   ProtectedAdminProductionsRoute: typeof ProtectedAdminProductionsRoute
+  ProtectedAdminReportsRoute: typeof ProtectedAdminReportsRoute
   ProtectedAdminShowsRoute: typeof ProtectedAdminShowsRoute
   ProtectedAdminVenuesRoute: typeof ProtectedAdminVenuesRoute
   ProtectedOutingsIdRoute: typeof ProtectedOutingsIdRoute
@@ -636,6 +676,7 @@ interface ProtectedRouteChildren {
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedBuildHistoryRoute: ProtectedBuildHistoryRoute,
+  ProtectedFeedbackRoute: ProtectedFeedbackRoute,
   ProtectedFriendsRoute: ProtectedFriendsRoute,
   ProtectedLibraryRoute: ProtectedLibraryRoute,
   ProtectedLogRoute: ProtectedLogRoute,
@@ -645,6 +686,7 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedAdminCatalogRoute: ProtectedAdminCatalogRoute,
   ProtectedAdminPhotosRoute: ProtectedAdminPhotosRoute,
   ProtectedAdminProductionsRoute: ProtectedAdminProductionsRoute,
+  ProtectedAdminReportsRoute: ProtectedAdminReportsRoute,
   ProtectedAdminShowsRoute: ProtectedAdminShowsRoute,
   ProtectedAdminVenuesRoute: ProtectedAdminVenuesRoute,
   ProtectedOutingsIdRoute: ProtectedOutingsIdRoute,

@@ -40,7 +40,7 @@
 - [x] Confirm `GET /api/health` returns `200 {"status":"ok"}` against the development database.
 - [ ] Create a Coolify application connected to the Git repository.
 - [x] Create or attach a Coolify Postgres resource.
-- [ ] Configure Coolify environment secrets, beginning with `DATABASE_URL` and `BETTER_AUTH_SECRET`.
+- [ ] Configure Coolify environment secrets: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `ADMIN_EMAILS`, SMTP, and S3.
 - [ ] Configure the Coolify health check as `GET /api/health`.
 - [ ] Deploy the empty foundation successfully to a non-production/test hostname.
 - [ ] Enable scheduled Postgres backups and configure an off-host backup destination.
@@ -211,7 +211,7 @@ object is only ever served after an authorization check, which suits a private-b
 - [ ] Confirm Postgres and RustFS backups can be restored in a test environment.
 - [ ] Run the full build, lint, typecheck, and test suite.
 - [ ] Review privacy rules manually with two test accounts that are not friends, pending friends, and approved friends.
-- [ ] Create initial admin account(s) and seed the first curated catalog records.
+- [ ] Seed the first curated catalog records. *(Administrators are now set with `ADMIN_EMAILS` in the deployment environment rather than a script.)*
 - [ ] Invite the first family/friend users.
 
 ## 11. Show imagery and contributed photos
@@ -276,7 +276,18 @@ have no equivalent path at all, and there is no single place to see what people 
 - [x] Keep the reviewing screens dense and quick; the design brief allows admin to be more
       functional than the rest of the product.
 
-## 13. Places: venues and cities
+## 13. Member reports
+
+**Goal:** Make it easy to say something is broken, and hard for that to be missed.
+
+- [x] Let a signed-in member send a bug report or a feature request from any page.
+- [x] Capture the page they were on, since that is the detail a reporter forgets.
+- [x] Email every administrator when a report arrives.
+- [x] Show open reports in the administration queue and in the navigation count.
+- [x] Keep resolved reports readable rather than hiding them, and allow reopening.
+- [ ] Let an administrator reply to a reporter from the queue.
+
+## 14. Places: venues and cities
 
 **Goal:** Stop the same theatre and the same city from being recorded four different ways.
 

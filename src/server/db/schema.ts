@@ -327,6 +327,34 @@ export const showImages = pgTable(
   ],
 )
 
+/**
+ * Something a member wants an administrator to see: a bug, or an idea.
+ *
+ * The page they were on is captured because the most useful part of a bug
+ * report is usually the thing the reporter forgets to mention.
+ */
+export const reports = pgTable(
+  'reports',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    reportedByUserId: text('reported_by_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    kind: text('kind', { enum: ['bug', 'idea'] }).notNull(),
+    message: text('message').notNull(),
+    path: text('path'),
+    status: text('status', { enum: ['open', 'resolved'] })
+      .notNull()
+      .default('open'),
+    resolvedByUserId: text('resolved_by_user_id').references(() => user.id, {
+      onDelete: 'set null',
+    }),
+    resolvedAt: timestamp('resolved_at'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => [index('reports_status_idx').on(table.status)],
+)
+
 export const friendships = pgTable(
   'friendships',
   {

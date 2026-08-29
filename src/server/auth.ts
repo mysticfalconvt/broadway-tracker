@@ -4,6 +4,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { betterAuth } from 'better-auth/minimal'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 
+import { type Role, roleFor } from '../lib/admin-roles'
 import { generateHandle, isValidHandle, normalizeHandle } from '../lib/handle'
 import { sendEmail } from './email'
 import { getDb } from './db/client'
@@ -28,6 +29,26 @@ async function resolveHandle(requested: string | undefined, name: string | undef
   throw new Error('Unable to allocate a handle. Please try again.')
 }
 
+/**
+ * Brings an existing account's role in line with `ADMIN_EMAILS` at sign-in.
+ * A deployment changes the variable and redeploys; the next sign-in settles it.
+ */
+async function reconcileRole(userId: string) {
+  const [row] = await getDb()
+    .select({ email: schema.user.email, role: schema.user.role })
+    .from(schema.user)
+    .where(eq(schema.user.id, userId))
+    .limit(1)
+  if (!row) return
+  const next = roleFor(row.email, row.role as Role, process.env.ADMIN_EMAILS)
+  if (!next) return
+  await getDb()
+    .update(schema.user)
+    .set({ role: next, updatedAt: new Date() })
+    .where(eq(schema.user.id, userId))
+  console.info('[auth] role reconciled from ADMIN_EMAILS', { role: next })
+}
+
 async function isHandleFree(handle: string) {
   const [taken] = await getDb()
     .select({ id: schema.user.id })
@@ -49,7 +70,7 @@ export const auth = betterAuth({
       ...coreFields,
       handle: generateHandle(coreFields.name),
       profileVisibility: 'private',
-      role: 'member',
+      role: roleFor(coreFields.email, 'member', process.env.ADMIN_EMAILS) ?? 'member',
       id,
     }),
     sendResetPassword: async ({ user, url }) => {
@@ -111,6 +132,18 @@ export const auth = betterAuth({
             ),
           },
         }),
+      },
+    },
+    session: {
+      create: {
+        before: async (session) => {
+          // Sign-in is the moment an account's role can safely be settled.
+          await reconcileRole(session.userId).catch((error) => {
+            // A role check must never block somebody signing in.
+            console.error('[auth] could not reconcile role', error)
+          })
+          return { data: session }
+        },
       },
     },
   },

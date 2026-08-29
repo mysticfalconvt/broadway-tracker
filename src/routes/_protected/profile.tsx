@@ -1,5 +1,7 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 
+import { authClient } from '../../lib/auth-client'
+
 import { ShowArtwork } from '../../components/ShowArtwork'
 import { getMyProfile } from '../../server/profile-functions'
 
@@ -8,17 +10,62 @@ export const Route = createFileRoute('/_protected/profile')({
   component: Profile,
 })
 
+/** Initials stand in for a photo, rather than a broken image or a grey square. */
+function initialsFor(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  const first = parts[0]?.[0] ?? ''
+  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : ''
+  return `${first}${last}`.toUpperCase()
+}
+
 function Profile() {
   const { user, stats, favorites } = Route.useLoaderData()
   return (
     <main className="profile-page page-wrap">
-      <header className="settings-header">
-        <p className="eyebrow">My profile</p>
-        <h1>{user.name}'s theatre.</h1>
-        <p>@{user.handle}</p>
-        <Link className="text-action" to="/settings">
-          Edit profile settings
-        </Link>
+      <header className="settings-header profile-header">
+        <div className="profile-identity">
+          {/* Avatars are private: served through the authorizing proxy, never a
+              bucket URL, and never shown on the anonymous public pages. */}
+          {user.image ? (
+            <img
+              className="avatar-preview profile-avatar"
+              src={`/api/images/${user.image}`}
+              alt=""
+            />
+          ) : (
+            <Link
+              className="avatar-preview profile-avatar profile-avatar-empty"
+              to="/settings"
+              aria-label="Add a profile photo"
+            >
+              {initialsFor(user.name)}
+            </Link>
+          )}
+          <div>
+            <p className="eyebrow">My profile</p>
+            <h1>{user.name}'s theatre.</h1>
+            <p>@{user.handle}</p>
+          </div>
+        </div>
+        <div className="profile-account">
+          <Link className="text-action" to="/settings">
+            Edit profile settings
+          </Link>
+          <span className="profile-account-divider" aria-hidden="true" />
+          {/* Sign-out lived inside settings, two clicks from anywhere. It is
+              quieter than the settings link so the two do not read as one. */}
+          <button
+            type="button"
+            className="text-action profile-signout"
+            onClick={async () => {
+              await authClient.signOut()
+              window.location.assign('/')
+            }}
+          >
+            Sign out
+          </button>
+        </div>
       </header>
       <dl className="stat-list profile-stats">
         <div>

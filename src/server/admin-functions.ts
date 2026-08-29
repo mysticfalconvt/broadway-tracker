@@ -8,7 +8,7 @@ import { findSuspectPairs } from '../lib/similarity'
 import { auth } from './auth'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { getDb } from './db/client'
-import { showImages, shows, user, venues } from './db/schema'
+import { reports, showImages, shows, user, venues } from './db/schema'
 
 async function requireSession() {
   const session = await auth.api.getSession({ headers: getRequestHeaders() })
@@ -28,7 +28,7 @@ function looseTitleKey(title: string) {
 export const adminOverview = createServerOnlyFn(async (actor: Actor) => {
   assertAdmin(actor)
   const db = getDb()
-  const [pendingShows, pendingPhotos, publishedShows, venueCount] = await Promise.all([
+  const [pendingShows, pendingPhotos, publishedShows, venueCount, openReports] = await Promise.all([
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(shows)
@@ -42,11 +42,16 @@ export const adminOverview = createServerOnlyFn(async (actor: Actor) => {
       .from(shows)
       .where(eq(shows.catalogStatus, 'published')),
     db.select({ count: sql<number>`count(*)::int` }).from(venues),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(reports)
+      .where(eq(reports.status, 'open')),
   ])
   const suspects = await duplicateSuspicions(actor)
   return {
     pendingShows: pendingShows[0]?.count ?? 0,
     pendingPhotos: pendingPhotos[0]?.count ?? 0,
+    openReports: openReports[0]?.count ?? 0,
     publishedShows: publishedShows[0]?.count ?? 0,
     venues: venueCount[0]?.count ?? 0,
     suspectShows: suspects.shows.length,
@@ -148,7 +153,7 @@ export const getAdminNav = createServerFn({ method: 'GET' }).handler(async () =>
   const session = await auth.api.getSession({ headers: getRequestHeaders() })
   if (session?.user.role !== 'admin') return { isAdmin: false, waiting: 0 }
   const db = getDb()
-  const [pendingShows, pendingPhotos] = await Promise.all([
+  const [pendingShows, pendingPhotos, openReports] = await Promise.all([
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(shows)
@@ -157,9 +162,14 @@ export const getAdminNav = createServerFn({ method: 'GET' }).handler(async () =>
       .select({ count: sql<number>`count(*)::int` })
       .from(showImages)
       .where(and(eq(showImages.visibility, 'public'), eq(showImages.reviewStatus, 'pending'))),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(reports)
+      .where(eq(reports.status, 'open')),
   ])
   return {
     isAdmin: true,
-    waiting: (pendingShows[0]?.count ?? 0) + (pendingPhotos[0]?.count ?? 0),
+    waiting:
+      (pendingShows[0]?.count ?? 0) + (pendingPhotos[0]?.count ?? 0) + (openReports[0]?.count ?? 0),
   }
 })

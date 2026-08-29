@@ -15,7 +15,7 @@ export const Route = createFileRoute('/_protected/admin/')({
 
 function AdminHome() {
   const { overview, suspicions } = Route.useLoaderData()
-  const waiting = overview.pendingShows + overview.pendingPhotos
+  const waiting = overview.pendingShows + overview.pendingPhotos + overview.openReports
 
   return (
     <main className="admin-page page-wrap">
@@ -42,6 +42,13 @@ function AdminHome() {
           to="/admin/photos"
           empty="No photographs awaiting review"
           note="Offered publicly — visible to the uploader's friends until approved"
+        />
+        <QueueCard
+          label="Bug reports and ideas"
+          count={overview.openReports}
+          to="/admin/reports"
+          empty="Nothing reported"
+          note="Sent by members from anywhere in the app"
         />
         <QueueCard
           label="Possible duplicates"
@@ -93,6 +100,7 @@ function AdminHome() {
         <Link to="/admin/catalog">Show submissions</Link>
         <Link to="/admin/shows">Published shows</Link>
         <Link to="/admin/photos">Photographs</Link>
+        <Link to="/admin/reports">Reports</Link>
         <Link to="/admin/venues">Venues</Link>
         <Link to="/admin/productions">Productions</Link>
       </nav>
@@ -109,7 +117,7 @@ function QueueCard({
 }: {
   label: string
   count: number
-  to: '/admin/catalog' | '/admin/photos' | '/admin/venues'
+  to: '/admin/catalog' | '/admin/photos' | '/admin/venues' | '/admin/reports'
   empty: string
   note?: string
 }) {
