@@ -1,0 +1,95 @@
+{
+  "shows": [
+    {
+      "title": "Six",
+      "type": "musical",
+      "synopsis": "The six wives of Henry VIII retell their stories as a pop concert, competing over who suffered most.",
+      "productions": [
+        {
+          "name": "Original Broadway",
+          "productionType": "broadway",
+          "venue": "Lena Horne Theatre",
+          "city": "New York",
+          "country": "USA",
+          "openedOn": "2021-10-03"
+        }
+      ]
+    },
+    {
+      "title": "Operation Mincemeat",
+      "type": "musical",
+      "synopsis": "A comic retelling of the real Second World War deception that used a corpse and a briefcase of false plans to mislead the Axis.",
+      "productions": [
+        {
+          "name": "Broadway",
+          "productionType": "broadway",
+          "venue": "John Golden Theatre",
+          "city": "New York",
+          "country": "USA"
+        }
+      ]
+    },
+    {
+      "title": "Harry Potter and the Cursed Child",
+      "type": "play",
+      "synopsis": "Jack Thorne's play following Harry's son Albus, nineteen years after the events of the novels.",
+      "productions": [
+        {
+          "name": "Broadway",
+          "productionType": "broadway",
+          "venue": "Lyric Theatre",
+          "city": "New York",
+          "country": "USA",
+          "openedOn": "2018-04-22"
+        }
+      ]
+    },
+    {
+      "title": "& Juliet",
+      "type": "musical",
+      "synopsis": "A jukebox musical asking what Juliet might have done next, set to the pop catalogue of Max Martin.",
+      "productions": [
+        {
+          "name": "Broadway",
+          "productionType": "broadway",
+          "venue": "Stephen Sondheim Theatre",
+          "city": "New York",
+          "country": "USA",
+          "openedOn": "2022-11-17"
+        }
+      ]
+    },
+    {
+      "title": "Dear Evan Hansen",
+      "type": "musical",
+      "synopsis": "An isolated teenager is drawn into a lie about a classmate's death, and into the family it comforts.",
+      "productions": [
+        {
+          "name": "Original Broadway",
+          "productionType": "broadway",
+          "venue": "Music Box Theatre",
+          "city": "New York",
+          "country": "USA",
+          "openedOn": "2016-12-04",
+          "closedOn": "2022-09-18"
+        }
+      ]
+    },
+    {
+      "title": "Schmigadoon!",
+      "type": "musical",
+      "synopsis": "Cinco Paul\u2019s musical adaptation of the Apple TV+ series, in which two doctors stumble into a town trapped inside a golden-age musical.",
+      "productions": [
+        {
+          "name": "Original Broadway",
+          "productionType": "broadway",
+          "venue": "Nederlander Theatre",
+          "city": "New York",
+          "country": "USA",
+          "openedOn": "2026-04-20",
+          "closedOn": null
+        }
+      ]
+    }
+  ]
+}

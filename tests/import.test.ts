@@ -84,12 +84,21 @@ describe('importing', () => {
         {
           title: 'One',
           type: 'play',
-          productions: [{ name: 'A', productionType: 'broadway', venue: 'Walter Kerr Theatre', city: 'NYC' }],
+          productions: [
+            { name: 'A', productionType: 'broadway', venue: 'Walter Kerr Theatre', city: 'NYC' },
+          ],
         },
         {
           title: 'Two',
           type: 'play',
-          productions: [{ name: 'B', productionType: 'broadway', venue: 'the walter kerr', city: 'New York City' }],
+          productions: [
+            {
+              name: 'B',
+              productionType: 'broadway',
+              venue: 'the walter kerr',
+              city: 'New York City',
+            },
+          ],
         },
       ],
     })
@@ -245,5 +254,92 @@ describe('accepting the shapes people actually paste', () => {
     expect(result.venues).toBe(2)
     // Reported twice because two were offered; stored once because they match.
     expect(await db.select().from(venues)).toHaveLength(1)
+  })
+})
+
+describe('warning about venues that nearly match', () => {
+  beforeEach(async () => {
+    const seeder = await makeAdmin()
+    await importCatalog(actor(seeder), {
+      venues: [
+        { name: 'Al Hirschfeld Theatre', city: 'New York' },
+        { name: 'Booth Theatre', city: 'New York' },
+      ],
+    })
+  })
+
+  it('says nothing when a venue matches exactly', async () => {
+    const admin = await makeAdmin()
+    const preview = await previewImport(
+      actor(admin),
+      JSON.stringify([{ name: 'the al hirschfeld theater', city: 'NYC' }]),
+    )
+    expect(preview.venueWarnings).toHaveLength(0)
+  })
+
+  it('flags a typo that would create a second venue', async () => {
+    const admin = await makeAdmin()
+    const preview = await previewImport(
+      actor(admin),
+      JSON.stringify([{ name: 'Al Hirschfield Theatre', city: 'New York' }]),
+    )
+    expect(preview.venueWarnings).toHaveLength(1)
+    expect(preview.venueWarnings[0]).toMatchObject({
+      given: 'Al Hirschfield Theatre',
+      resembles: 'Al Hirschfeld Theatre',
+      reason: 'near-miss',
+    })
+  })
+
+  it('flags a missing city, the commonest way a duplicate slips in', async () => {
+    const admin = await makeAdmin()
+    const preview = await previewImport(actor(admin), JSON.stringify([{ name: 'Booth Theatre' }]))
+    expect(preview.venueWarnings[0]).toMatchObject({
+      given: 'Booth Theatre',
+      resembles: 'Booth Theatre',
+      resemblesCity: 'New York',
+      reason: 'no-city',
+    })
+  })
+
+  it('checks venues named inside a production, not only standalone ones', async () => {
+    const admin = await makeAdmin()
+    const preview = await previewImport(
+      actor(admin),
+      JSON.stringify({
+        shows: [
+          {
+            title: 'Something New',
+            type: 'musical',
+            productions: [
+              {
+                name: 'Broadway',
+                productionType: 'broadway',
+                venue: 'Booth Theater',
+                city: 'Boston',
+              },
+            ],
+          },
+        ],
+      }),
+    )
+    // Same name, different city: ambiguous rather than wrong, so it is raised
+    // for a person to judge rather than merged or ignored.
+    expect(preview.venueWarnings[0]).toMatchObject({
+      given: 'Booth Theater',
+      city: 'Boston',
+      resembles: 'Booth Theatre',
+      resemblesCity: 'New York',
+      reason: 'other-city',
+    })
+  })
+
+  it('stays quiet about a genuinely new theatre', async () => {
+    const admin = await makeAdmin()
+    const preview = await previewImport(
+      actor(admin),
+      JSON.stringify([{ name: 'Kit Kat Club', city: 'New York' }]),
+    )
+    expect(preview.venueWarnings).toHaveLength(0)
   })
 })

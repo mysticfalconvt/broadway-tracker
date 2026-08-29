@@ -2140,3 +2140,42 @@ a.recent-entry:hover h3,
   color: var(--ink-muted);
   font-size: 0.8rem;
 }
+
+/* Import warnings. Loud enough to notice, never blocking: importing anyway is a
+   legitimate choice when two theatres really do share a name. */
+.import-warnings {
+  border-left: 4px solid var(--warning);
+}
+.warning-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  padding: 0;
+  list-style: none;
+}
+.warning-list li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--canvas);
+}
+.warning-list li > div {
+  display: grid;
+  gap: 0.15rem;
+}
+.warning-list strong {
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1.05rem;
+}
+.warning-list span {
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+.warning-existing {
+  color: var(--success) !important;
+}

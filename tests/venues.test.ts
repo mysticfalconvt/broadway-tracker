@@ -155,3 +155,53 @@ describe('administration', () => {
     expect(again.country).toBe('USA')
   })
 })
+
+describe('productions saved by an administrator', () => {
+  it('link to the shared venue record, like imported ones do', async () => {
+    const { saveProductionForAdmin } = await import('../src/server/catalog-functions')
+    const { productions } = await import('../src/server/db/schema')
+    const admin = await makeAdmin()
+    const show = await makeShow()
+    await saveProductionForAdmin(actor(admin), {
+      showId: show.id,
+      name: 'Broadway',
+      productionType: 'broadway',
+      venue: 'Nederlander Theatre',
+      city: 'New York',
+    })
+    const [row] = await db.select().from(productions)
+    expect(row?.venueId).not.toBeNull()
+    expect(await db.select().from(venues)).toHaveLength(1)
+  })
+
+  it('reuse an existing venue rather than making a second one', async () => {
+    const { saveProductionForAdmin } = await import('../src/server/catalog-functions')
+    const admin = await makeAdmin()
+    const show = await makeShow()
+    const existing = await findOrCreateVenue(admin.id, 'Nederlander Theatre', 'New York')
+    await saveProductionForAdmin(actor(admin), {
+      showId: show.id,
+      name: 'Broadway',
+      productionType: 'broadway',
+      venue: 'the nederlander',
+      city: 'NYC',
+    })
+    const { productions } = await import('../src/server/db/schema')
+    const [row] = await db.select().from(productions)
+    expect(row?.venueId).toBe(existing.id)
+    expect(await db.select().from(venues)).toHaveLength(1)
+  })
+
+  it('refuses a member', async () => {
+    const { saveProductionForAdmin } = await import('../src/server/catalog-functions')
+    const member = await makeUser()
+    const show = await makeShow()
+    await expect(
+      saveProductionForAdmin(actor(member), {
+        showId: show.id,
+        name: 'Broadway',
+        productionType: 'broadway',
+      }),
+    ).rejects.toThrow('Forbidden')
+  })
+})

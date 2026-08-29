@@ -23,13 +23,18 @@ const CITY_ALIASES: Record<string, string> = {
 const VENUE_NOISE = new Set(['the', 'theatre', 'theater', 'at'])
 
 function fold(value: string) {
-  return value
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()
-    .replace(/\s+/g, ' ')
+  return (
+    value
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      // An apostrophe joins a word rather than separating it, so O'Neill and
+      // ONeill have to fold together; anything else becomes a space.
+      .replace(/['\u2019]/g, '')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim()
+      .replace(/\s+/g, ' ')
+  )
 }
 
 /** The matching key for a city. `NYC`, `New York City`, and `new york` all agree. */

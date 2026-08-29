@@ -75,6 +75,24 @@ nothing.
 
 `docs/seed/broadway-theatres.json` is a ready-made venue list you can paste as-is.
 
+## Venue warnings
+
+Checking a paste reports venues that do not match an existing record but resemble one,
+because a near-miss silently creates a second venue for the same theatre. Each warning
+offers to rewrite the paste to use the existing wording.
+
+| Warning | Meaning |
+|---|---|
+| No city given | The name matches but the city is missing, so it would become a separate venue. The commonest cause of duplicates |
+| Same name, different city | Genuinely ambiguous — plenty of cities have an Orpheum — so it is raised for you to judge |
+| Close to an existing name | A typo or a dropped word, e.g. `Al Hirschfield` against `Al Hirschfeld` |
+
+What is folded automatically, and needs no warning: a leading `The`, `Theater` against
+`Theatre`, apostrophes (`O'Neill` and `ONeill`), punctuation, accents, and city aliases
+such as `NYC`, `Manhattan`, and `New York City`.
+
+**Include the city for every venue.** It is the single thing that most reduces duplicates.
+
 ## Fields
 
 ### Show

@@ -188,12 +188,24 @@ export const getProductionsForAdmin = createServerFn({ method: 'GET' })
       .orderBy(asc(productions.name))
   })
 
-export const saveProduction = createServerFn({ method: 'POST' })
-  .validator(productionInput.extend({ id: z.string().uuid().optional() }))
-  .handler(async ({ data }) => {
-    await requireAdmin()
+/**
+ * Saves a production, resolving its venue onto the shared record.
+ *
+ * The free text is kept alongside the reference so nothing is lost if a venue is
+ * later merged, but the reference is what the venue list and the deduplication
+ * rely on -- a production saved here has to link the same way an imported one
+ * does, or venues entered by hand quietly fall outside the system.
+ */
+export const saveProductionForAdmin = createServerOnlyFn(
+  async (actor: Actor, data: z.infer<typeof productionInput> & { id?: string }) => {
+    assertAdmin(actor)
+    const { findOrCreateVenue } = await import('./venue-functions')
+    const venue = data.venue
+      ? await findOrCreateVenue(actor.id, data.venue, data.city, data.country)
+      : null
     const values = {
       showId: data.showId,
+      venueId: venue?.id ?? null,
       name: data.name,
       productionType: data.productionType,
       venue: data.venue || null,
@@ -208,7 +220,12 @@ export const saveProduction = createServerFn({ method: 'POST' })
       return
     }
     await getDb().insert(productions).values(values)
-  })
+  },
+)
+
+export const saveProduction = createServerFn({ method: 'POST' })
+  .validator(productionInput.extend({ id: z.string().uuid().optional() }))
+  .handler(async ({ data }) => saveProductionForAdmin((await requireSession()).user as Actor, data))
 
 export const deleteProduction = createServerFn({ method: 'POST' })
   .validator(z.object({ id: z.string().uuid() }))

@@ -6,7 +6,9 @@ import { z } from 'zod'
 import { auth } from './auth'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { getDb } from './db/client'
-import { productions, shows } from './db/schema'
+import { productions, shows, venues } from './db/schema'
+import { normalizeVenueName, venueKey } from '../lib/place'
+import { similarity } from '../lib/similarity'
 import { findOrCreateVenue } from './venue-functions'
 
 async function requireSession() {
@@ -231,8 +233,91 @@ export const previewImport = createServerOnlyFn(async (actor: Actor, raw: string
     shows: seen,
     productions: (validated.data.shows ?? []).reduce((n, s) => n + (s.productions?.length ?? 0), 0),
     venues: (validated.data.venues ?? []).length,
+    venueWarnings: await findVenueNearMisses(validated.data),
   }
 })
+
+export type VenueWarning = {
+  given: string
+  city: string | null
+  resembles: string
+  resemblesCity: string | null
+  reason: 'no-city' | 'other-city' | 'near-miss'
+}
+
+/**
+ * Venues in the paste that do not match an existing record but look like one.
+ *
+ * Normalisation folds the cosmetic differences -- a leading "The", "Theater"
+ * against "Theatre", punctuation, city aliases. What it cannot fold is a typo, a
+ * dropped word, or a missing city, and each of those quietly creates a second
+ * venue for the same theatre. Surfacing them before the write is much cheaper
+ * than merging them afterwards.
+ */
+async function findVenueNearMisses(payload: ImportPayload): Promise<VenueWarning[]> {
+  const proposed: { name: string; city: string | null }[] = [
+    ...(payload.venues ?? []).map((v) => ({ name: v.name, city: v.city ?? null })),
+    ...(payload.shows ?? []).flatMap((show) =>
+      (show.productions ?? [])
+        .filter((production) => production.venue)
+        .map((production) => ({
+          name: production.venue as string,
+          city: production.city ?? null,
+        })),
+    ),
+  ]
+  if (proposed.length === 0) return []
+
+  const known = await getDb()
+    .select({ name: venues.name, city: venues.city, matchKey: venues.matchKey })
+    .from(venues)
+  if (known.length === 0) return []
+  const knownKeys = new Set(known.map((v) => v.matchKey))
+
+  const warnings: VenueWarning[] = []
+  for (const item of proposed) {
+    if (knownKeys.has(venueKey(item.name, item.city))) continue
+
+    const wanted = normalizeVenueName(item.name)
+    let best: { venue: (typeof known)[number]; score: number } | null = null
+    for (const candidate of known) {
+      const score = similarity(wanted, normalizeVenueName(candidate.name))
+      if (!best || score > best.score) best = { venue: candidate, score }
+    }
+    if (!best) continue
+
+    // The commonest case by far: the name is right but the city was omitted,
+    // which the format permits and which silently makes a second venue.
+    if (best.score === 1 && !item.city) {
+      warnings.push({
+        given: item.name,
+        city: null,
+        resembles: best.venue.name,
+        resemblesCity: best.venue.city,
+        reason: 'no-city',
+      })
+    } else if (best.score === 1) {
+      // Same name, different city. Genuinely ambiguous -- plenty of cities have
+      // an Orpheum -- so this is for a person to judge, not for us to merge.
+      warnings.push({
+        given: item.name,
+        city: item.city,
+        resembles: best.venue.name,
+        resemblesCity: best.venue.city,
+        reason: 'other-city',
+      })
+    } else if (best.score >= 0.82 && best.score < 1) {
+      warnings.push({
+        given: item.name,
+        city: item.city,
+        resembles: best.venue.name,
+        resemblesCity: best.venue.city,
+        reason: 'near-miss',
+      })
+    }
+  }
+  return warnings
+}
 
 export const runCatalogImport = createServerFn({ method: 'POST' })
   .validator(z.object({ json: z.string().min(2).max(500_000) }))

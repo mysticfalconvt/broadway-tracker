@@ -298,6 +298,8 @@ have no equivalent path at all, and there is no single place to see what people 
 - [x] Accept a bare array, a single object, and a venue list, not only the documented wrapper.
 - [x] Refuse a document containing nothing to import rather than succeeding silently.
 - [x] Document the format so it can be handed to a language model verbatim.
+- [x] Warn about venues that resemble an existing one before anything is written.
+- [x] Offer a one-click correction that rewrites the paste to use the existing venue.
 - [ ] Let an administrator edit a production after import without going through the show screen.
 
 ## 15. Places: venues and cities
@@ -314,6 +316,9 @@ vocabulary, so drift compounds across both. There is already a `NYC` in the data
 - [x] Give administrators a venue merge tool, mirroring the existing duplicate-show merge.
 - [x] Backfill existing free-text venues and cities onto the new entities. *(`pnpm db:backfill-venues`, idempotent.)*
 - [x] Keep entry fast: suggestions are debounced and free text is still accepted.
+
+- [ ] Build a venue page listing every show and performance recorded there, linked from a
+      show's production and from a logged memory.
 
 This also unlocks the *Favorite venues* and *Cities* views listed under Stats in the design brief,
 which free text cannot support, and it gives the assisted-recall idea below something to resolve
