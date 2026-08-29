@@ -76,6 +76,25 @@ describe('stylesheet invariants', () => {
     expect(css).toMatch(/^:focus-visible\s*\{/m)
   })
 
+  it('gives every button variant its own text colour', () => {
+    // A variant that sets a background but inherits its colour renders
+    // cream-on-cream inside the dark heroes, which is invisible.
+    for (const variant of ['.button-quiet', '.button-primary']) {
+      const rule = css.match(new RegExp(`\\${variant}\\s*\\{([^}]*)\\}`))
+      expect(rule, `${variant} rule is missing`).toBeTruthy()
+      expect(rule?.[1], `${variant} must declare its own color`).toMatch(/(^|;|\s)color:/)
+    }
+  })
+
+  it('scales the artwork fallback to its container, not the viewport', () => {
+    // The same fallback renders at 3.5rem in a row and 21rem in a hero.
+    const fallback = css.match(/\.show-artwork-fallback\s*\{([^}]*)\}/)
+    expect(fallback?.[1]).toMatch(/container-type:\s*inline-size/)
+    const strong = css.match(/\.show-artwork-fallback strong\s*\{([^}]*)\}/)
+    expect(strong?.[1]).toMatch(/cqw/)
+    expect(strong?.[1]).not.toMatch(/\d+vw/)
+  })
+
   it('honors prefers-reduced-motion', () => {
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)/)
   })

@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 
+import { ShowArtwork } from '../../../components/ShowArtwork'
 import {
   deleteProduction,
   getProductionsForAdmin,
@@ -15,6 +16,83 @@ export const Route = createFileRoute('/_protected/admin/productions')({
   loader: () => getPublishedShowsForAdmin(),
   component: ProductionAdmin,
 })
+
+/** Cover art is catalog data, so only an administrator may replace it. */
+function CoverField({
+  show,
+}: {
+  show: { id: string; title: string; coverImageKey: string | null }
+}) {
+  const [coverImageKey, setCoverImageKey] = useState(show.coverImageKey)
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  async function upload(file: File) {
+    setProblem(null)
+    setBusy(true)
+    try {
+      const body = new FormData()
+      body.set('kind', 'show-cover')
+      body.set('showId', show.id)
+      body.set('file', file)
+      const response = await fetch('/api/uploads', { method: 'POST', body })
+      const payload = (await response.json()) as { key?: string; error?: string }
+      if (!response.ok || !payload.key) throw new Error(payload.error ?? 'Upload failed.')
+      setCoverImageKey(payload.key)
+    } catch (caughtError) {
+      setProblem(caughtError instanceof Error ? caughtError.message : 'Upload failed.')
+    } finally {
+      setBusy(false)
+      if (inputRef.current) inputRef.current.value = ''
+    }
+  }
+
+  return (
+    <section className="cover-field">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Cover art</p>
+          <h2>{show.title}</h2>
+        </div>
+      </div>
+      <div className="cover-field-row">
+        <div className="cover-field-preview">
+          <ShowArtwork
+            title={show.title}
+            type="Cover"
+            coverImageKey={coverImageKey}
+            tone="oxblood"
+          />
+        </div>
+        <div>
+          <label className="avatar-field-input">
+            <span>{coverImageKey ? 'Replace cover' : 'Upload a cover'}</span>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              disabled={busy}
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (file) void upload(file)
+              }}
+            />
+          </label>
+          <p className="settings-note">
+            PNG, JPEG, or WebP, up to 8MB. Artwork is optional — every screen reads well without it.
+          </p>
+          {busy ? <p className="settings-note">Uploading…</p> : null}
+          {problem ? (
+            <p className="form-error" role="alert">
+              {problem}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  )
+}
 
 type Production = Awaited<ReturnType<typeof getProductionsForAdmin>>[number]
 
@@ -32,6 +110,8 @@ function ProductionAdmin() {
     if (showId) void getProductionsForAdmin({ data: { showId } }).then(setProductions)
   }
 
+  const selected = shows.find((show) => show.id === showId)
+
   return (
     <main className="admin-page page-wrap">
       <header className="settings-header">
@@ -42,6 +122,7 @@ function ProductionAdmin() {
           staging.
         </p>
       </header>
+      {selected ? <CoverField key={selected.id} show={selected} /> : null}
       {shows.length ? (
         <>
           <label className="admin-show-picker">

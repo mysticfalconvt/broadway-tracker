@@ -1,4 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
 
 import { MemoryCard } from '../components/MemoryCard'
 import { PrivacyBadge } from '../components/PrivacyBadge'
@@ -6,6 +7,7 @@ import { Rating } from '../components/Rating'
 import { ShowArtwork } from '../components/ShowArtwork'
 import { ShowStatus } from '../components/ShowStatus'
 import { formatFuzzyDateShort } from '../lib/fuzzy-date'
+import { greetingFor } from '../lib/time'
 import { getHome } from '../server/profile-functions'
 
 export const Route = createFileRoute('/')({
@@ -20,6 +22,7 @@ function Home() {
 
 function SignedInHome({ home }: { home: NonNullable<Awaited<ReturnType<typeof getHome>>> }) {
   const { name, stats, wantToSee, recent } = home
+  const greeting = useLocalGreeting()
   const isNew = stats.performances === 0 && stats.shows === 0
   return (
     <main className="app-page">
@@ -27,7 +30,7 @@ function SignedInHome({ home }: { home: NonNullable<Awaited<ReturnType<typeof ge
         <div>
           <p className="eyebrow">Your theatre, remembered</p>
           <h1>
-            {greeting()}, {name.split(' ')[0]}.
+            {greeting}, {name.split(' ')[0]}.
           </h1>
           <p className="home-intro">
             {isNew
@@ -87,7 +90,12 @@ function SignedInHome({ home }: { home: NonNullable<Awaited<ReturnType<typeof ge
                 />
               ) : (
                 <article className="recent-entry" key={outing.id}>
-                  <ShowArtwork title={outing.showTitle} type={outing.showType} tone="midnight" />
+                  <ShowArtwork
+                    title={outing.showTitle}
+                    type={outing.showType}
+                    coverImageKey={outing.coverImageKey}
+                    tone="midnight"
+                  />
                   <div>
                     <p className="memory-date">{formatFuzzyDateShort(outing)}</p>
                     <h3>{outing.showTitle}</h3>
@@ -124,7 +132,12 @@ function SignedInHome({ home }: { home: NonNullable<Awaited<ReturnType<typeof ge
                 to="/shows/$slug"
                 params={{ slug: show.slug }}
               >
-                <ShowArtwork title={show.title} type={show.type} tone="midnight" />
+                <ShowArtwork
+                  title={show.title}
+                  type={show.type}
+                  coverImageKey={show.coverImageKey}
+                  tone="midnight"
+                />
                 <div className="library-show-content">
                   <h3>{show.title}</h3>
                   <p>{show.type}</p>
@@ -143,11 +156,16 @@ function SignedInHome({ home }: { home: NonNullable<Awaited<ReturnType<typeof ge
   )
 }
 
-function greeting() {
-  const hour = new Date().getHours()
-  if (hour < 12) return 'Good morning'
-  if (hour < 18) return 'Good afternoon'
-  return 'Good evening'
+/**
+ * The greeting depends on the reader's own clock, which the server cannot know:
+ * rendering it during SSR produced a hydration mismatch whenever the browser's
+ * timezone disagreed with the server's UTC. It is resolved after mount instead,
+ * with a time-neutral greeting until then.
+ */
+function useLocalGreeting() {
+  const [greeting, setGreeting] = useState<string | null>(null)
+  useEffect(() => setGreeting(greetingFor(new Date().getHours())), [])
+  return greeting ?? 'Welcome back'
 }
 
 function VisitorHome() {

@@ -192,6 +192,10 @@ h3 {
 .button-quiet {
   border-color: var(--border);
   background: var(--surface);
+  /* Declared, not inherited: this button also appears inside the dark heroes,
+     where inheriting the section's cream text made it invisible on its own
+     cream background. */
+  color: var(--ink);
 }
 .button-quiet:hover {
   background: var(--surface-muted);
@@ -608,6 +612,16 @@ h3 {
 .show-hero .show-artwork {
   min-height: 21rem;
 }
+.outing-hero .button-primary,
+.show-hero .button-primary {
+  border-color: var(--surface);
+  background: var(--surface);
+  color: var(--midnight);
+}
+.outing-hero .button-primary:hover,
+.show-hero .button-primary:hover {
+  background: color-mix(in srgb, var(--surface) 88%, var(--brass));
+}
 .show-hero .eyebrow {
   color: color-mix(in srgb, var(--brass) 85%, white);
 }
@@ -966,19 +980,35 @@ h3 {
   justify-content: end;
   gap: 0.6rem;
   min-height: 11rem;
-  padding: 1.1rem;
+  padding: clamp(0.5rem, 9cqw, 1.1rem);
   color: white;
+  /* The same fallback is used at 6.75rem on the dashboard and at 21rem in a
+     hero, so its type is measured against the box it lands in rather than the
+     viewport. Without this, a title overflowed the small tiles. */
+  container-type: inline-size;
+  overflow: hidden;
 }
 .show-artwork-fallback strong {
-  max-width: 12ch;
+  max-width: 100%;
   font-family: Newsreader, Georgia, serif;
-  font-size: clamp(1.45rem, 3vw, 2.1rem);
+  font-size: clamp(0.95rem, 17cqw, 2.1rem);
   font-weight: 500;
   letter-spacing: -0.04em;
-  line-height: 0.94;
+  line-height: 0.98;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+/* A row thumbnail is only 3.5rem wide, which cannot hold a title or even a
+   label legibly. At that size the fallback becomes a plain tonal block, which
+   is intentional rather than broken: the title sits beside it in the row. */
+@container (max-width: 6rem) {
+  .show-artwork-fallback strong,
+  .show-artwork-fallback .show-artwork-type {
+    display: none;
+  }
 }
 .show-artwork-type {
-  font-size: 0.67rem;
+  font-size: clamp(0.55rem, 6cqw, 0.67rem);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1470,4 +1500,62 @@ h3 {
   .button {
     min-height: 44px;
   }
+}
+
+/* Image upload controls. Artwork is always optional, so these read as a quiet
+   addition rather than an unfilled requirement. */
+.avatar-field {
+  display: grid;
+  gap: 0.5rem;
+}
+.avatar-field-label {
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+}
+.avatar-field-row,
+.cover-field-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.avatar-preview {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+.avatar-preview-empty {
+  display: grid;
+  place-items: center;
+  color: var(--ink-muted);
+  font-size: 1.5rem;
+}
+.avatar-field-input {
+  display: inline-grid;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+}
+.avatar-field-input input[type="file"] {
+  font: inherit;
+  font-size: 0.85rem;
+}
+.cover-field {
+  margin-top: 2.5rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.cover-field-preview {
+  width: 9rem;
+  flex: 0 0 auto;
+}
+.cover-field-preview .show-artwork {
+  width: 100%;
+  min-height: 12rem;
+  object-fit: cover;
 }

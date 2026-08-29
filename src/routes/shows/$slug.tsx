@@ -32,7 +32,12 @@ function ShowDetail() {
     <main>
       <section className="show-hero">
         <div className="page-wrap show-hero-content">
-          <ShowArtwork title={show.title} type={show.type} tone="oxblood" />
+          <ShowArtwork
+            title={show.title}
+            type={show.type}
+            coverImageKey={show.coverImageKey}
+            tone="oxblood"
+          />
           <div>
             <p className="eyebrow">{show.type}</p>
             <h1>{show.title}</h1>

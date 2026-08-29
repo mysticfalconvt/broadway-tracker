@@ -2,10 +2,14 @@ import { HeadContent, Link, Scripts, createRootRoute } from '@tanstack/react-rou
 import { type ReactNode } from 'react'
 
 import { authClient } from '../lib/auth-client'
+import { getSession } from '../server/auth-functions'
 
 import '../styles.css'
 
 export const Route = createRootRoute({
+  // Resolved on the server so the first paint shows the correct navigation
+  // rather than flashing the signed-out links at a signed-in reader.
+  loader: () => getSession(),
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
@@ -59,8 +63,10 @@ function RootShell({ children }: { children: ReactNode }) {
  * them to the sign-in page.
  */
 function NavLinks() {
-  const { data: session, isPending } = authClient.useSession()
-  if (isPending || !session) {
+  const serverSession = Route.useLoaderData()
+  const { data: clientSession, isPending } = authClient.useSession()
+  const session = isPending ? serverSession : clientSession
+  if (!session) {
     return (
       <div className="nav-links" aria-label="Product areas">
         <Link to="/discover">Discover</Link>

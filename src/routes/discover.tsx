@@ -61,7 +61,12 @@ function Discover() {
               params={{ slug: show.slug }}
               className="catalog-show-row"
             >
-              <ShowArtwork title={show.title} type={show.type} tone="midnight" />
+              <ShowArtwork
+                title={show.title}
+                type={show.type}
+                coverImageKey={show.coverImageKey}
+                tone="midnight"
+              />
               <span>
                 <strong>{show.title}</strong>
                 <small>{show.type}</small>

@@ -81,7 +81,12 @@ function Library() {
               params={{ slug: entry.slug }}
               className="library-entry"
             >
-              <ShowArtwork title={entry.title} type={entry.type} tone="midnight" />
+              <ShowArtwork
+                title={entry.title}
+                type={entry.type}
+                coverImageKey={entry.coverImageKey}
+                tone="midnight"
+              />
               <div>
                 <h2>{entry.title}</h2>
                 <p>{entry.type}</p>

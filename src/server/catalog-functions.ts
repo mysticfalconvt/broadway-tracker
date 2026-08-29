@@ -170,7 +170,7 @@ export const getPendingShows = createServerFn({ method: 'GET' }).handler(async (
 export const getPublishedShowsForAdmin = createServerFn({ method: 'GET' }).handler(async () => {
   await requireAdmin()
   return getDb()
-    .select({ id: shows.id, title: shows.title })
+    .select({ id: shows.id, title: shows.title, coverImageKey: shows.coverImageKey })
     .from(shows)
     .where(eq(shows.catalogStatus, 'published'))
     .orderBy(asc(shows.title))

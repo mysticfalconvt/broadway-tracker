@@ -33,7 +33,13 @@ export const homeForUser = createServerOnlyFn(async (userId: string) => {
       .from(outingAttendees)
       .where(eq(outingAttendees.userId, userId)),
     db
-      .select({ id: shows.id, title: shows.title, slug: shows.slug, type: shows.type })
+      .select({
+        id: shows.id,
+        title: shows.title,
+        slug: shows.slug,
+        type: shows.type,
+        coverImageKey: shows.coverImageKey,
+      })
       .from(libraryEntries)
       .innerJoin(shows, eq(libraryEntries.showId, shows.id))
       .where(and(eq(libraryEntries.userId, userId), eq(libraryEntries.status, 'want_to_see')))
@@ -44,6 +50,7 @@ export const homeForUser = createServerOnlyFn(async (userId: string) => {
         id: outings.id,
         showTitle: shows.title,
         showType: shows.type,
+        coverImageKey: shows.coverImageKey,
         venue: outings.venue,
         city: outings.city,
         datePrecision: outings.datePrecision,
@@ -149,7 +156,13 @@ export const friendProfileForViewer = createServerOnlyFn(
         .from(outings)
         .where(eq(outings.createdByUserId, profile.id)),
       db
-        .select({ id: shows.id, title: shows.title, slug: shows.slug, type: shows.type })
+        .select({
+          id: shows.id,
+          title: shows.title,
+          slug: shows.slug,
+          type: shows.type,
+          coverImageKey: shows.coverImageKey,
+        })
         .from(libraryEntries)
         .innerJoin(shows, eq(libraryEntries.showId, shows.id))
         .where(
@@ -208,6 +221,7 @@ export const publicProfileById = createServerOnlyFn(async (userId: string) => {
         title: shows.title,
         slug: shows.slug,
         type: shows.type,
+        coverImageKey: shows.coverImageKey,
         rating: libraryEntries.rating,
         review: libraryEntries.review,
       })

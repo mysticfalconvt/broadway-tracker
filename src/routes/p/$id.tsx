@@ -62,7 +62,12 @@ function PublicProfile() {
             {favorites.map((show) => (
               <article className="library-entry" key={show.id}>
                 <Link to="/shows/$slug" params={{ slug: show.slug }}>
-                  <ShowArtwork title={show.title} type={show.type} tone="midnight" />
+                  <ShowArtwork
+                    title={show.title}
+                    type={show.type}
+                    coverImageKey={show.coverImageKey}
+                    tone="midnight"
+                  />
                   <div>
                     <h2>{show.title}</h2>
                     <p>{show.type}</p>

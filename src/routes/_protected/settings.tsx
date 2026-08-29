@@ -1,8 +1,77 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 
 import { authClient } from '../../lib/auth-client'
 import { updateAccountSettings } from '../../server/auth-functions'
+
+/**
+ * Uploads go through the application because the storage bucket is unreachable
+ * from a browser. The preview reads back through the same authorizing proxy
+ * that will serve the image everywhere else.
+ */
+function AvatarField({ currentKey }: { currentKey?: string | null }) {
+  const [key, setKey] = useState(currentKey ?? null)
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  async function upload(file: File) {
+    setProblem(null)
+    setBusy(true)
+    try {
+      const body = new FormData()
+      body.set('kind', 'avatar')
+      body.set('file', file)
+      const response = await fetch('/api/uploads', { method: 'POST', body })
+      const payload = (await response.json()) as { key?: string; error?: string }
+      if (!response.ok || !payload.key) throw new Error(payload.error ?? 'Upload failed.')
+      // Cache-bust the preview: the key changes on every replacement anyway.
+      setKey(payload.key)
+    } catch (caughtError) {
+      setProblem(caughtError instanceof Error ? caughtError.message : 'Upload failed.')
+    } finally {
+      setBusy(false)
+      if (inputRef.current) inputRef.current.value = ''
+    }
+  }
+
+  return (
+    <div className="avatar-field">
+      <span className="avatar-field-label">Profile photo</span>
+      <div className="avatar-field-row">
+        {key ? (
+          <img className="avatar-preview" src={`/api/images/${key}`} alt="Your profile photo" />
+        ) : (
+          <span className="avatar-preview avatar-preview-empty" aria-hidden="true">
+            ◎
+          </span>
+        )}
+        <div>
+          <label className="avatar-field-input">
+            <span>{key ? 'Replace photo' : 'Choose a photo'}</span>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              disabled={busy}
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (file) void upload(file)
+              }}
+            />
+          </label>
+          <p className="settings-note">PNG, JPEG, or WebP. Up to 8MB.</p>
+        </div>
+      </div>
+      {busy ? <p className="settings-note">Uploading…</p> : null}
+      {problem ? (
+        <p className="form-error" role="alert">
+          {problem}
+        </p>
+      ) : null}
+    </div>
+  )
+}
 
 function profileVisibilityFrom(value: FormDataEntryValue | null) {
   if (value === 'friends') return 'friends' as const
@@ -71,6 +140,7 @@ function Settings() {
           />
           <span>Used when friends look for you. Lowercase letters, numbers, and hyphens only.</span>
         </label>
+        <AvatarField currentKey={user.image} />
         <fieldset>
           <legend>Default profile visibility</legend>
           <label>
@@ -114,7 +184,8 @@ function Settings() {
           </label>
         </fieldset>
         <p className="settings-note">
-          Profile photo uploads will use your private RustFS storage once enabled.
+          Your photo is stored privately and is only ever shown to you and to approved friends.
+          Public pages stay anonymous and never display it.
         </p>
         {error ? (
           <p className="form-error" role="alert">

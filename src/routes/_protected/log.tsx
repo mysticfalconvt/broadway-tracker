@@ -1,6 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState, type FormEvent } from 'react'
 
+import { toLocalISODate } from '../../lib/time'
+
 import { getPublishedProductions, searchPublishedShows } from '../../server/catalog-functions'
 import { createOuting } from '../../server/outing-functions'
 
@@ -16,6 +18,10 @@ function LogOuting() {
     Awaited<ReturnType<typeof getPublishedProductions>>
   >([])
   const [precision, setPrecision] = useState('exact')
+  // Resolved after mount: the server runs in UTC, so its "today" is the wrong
+  // day for much of the world for part of every day.
+  const [today, setToday] = useState('')
+  useEffect(() => setToday(toLocalISODate(new Date())), [])
   const [error, setError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
 
@@ -113,7 +119,8 @@ function LogOuting() {
               <input
                 name="occurredOn"
                 type="date"
-                defaultValue={new Date().toISOString().slice(0, 10)}
+                value={today}
+                onChange={(event) => setToday(event.target.value)}
                 required
               />
             </label>

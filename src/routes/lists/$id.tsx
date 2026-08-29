@@ -99,7 +99,12 @@ function ListDetail() {
         {list.items.map((item, index) => (
           <article key={item.showId}>
             <Link to="/shows/$slug" params={{ slug: item.slug }}>
-              <ShowArtwork title={item.title} type={item.type} tone="midnight" />
+              <ShowArtwork
+                title={item.title}
+                type={item.type}
+                coverImageKey={item.coverImageKey}
+                tone="midnight"
+              />
               <span>
                 <h2>{item.title}</h2>
                 <p>{item.type}</p>
