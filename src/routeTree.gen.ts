@@ -28,8 +28,12 @@ import { Route as ApiUploadsRouteImport } from './routes/api/uploads'
 import { Route as ListsIdRouteImport } from './routes/lists/$id'
 import { Route as PIdRouteImport } from './routes/p/$id'
 import { Route as ShowsSlugRouteImport } from './routes/shows/$slug'
+import { Route as ProtectedAdminIndexRouteImport } from './routes/_protected/admin/index'
 import { Route as ProtectedAdminCatalogRouteImport } from './routes/_protected/admin/catalog'
+import { Route as ProtectedAdminPhotosRouteImport } from './routes/_protected/admin/photos'
 import { Route as ProtectedAdminProductionsRouteImport } from './routes/_protected/admin/productions'
+import { Route as ProtectedAdminShowsRouteImport } from './routes/_protected/admin/shows'
+import { Route as ProtectedAdminVenuesRouteImport } from './routes/_protected/admin/venues'
 import { Route as ProtectedListsIndexRouteImport } from './routes/_protected/lists/index'
 import { Route as ProtectedOutingsIdRouteImport } from './routes/_protected/outings/$id'
 import { Route as ProtectedPeopleHandleRouteImport } from './routes/_protected/people/$handle'
@@ -130,9 +134,19 @@ const ShowsSlugRoute = ShowsSlugRouteImport.update({
   path: '/shows/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProtectedAdminIndexRoute = ProtectedAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => ProtectedRoute,
+} as any)
 const ProtectedAdminCatalogRoute = ProtectedAdminCatalogRouteImport.update({
   id: '/admin/catalog',
   path: '/admin/catalog',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedAdminPhotosRoute = ProtectedAdminPhotosRouteImport.update({
+  id: '/admin/photos',
+  path: '/admin/photos',
   getParentRoute: () => ProtectedRoute,
 } as any)
 const ProtectedAdminProductionsRoute =
@@ -141,6 +155,16 @@ const ProtectedAdminProductionsRoute =
     path: '/admin/productions',
     getParentRoute: () => ProtectedRoute,
   } as any)
+const ProtectedAdminShowsRoute = ProtectedAdminShowsRouteImport.update({
+  id: '/admin/shows',
+  path: '/admin/shows',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedAdminVenuesRoute = ProtectedAdminVenuesRouteImport.update({
+  id: '/admin/venues',
+  path: '/admin/venues',
+  getParentRoute: () => ProtectedRoute,
+} as any)
 const ProtectedListsIndexRoute = ProtectedListsIndexRouteImport.update({
   id: '/lists/',
   path: '/lists/',
@@ -187,11 +211,15 @@ export interface FileRoutesByFullPath {
   '/p/$id': typeof PIdRoute
   '/shows/$slug': typeof ShowsSlugRoute
   '/admin/catalog': typeof ProtectedAdminCatalogRoute
+  '/admin/photos': typeof ProtectedAdminPhotosRoute
   '/admin/productions': typeof ProtectedAdminProductionsRoute
+  '/admin/shows': typeof ProtectedAdminShowsRoute
+  '/admin/venues': typeof ProtectedAdminVenuesRoute
   '/outings/$id': typeof ProtectedOutingsIdRoute
   '/people/$handle': typeof ProtectedPeopleHandleRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/images/$': typeof ApiImagesSplatRoute
+  '/admin/': typeof ProtectedAdminIndexRoute
   '/lists/': typeof ProtectedListsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -214,11 +242,15 @@ export interface FileRoutesByTo {
   '/p/$id': typeof PIdRoute
   '/shows/$slug': typeof ShowsSlugRoute
   '/admin/catalog': typeof ProtectedAdminCatalogRoute
+  '/admin/photos': typeof ProtectedAdminPhotosRoute
   '/admin/productions': typeof ProtectedAdminProductionsRoute
+  '/admin/shows': typeof ProtectedAdminShowsRoute
+  '/admin/venues': typeof ProtectedAdminVenuesRoute
   '/outings/$id': typeof ProtectedOutingsIdRoute
   '/people/$handle': typeof ProtectedPeopleHandleRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/images/$': typeof ApiImagesSplatRoute
+  '/admin': typeof ProtectedAdminIndexRoute
   '/lists': typeof ProtectedListsIndexRoute
 }
 export interface FileRoutesById {
@@ -243,11 +275,15 @@ export interface FileRoutesById {
   '/p/$id': typeof PIdRoute
   '/shows/$slug': typeof ShowsSlugRoute
   '/_protected/admin/catalog': typeof ProtectedAdminCatalogRoute
+  '/_protected/admin/photos': typeof ProtectedAdminPhotosRoute
   '/_protected/admin/productions': typeof ProtectedAdminProductionsRoute
+  '/_protected/admin/shows': typeof ProtectedAdminShowsRoute
+  '/_protected/admin/venues': typeof ProtectedAdminVenuesRoute
   '/_protected/outings/$id': typeof ProtectedOutingsIdRoute
   '/_protected/people/$handle': typeof ProtectedPeopleHandleRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/images/$': typeof ApiImagesSplatRoute
+  '/_protected/admin/': typeof ProtectedAdminIndexRoute
   '/_protected/lists/': typeof ProtectedListsIndexRoute
 }
 export interface FileRouteTypes {
@@ -272,11 +308,15 @@ export interface FileRouteTypes {
     | '/p/$id'
     | '/shows/$slug'
     | '/admin/catalog'
+    | '/admin/photos'
     | '/admin/productions'
+    | '/admin/shows'
+    | '/admin/venues'
     | '/outings/$id'
     | '/people/$handle'
     | '/api/auth/$'
     | '/api/images/$'
+    | '/admin/'
     | '/lists/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -299,11 +339,15 @@ export interface FileRouteTypes {
     | '/p/$id'
     | '/shows/$slug'
     | '/admin/catalog'
+    | '/admin/photos'
     | '/admin/productions'
+    | '/admin/shows'
+    | '/admin/venues'
     | '/outings/$id'
     | '/people/$handle'
     | '/api/auth/$'
     | '/api/images/$'
+    | '/admin'
     | '/lists'
   id:
     | '__root__'
@@ -327,11 +371,15 @@ export interface FileRouteTypes {
     | '/p/$id'
     | '/shows/$slug'
     | '/_protected/admin/catalog'
+    | '/_protected/admin/photos'
     | '/_protected/admin/productions'
+    | '/_protected/admin/shows'
+    | '/_protected/admin/venues'
     | '/_protected/outings/$id'
     | '/_protected/people/$handle'
     | '/api/auth/$'
     | '/api/images/$'
+    | '/_protected/admin/'
     | '/_protected/lists/'
   fileRoutesById: FileRoutesById
 }
@@ -487,6 +535,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShowsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_protected/admin/': {
+      id: '/_protected/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof ProtectedAdminIndexRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/_protected/admin/catalog': {
       id: '/_protected/admin/catalog'
       path: '/admin/catalog'
@@ -494,11 +549,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedAdminCatalogRouteImport
       parentRoute: typeof ProtectedRoute
     }
+    '/_protected/admin/photos': {
+      id: '/_protected/admin/photos'
+      path: '/admin/photos'
+      fullPath: '/admin/photos'
+      preLoaderRoute: typeof ProtectedAdminPhotosRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/_protected/admin/productions': {
       id: '/_protected/admin/productions'
       path: '/admin/productions'
       fullPath: '/admin/productions'
       preLoaderRoute: typeof ProtectedAdminProductionsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/admin/shows': {
+      id: '/_protected/admin/shows'
+      path: '/admin/shows'
+      fullPath: '/admin/shows'
+      preLoaderRoute: typeof ProtectedAdminShowsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/admin/venues': {
+      id: '/_protected/admin/venues'
+      path: '/admin/venues'
+      fullPath: '/admin/venues'
+      preLoaderRoute: typeof ProtectedAdminVenuesRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/_protected/lists/': {
@@ -548,9 +624,13 @@ interface ProtectedRouteChildren {
   ProtectedSettingsRoute: typeof ProtectedSettingsRoute
   ProtectedSubmitShowRoute: typeof ProtectedSubmitShowRoute
   ProtectedAdminCatalogRoute: typeof ProtectedAdminCatalogRoute
+  ProtectedAdminPhotosRoute: typeof ProtectedAdminPhotosRoute
   ProtectedAdminProductionsRoute: typeof ProtectedAdminProductionsRoute
+  ProtectedAdminShowsRoute: typeof ProtectedAdminShowsRoute
+  ProtectedAdminVenuesRoute: typeof ProtectedAdminVenuesRoute
   ProtectedOutingsIdRoute: typeof ProtectedOutingsIdRoute
   ProtectedPeopleHandleRoute: typeof ProtectedPeopleHandleRoute
+  ProtectedAdminIndexRoute: typeof ProtectedAdminIndexRoute
   ProtectedListsIndexRoute: typeof ProtectedListsIndexRoute
 }
 
@@ -563,9 +643,13 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedSettingsRoute: ProtectedSettingsRoute,
   ProtectedSubmitShowRoute: ProtectedSubmitShowRoute,
   ProtectedAdminCatalogRoute: ProtectedAdminCatalogRoute,
+  ProtectedAdminPhotosRoute: ProtectedAdminPhotosRoute,
   ProtectedAdminProductionsRoute: ProtectedAdminProductionsRoute,
+  ProtectedAdminShowsRoute: ProtectedAdminShowsRoute,
+  ProtectedAdminVenuesRoute: ProtectedAdminVenuesRoute,
   ProtectedOutingsIdRoute: ProtectedOutingsIdRoute,
   ProtectedPeopleHandleRoute: ProtectedPeopleHandleRoute,
+  ProtectedAdminIndexRoute: ProtectedAdminIndexRoute,
   ProtectedListsIndexRoute: ProtectedListsIndexRoute,
 }
 

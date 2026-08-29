@@ -1708,3 +1708,141 @@ label.favorite-toggle:hover input:not(:checked) {
   padding-top: 1.5rem;
   border-top: 1px solid var(--border);
 }
+
+/* Administration. The design brief allows these screens to be denser and more
+   functional than the rest of the product. */
+.admin-queues {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+  margin-top: 2.5rem;
+}
+.queue-card {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+}
+.queue-card strong {
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 2.4rem;
+  line-height: 1;
+}
+.queue-card span {
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+}
+/* Something waiting is marked by a rule and a label, never by colour alone. */
+.queue-card-waiting {
+  border-color: var(--warning);
+  border-left-width: 4px;
+}
+.queue-note {
+  margin-top: 0.35rem;
+  font-size: 0.75rem !important;
+}
+.admin-stats {
+  margin-top: 2rem;
+}
+.suspect-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.suspect-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.suspect-list strong {
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1.1rem;
+}
+.suspect-list em {
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+  font-style: normal;
+}
+.suspect-score {
+  margin-left: auto;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+.admin-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+.venue-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+.venue-list form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.venue-list label {
+  display: grid;
+  flex: 1 1 10rem;
+  gap: 0.3rem;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+.venue-usage {
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+.review-grid .review-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.nav-admin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.nav-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--oxblood);
+  color: #fffdf8;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.provenance {
+  flex: 1 1 100%;
+  margin: 0 0 0.75rem;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+.admin-synopsis {
+  flex: 1 1 100%;
+}

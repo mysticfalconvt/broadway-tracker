@@ -94,6 +94,12 @@ function ReviewCard({ show }: { show: Awaited<ReturnType<typeof getPendingShows>
   }
   return (
     <article className="admin-review-card">
+      {/* Who added this and when, so a reviewer is not deciding blind. */}
+      <p className="provenance">
+        Submitted by {show.submittedByName ?? 'a former member'}
+        {show.submittedByHandle ? ` (@${show.submittedByHandle})` : ''} ·{' '}
+        {new Date(show.createdAt).toISOString().slice(0, 10)}
+      </p>
       <form onSubmit={review}>
         <label>
           Title

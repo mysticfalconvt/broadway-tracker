@@ -2,6 +2,7 @@ import { HeadContent, Link, Scripts, createRootRoute } from '@tanstack/react-rou
 import { type ReactNode } from 'react'
 
 import { authClient } from '../lib/auth-client'
+import { getAdminNav } from '../server/admin-functions'
 import { getSession } from '../server/auth-functions'
 
 import '../styles.css'
@@ -9,7 +10,7 @@ import '../styles.css'
 export const Route = createRootRoute({
   // Resolved on the server so the first paint shows the correct navigation
   // rather than flashing the signed-out links at a signed-in reader.
-  loader: () => getSession(),
+  loader: async () => ({ session: await getSession(), admin: await getAdminNav() }),
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
@@ -63,7 +64,7 @@ function RootShell({ children }: { children: ReactNode }) {
  * them to the sign-in page.
  */
 function NavLinks() {
-  const serverSession = Route.useLoaderData()
+  const { session: serverSession, admin } = Route.useLoaderData()
   const { data: clientSession, isPending } = authClient.useSession()
   const session = isPending ? serverSession : clientSession
   if (!session) {
@@ -83,6 +84,16 @@ function NavLinks() {
       <Link to="/profile">Profile</Link>
       <Link to="/friends">Friends</Link>
       <Link to="/build-history">Build history</Link>
+      {admin.isAdmin ? (
+        <Link to="/admin" className="nav-admin">
+          Admin
+          {admin.waiting ? (
+            <span className="nav-badge" aria-label={`${admin.waiting} awaiting review`}>
+              {admin.waiting}
+            </span>
+          ) : null}
+        </Link>
+      ) : null}
     </div>
   )
 }

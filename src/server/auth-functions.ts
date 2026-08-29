@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { auth } from './auth'
 import { getDb } from './db/client'
+import { handleProblem, normalizeHandle } from '../lib/handle'
 import { user } from './db/schema'
 
 export const getSession = createServerFn({ method: 'GET' }).handler(async () =>
@@ -17,9 +18,10 @@ export const updateAccountSettings = createServerFn({ method: 'POST' })
       name: z.string().trim().min(1).max(100),
       handle: z
         .string()
-        .trim()
-        .toLowerCase()
-        .regex(/^[a-z0-9][a-z0-9-]{2,29}$/, 'Use 3-30 lowercase letters, numbers, or hyphens.'),
+        .transform(normalizeHandle)
+        .refine((value) => handleProblem(value) === null, {
+          message: 'Use 3-30 lowercase letters, numbers, or hyphens.',
+        }),
       profileVisibility: z.enum(['private', 'friends', 'public']),
     }),
   )
@@ -45,5 +47,24 @@ export const updateAccountSettings = createServerFn({ method: 'POST' })
         throw new Error('That handle is already in use.')
       }
       throw error
+    }
+  })
+
+/** Whether a handle is free, for live feedback while someone is choosing one. */
+export const checkHandle = createServerFn({ method: 'GET' })
+  .validator(z.object({ handle: z.string().trim().max(40) }))
+  .handler(async ({ data }) => {
+    const handle = normalizeHandle(data.handle)
+    const problem = handleProblem(data.handle)
+    if (problem) return { handle, available: false, problem }
+    const [taken] = await getDb()
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.handle, handle))
+      .limit(1)
+    return {
+      handle,
+      available: !taken,
+      problem: taken ? 'That handle is already taken.' : null,
     }
   })

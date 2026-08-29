@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { auth } from './auth'
 import { getDb } from './db/client'
 import { libraryEntries, shows } from './db/schema'
+import { applyViewerCovers } from './image-functions'
 
 async function requireSession() {
   const session = await auth.api.getSession({ headers: getRequestHeaders() })
@@ -26,10 +27,11 @@ const libraryInput = z.object({
 // user explicitly, so they can be exercised without a request. `createServerOnlyFn`
 // keeps the database client out of the browser bundle.
 
-export const libraryForOwner = createServerOnlyFn(async (ownerId: string) =>
-  getDb()
+export const libraryForOwner = createServerOnlyFn(async (ownerId: string) => {
+  const rows = await getDb()
     .select({
-      id: libraryEntries.id,
+      entryId: libraryEntries.id,
+      showId: shows.id,
       status: libraryEntries.status,
       favorite: libraryEntries.favorite,
       rating: libraryEntries.rating,
@@ -43,8 +45,13 @@ export const libraryForOwner = createServerOnlyFn(async (ownerId: string) =>
     .from(libraryEntries)
     .innerJoin(shows, eq(libraryEntries.showId, shows.id))
     .where(eq(libraryEntries.userId, ownerId))
-    .orderBy(asc(shows.title)),
-)
+    .orderBy(asc(shows.title))
+  // A person's own photograph stands in for the catalog cover, for them.
+  return applyViewerCovers(
+    ownerId,
+    rows.map((row) => ({ ...row, id: row.showId })),
+  )
+})
 
 export const saveEntryForOwner = createServerOnlyFn(
   async (ownerId: string, data: z.infer<typeof libraryInput>) => {

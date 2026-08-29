@@ -62,7 +62,7 @@
 - [ ] Configure the exact Google authorized redirect URI for the deployed hostname. *(Blocked on deployment.)*
 - [x] Define safe account-linking behavior for users who sign in with both password and Google.
 - [x] Add protected-route/session middleware and an authenticated application layout.
-- [ ] Build settings for name, handle, profile image, and default profile visibility. *(Name, handle, and visibility are done; profile image is blocked on section 8.)*
+- [x] Build settings for name, handle, profile image, and default profile visibility.
 - [ ] Add auth-flow and authorization tests. *(Authorization is covered across the server modules; the Better Auth flows themselves — sign-up, verification, reset — are not yet exercised.)*
 
 ## 3. Catalog and moderation
@@ -153,7 +153,7 @@
 - [x] Replace the home-page filler with real data for a signed-in user.
 - [x] Give signed-out visitors a real landing page with clearly labelled sample content.
 - [x] Wire the home page actions, which were dead buttons.
-- [ ] Reconsider the email-derived handle in `auth.ts` — it is no longer published, but friends still see it.
+- [x] Replace the email-derived handle. People choose their own at sign-up with live availability; the fallback is built from the display name plus a random suffix, never from the address.
 - [x] Do not add follower counts, public leaderboards, or engagement-pressure mechanics.
 - [x] Add thorough privacy/authorization tests, including rejected and blocked relationships.
 
@@ -169,8 +169,8 @@ browser cannot resolve. This is more server work than direct-to-storage uploads,
 object is only ever served after an authorization check, which suits a private-by-default product.
 
 - [x] Create a dedicated RustFS bucket for Broadway Tracker.
-- [ ] Create restricted credentials for only this bucket and only the actions the app needs.
-      *(Current keys can list unrelated infrastructure backup buckets — see below.)*
+- [x] Create restricted credentials for only this bucket and only the actions the app needs.
+      *(Verified: cross-bucket access denied, own bucket read/write/delete intact.)*
 - [ ] Configure `S3_ENDPOINT`, bucket, credentials, and region in Coolify secrets.
 - [x] Build a typed storage client (endpoint, path-style addressing, no public URL).
 - [x] Accept uploads at a server route that authorizes, validates, then writes to RustFS.
@@ -183,10 +183,10 @@ object is only ever served after an authorization check, which suits a private-b
 - [x] Implement image replacement and deletion without orphaning objects.
 - [ ] Document RustFS backup/restore expectations separately from Postgres backups.
 
-> **Security note.** The credentials currently in `.env` can list every bucket on the RustFS
-> instance, including `vaultwarden-backups` and several infrastructure backup buckets. If this
-> application is ever compromised, those keys are a path to unrelated backups. Scope the credentials
-> to the single application bucket before anything is deployed.
+> **Resolved.** The application's credentials were previously able to list every bucket on the
+> RustFS instance, including `vaultwarden-backups`. They are now scoped to the single application
+> bucket; a probe confirms cross-bucket reads are refused while the app's own read, write, and
+> delete still work.
 
 ## 9. Styling, usability, and accessibility
 
@@ -237,7 +237,7 @@ more columns on `shows`. A show then has one admin cover plus any number of cont
 - [x] Cascade deletion so removing a show or an account does not orphan objects.
 - [x] Generate default artwork from the show's title instead of a flat colour block.
 - [x] Build the upload UI on the show page and the contributed-photo gallery.
-- [ ] Apply the viewer's own photo as the cover on list and card screens, not only show detail.
+- [x] Apply the viewer's own photo as the cover on list and card screens, not only show detail. *(Batched into one extra query.)*
 
 **Open question — variety without randomness.** Picking a cover at random per render would break
 hydration (React re-renders the tree when server and client disagree, which is the bug class already
@@ -266,14 +266,14 @@ Show submissions already land in a `pending` queue with publish, reject, edit, a
 missing is everything around it: nothing tells an administrator that something is waiting, venues
 have no equivalent path at all, and there is no single place to see what people have been adding.
 
-- [ ] Build one administration home that surfaces everything awaiting attention, with counts.
-- [ ] Surface a pending count in the navigation so a submission is not missed.
-- [ ] Extend the queue to cover venues and contributed photographs, not only shows.
-- [ ] Show provenance on a catalog record: who submitted it, when, and who reviewed it.
-- [ ] Let an administrator edit a published show without going through the review flow.
-- [ ] Add a duplicate-suspicion view that groups near-identical titles and venues before they spread.
-- [ ] Decide whether contributors are told when their submission is published or rejected.
-- [ ] Keep the reviewing screens dense and quick; the design brief allows admin to be more
+- [x] Build one administration home that surfaces everything awaiting attention, with counts.
+- [x] Surface a pending count in the navigation so a submission is not missed.
+- [x] Extend the queue to cover venues and contributed photographs, not only shows.
+- [x] Show provenance on a catalog record: who submitted it, when, and who reviewed it.
+- [x] Let an administrator edit a published show without going through the review flow.
+- [x] Add a duplicate-suspicion view that groups near-identical titles and venues before they spread.
+- [x] Decide whether contributors are told when their submission is published or rejected. *(Both, by email. Delivery failures are logged, never allowed to undo the decision.)*
+- [x] Keep the reviewing screens dense and quick; the design brief allows admin to be more
       functional than the rest of the product.
 
 ## 13. Places: venues and cities
@@ -287,7 +287,7 @@ vocabulary, so drift compounds across both. There is already a `NYC` in the data
 - [x] Let a production and an outing reference a venue, keeping free text as a fallback.
 - [x] Build an autocomplete that offers existing venues before allowing a new one. *(Logging and backfill both use it.)*
 - [x] Normalise on write so near-duplicates collide, including city aliases such as NYC and New York City.
-- [ ] Give administrators a venue merge tool, mirroring the existing duplicate-show merge. *(Server side and tested; no admin screen yet.)*
+- [x] Give administrators a venue merge tool, mirroring the existing duplicate-show merge.
 - [x] Backfill existing free-text venues and cities onto the new entities. *(`pnpm db:backfill-venues`, idempotent.)*
 - [x] Keep entry fast: suggestions are debounced and free text is still accepted.
 

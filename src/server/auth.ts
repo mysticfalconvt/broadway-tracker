@@ -1,21 +1,40 @@
-import { createHash } from 'node:crypto'
+import { eq } from 'drizzle-orm'
 
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { betterAuth } from 'better-auth/minimal'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 
+import { generateHandle, isValidHandle, normalizeHandle } from '../lib/handle'
 import { sendEmail } from './email'
 import { getDb } from './db/client'
 import * as schema from './db/schema'
 
-function createHandle(email: string) {
-  const localPart =
-    email
-      .split('@')[0]
-      ?.toLowerCase()
-      .replace(/[^a-z0-9]/g, '') || 'theatregoer'
-  const suffix = createHash('sha256').update(email.toLowerCase()).digest('hex').slice(0, 8)
-  return `${localPart.slice(0, 20) || 'theatregoer'}-${suffix}`
+/**
+ * Settles on the handle an account will carry.
+ *
+ * A chosen handle is used when it is valid and free; otherwise one is generated
+ * from the display name. Nothing here reads the email address: a handle is shown
+ * to friends and to administrators, and an earlier email-derived scheme meant a
+ * handle could confirm a guessed address.
+ */
+async function resolveHandle(requested: string | undefined, name: string | undefined) {
+  const wanted = requested ? normalizeHandle(requested) : ''
+  if (wanted && isValidHandle(wanted) && (await isHandleFree(wanted))) return wanted
+
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const candidate = generateHandle(name)
+    if (await isHandleFree(candidate)) return candidate
+  }
+  throw new Error('Unable to allocate a handle. Please try again.')
+}
+
+async function isHandleFree(handle: string) {
+  const [taken] = await getDb()
+    .select({ id: schema.user.id })
+    .from(schema.user)
+    .where(eq(schema.user.handle, handle))
+    .limit(1)
+  return !taken
 }
 
 export const auth = betterAuth({
@@ -28,7 +47,7 @@ export const auth = betterAuth({
     revokeSessionsOnPasswordReset: true,
     customSyntheticUser: ({ coreFields, id }) => ({
       ...coreFields,
-      handle: createHandle(coreFields.email),
+      handle: generateHandle(coreFields.name),
       profileVisibility: 'private',
       role: 'member',
       id,
@@ -68,7 +87,9 @@ export const auth = betterAuth({
   },
   user: {
     additionalFields: {
-      handle: { type: 'string', required: false, input: false },
+      // Accepted at sign-up so a person can choose their own; validated and
+      // deduplicated in the create hook below before it is stored.
+      handle: { type: 'string', required: false, input: true },
       profileVisibility: {
         type: ['private', 'friends', 'public'],
         required: false,
@@ -81,7 +102,15 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        before: async (user) => ({ data: { ...user, handle: createHandle(user.email) } }),
+        before: async (user) => ({
+          data: {
+            ...user,
+            handle: await resolveHandle(
+              (user as { handle?: string }).handle,
+              (user as { name?: string }).name,
+            ),
+          },
+        }),
       },
     },
   },

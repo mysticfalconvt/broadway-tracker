@@ -4,7 +4,7 @@ import { alias } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
 
 import { getDb } from './db/client'
-import { libraryEntries, listItems, outings, productions, shows } from './db/schema'
+import { libraryEntries, listItems, outings, productions, shows, user } from './db/schema'
 
 type ShowType = 'musical' | 'play' | 'other'
 
@@ -157,8 +157,9 @@ const pendingShow = {
 export const pendingShowsForAdmin = createServerOnlyFn(async (actor: Actor) => {
   assertAdmin(actor)
   return getDb()
-    .select(pendingShow)
+    .select({ ...pendingShow, submittedByName: user.name, submittedByHandle: user.handle })
     .from(shows)
+    .leftJoin(user, eq(shows.submittedByUserId, user.id))
     .where(eq(shows.catalogStatus, 'pending'))
     .orderBy(asc(shows.createdAt))
 })
@@ -261,10 +262,94 @@ export const reviewShowAsAdmin = createServerOnlyFn(
         updatedAt: new Date(),
       })
       .where(and(eq(shows.id, data.id), eq(shows.catalogStatus, 'pending')))
-      .returning({ id: shows.id })
+      .returning({ id: shows.id, title: shows.title, slug: shows.slug })
     if (!show) throw new Error('This submission is no longer awaiting review.')
+    await notifySubmitter(data.id, show.title, show.slug, data.action)
   },
 )
+
+/**
+ * Tells the person who submitted a show what happened to it. Someone who adds a
+ * missing show is doing the catalog a favour and otherwise never hears back.
+ * Delivery failures are logged rather than thrown: the decision itself has
+ * already been recorded and must not be undone by a mail problem.
+ */
+async function notifySubmitter(
+  showId: string,
+  title: string,
+  slug: string,
+  action: 'publish' | 'reject',
+) {
+  try {
+    const [row] = await getDb()
+      .select({ email: user.email, name: user.name })
+      .from(shows)
+      .innerJoin(user, eq(shows.submittedByUserId, user.id))
+      .where(eq(shows.id, showId))
+      .limit(1)
+    if (!row) return
+
+    const { sendEmail } = await import('./email')
+    const base = process.env.BETTER_AUTH_URL ?? ''
+    await sendEmail({
+      to: row.email,
+      subject:
+        action === 'publish'
+          ? `${title} is now in the Broadway Tracker catalog`
+          : `About your Broadway Tracker submission`,
+      text:
+        action === 'publish'
+          ? `Thank you — ${title} has been added to the shared catalog and anyone can log it now.\n\n${base}/shows/${slug}`
+          : `Thanks for suggesting ${title}. It hasn't been added to the catalog this time — often that means it is already there under another name. If you think that's wrong, just reply and let us know.`,
+    })
+  } catch (error) {
+    console.error('[catalog] could not notify the submitter', error)
+  }
+}
+
+/**
+ * Corrects an already-published record. `reviewShowAsAdmin` deliberately only
+ * touches submissions awaiting a decision, so fixing a typo on a live show
+ * needed its own path rather than a round trip back through the queue.
+ */
+export const editPublishedShow = createServerOnlyFn(
+  async (actor: Actor, data: z.infer<typeof showInput> & { id: string; slug: string }) => {
+    assertAdmin(actor)
+    const [slugConflict] = await getDb()
+      .select({ id: shows.id })
+      .from(shows)
+      .where(and(eq(shows.slug, data.slug), ne(shows.id, data.id)))
+      .limit(1)
+    if (slugConflict) throw new Error('That URL slug is already in use.')
+
+    const [updated] = await getDb()
+      .update(shows)
+      .set({
+        title: data.title,
+        type: data.type as ShowType,
+        synopsis: data.synopsis || null,
+        slug: data.slug,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(shows.id, data.id), eq(shows.catalogStatus, 'published')))
+      .returning({ id: shows.id })
+    if (!updated) throw new Error('That published show does not exist.')
+  },
+)
+
+export const savePublishedShow = createServerFn({ method: 'POST' })
+  .validator(
+    showInput.extend({
+      id: z.string().uuid(),
+      slug: z
+        .string()
+        .trim()
+        .toLowerCase()
+        .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+        .max(180),
+    }),
+  )
+  .handler(async ({ data }) => editPublishedShow((await requireSession()).user as Actor, data))
 
 export const mergeShowIntoPublishedShow = createServerFn({ method: 'POST' })
   .validator(z.object({ sourceShowId: z.string().uuid(), targetSlug: z.string().min(1).max(180) }))

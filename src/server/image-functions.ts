@@ -1,6 +1,6 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, inArray } from 'drizzle-orm'
 
 import { getDb } from './db/client'
 import { showImages, shows, user } from './db/schema'
@@ -310,3 +310,36 @@ export const decideShowPhoto = createServerFn({ method: 'POST' })
   .handler(async ({ data }) =>
     reviewShowPhoto((await requireSession()).user as Actor, data.id, data.approve),
   )
+
+/**
+ * Replaces catalog cover art with the viewer's own photograph, for the shows
+ * they have contributed one to. Batched into a single query so a list screen
+ * costs one extra round trip rather than one per row.
+ */
+export const applyViewerCovers = createServerOnlyFn(
+  async <T extends { id: string; coverImageKey: string | null }>(
+    viewerId: string | null,
+    rows: T[],
+  ): Promise<T[]> => {
+    if (!viewerId || rows.length === 0) return rows
+    const own = await getDb()
+      .select({ showId: showImages.showId, objectKey: showImages.objectKey })
+      .from(showImages)
+      .where(
+        and(
+          eq(showImages.uploadedByUserId, viewerId),
+          inArray(
+            showImages.showId,
+            rows.map((row) => row.id),
+          ),
+        ),
+      )
+      .orderBy(desc(showImages.createdAt))
+
+    // Newest first, so the first key seen for a show is the one that wins.
+    const mine = new Map<string, string>()
+    for (const row of own) if (!mine.has(row.showId)) mine.set(row.showId, row.objectKey)
+    if (mine.size === 0) return rows
+    return rows.map((row) => ({ ...row, coverImageKey: mine.get(row.id) ?? row.coverImageKey }))
+  },
+)

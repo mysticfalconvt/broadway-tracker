@@ -19,6 +19,15 @@ function getMailTransport() {
   })
 }
 
+/**
+ * Automated tests must never put mail on the wire. Against a local relay that is
+ * only noise, but the same code path against a real provider would be sending
+ * to fabricated addresses.
+ */
+function isSuppressed() {
+  return process.env.VITEST === 'true' || process.env.NODE_ENV === 'test'
+}
+
 export async function sendEmail({
   to,
   subject,
@@ -28,6 +37,10 @@ export async function sendEmail({
   subject: string
   text: string
 }) {
+  if (isSuppressed()) {
+    console.info('[email] suppressed in tests', { subject })
+    return
+  }
   try {
     await getMailTransport().sendMail({
       from: process.env.SMTP_FROM,
