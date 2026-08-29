@@ -6,6 +6,7 @@ import { alias } from 'drizzle-orm/pg-core'
 import { normalizeVenueName } from '../lib/place'
 import { findSuspectPairs } from '../lib/similarity'
 import { auth } from './auth'
+import { pendingRequestCountFor } from './friend-functions'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { getDb } from './db/client'
 import { reports, showImages, shows, user, venues } from './db/schema'
@@ -145,13 +146,16 @@ export const getDuplicateSuspicions = createServerFn({ method: 'GET' }).handler(
 )
 
 /**
- * What the navigation needs to know: whether this reader administers the
- * catalog, and how much is waiting. Resolved on the server because the client
- * session type does not carry the role.
+ * Everything the navigation badges need, in one round trip. Resolved on the
+ * server because the client session type does not carry the role, and because a
+ * badge that appears only after hydration reads as a glitch.
  */
-export const getAdminNav = createServerFn({ method: 'GET' }).handler(async () => {
+export const getNavBadges = createServerFn({ method: 'GET' }).handler(async () => {
   const session = await auth.api.getSession({ headers: getRequestHeaders() })
-  if (session?.user.role !== 'admin') return { isAdmin: false, waiting: 0 }
+  if (!session) return { isAdmin: false, waiting: 0, friendRequests: 0 }
+
+  const friendRequests = await pendingRequestCountFor(session.user.id)
+  if (session.user.role !== 'admin') return { isAdmin: false, waiting: 0, friendRequests }
   const db = getDb()
   const [pendingShows, pendingPhotos, openReports] = await Promise.all([
     db

@@ -20,7 +20,7 @@ const libraryInput = z.object({
   favorite: z.boolean().default(false),
   rating: z.number().int().min(1).max(10).optional(),
   review: z.string().trim().max(5000).optional(),
-  visibility: z.enum(['private', 'friends', 'public']).default('private'),
+  visibility: z.enum(['private', 'friends', 'public']).default('friends'),
 })
 
 // The exported helpers below hold the authorization rules and take the acting

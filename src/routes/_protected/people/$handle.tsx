@@ -4,12 +4,32 @@ import { ShowArtwork } from '../../../components/ShowArtwork'
 import { getFriendProfile } from '../../../server/profile-functions'
 
 export const Route = createFileRoute('/_protected/people/$handle')({
-  loader: ({ params }) => getFriendProfile({ data: { handle: params.handle } }),
+  loader: async ({ params }) => {
+    try {
+      return { profile: await getFriendProfile({ data: { handle: params.handle } }), problem: null }
+    } catch (error) {
+      // Not shared is an ordinary answer here, not a failure.
+      return { profile: null, problem: error instanceof Error ? error.message : 'Unavailable.' }
+    }
+  },
   component: FriendProfile,
 })
 
 function FriendProfile() {
-  const { user, stats, favorites, lists } = Route.useLoaderData()
+  const { profile, problem } = Route.useLoaderData()
+  if (!profile) {
+    return (
+      <main className="page-wrap empty-state">
+        <p className="eyebrow">Not shared</p>
+        <h1>{problem}</h1>
+        <p>Profiles are private until their owner chooses to share them.</p>
+        <Link className="button button-primary" to="/friends">
+          Back to your friends
+        </Link>
+      </main>
+    )
+  }
+  const { user, stats, favorites, lists } = profile
   return (
     <main className="profile-page page-wrap">
       <header className="settings-header">

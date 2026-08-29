@@ -47,8 +47,9 @@ describe('friend profile access', () => {
     const owner = await makeUser({ profileVisibility: 'private' })
     const friend = await makeUser()
     await makeFriendship(owner.id, friend.id, 'accepted')
+    // Still refused; the wording now says why rather than implying it is missing.
     await expect(friendProfileForViewer(friend.id, owner.handle)).rejects.toThrow(
-      'This profile is unavailable.',
+      'keeps their profile to themselves',
     )
   })
 
@@ -136,5 +137,43 @@ describe('friend profile content filtering', () => {
     })
     const result = await friendProfileForViewer(friend.id, owner.handle)
     expect(result.stats.seen).toBe(1)
+  })
+})
+
+describe('a friend profile is reachable from the friends list', () => {
+  it('opens for an approved friend whose profile is friends-visible', async () => {
+    const owner = await makeUser({ profileVisibility: 'friends' })
+    const friend = await makeUser()
+    await makeFriendship(owner.id, friend.id, 'accepted')
+    const result = await friendProfileForViewer(friend.id, owner.handle)
+    expect(result.user.handle).toBe(owner.handle)
+  })
+
+  it('opens for an approved friend whose profile is public', async () => {
+    // Making a profile more open must not make it invisible to your own friends.
+    const owner = await makeUser({ profileVisibility: 'public' })
+    const friend = await makeUser()
+    await makeFriendship(owner.id, friend.id, 'accepted')
+    const result = await friendProfileForViewer(friend.id, owner.handle)
+    expect(result.user.handle).toBe(owner.handle)
+  })
+
+  it('tells an approved friend plainly when a profile is kept private', async () => {
+    const owner = await makeUser({ profileVisibility: 'private' })
+    const friend = await makeUser()
+    await makeFriendship(owner.id, friend.id, 'accepted')
+    await expect(friendProfileForViewer(friend.id, owner.handle)).rejects.toThrow(
+      'keeps their profile to themselves',
+    )
+  })
+
+  it('still refuses somebody who is not a friend, whatever the setting', async () => {
+    for (const visibility of ['private', 'friends', 'public'] as const) {
+      const owner = await makeUser({ profileVisibility: visibility })
+      const stranger = await makeUser()
+      await expect(friendProfileForViewer(stranger.id, owner.handle)).rejects.toThrow(
+        'only available to friends',
+      )
+    }
   })
 })

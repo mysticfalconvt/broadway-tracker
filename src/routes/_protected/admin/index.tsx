@@ -101,6 +101,7 @@ function AdminHome() {
         <Link to="/admin/shows">Published shows</Link>
         <Link to="/admin/photos">Photographs</Link>
         <Link to="/admin/reports">Reports</Link>
+        <Link to="/admin/import">Add catalog data</Link>
         <Link to="/admin/venues">Venues</Link>
         <Link to="/admin/productions">Productions</Link>
       </nav>

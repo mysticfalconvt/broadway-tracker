@@ -53,7 +53,7 @@ function Lists() {
         </label>
         <label>
           Visible to
-          <select name="visibility" defaultValue="private">
+          <select name="visibility" defaultValue="friends">
             <option value="private">Only me</option>
             <option value="friends">Friends</option>
             <option value="public">Public — anonymous, no name attached</option>

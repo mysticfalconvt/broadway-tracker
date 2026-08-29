@@ -148,9 +148,7 @@ function Settings() {
               type="radio"
               name="profileVisibility"
               value="private"
-              defaultChecked={
-                user.profileVisibility !== 'friends' && user.profileVisibility !== 'public'
-              }
+              defaultChecked={user.profileVisibility === 'private'}
             />
             <span>
               <strong>Only me</strong>

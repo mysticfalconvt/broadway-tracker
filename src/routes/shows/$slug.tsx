@@ -160,7 +160,7 @@ function LibraryButtons({ showId }: { showId: string }) {
           </label>
           <label>
             Visible to
-            <select name="visibility" defaultValue="private">
+            <select name="visibility" defaultValue="friends">
               <option value="private">Only me</option>
               <option value="friends">Friends</option>
             </select>
@@ -193,7 +193,8 @@ function PhotoGallery({
   const { data: session } = authClient.useSession()
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
-  const [visibility, setVisibility] = useState('private')
+  // Sharing with approved friends is the default; private stays one click away.
+  const [visibility, setVisibility] = useState('friends')
 
   async function upload(file: File) {
     setProblem(null)

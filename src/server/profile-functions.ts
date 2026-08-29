@@ -139,13 +139,23 @@ export const friendProfileForViewer = createServerOnlyFn(
   async (viewerId: string, handle: string) => {
     const db = getDb()
     const [profile] = await db
-      .select({ id: user.id, name: user.name, handle: user.handle })
+      .select({
+        id: user.id,
+        name: user.name,
+        handle: user.handle,
+        visibility: user.profileVisibility,
+      })
       .from(user)
-      .where(and(eq(user.handle, handle.toLowerCase()), eq(user.profileVisibility, 'friends')))
+      .where(eq(user.handle, handle.toLowerCase()))
       .limit(1)
     if (!profile) throw new Error('This profile is unavailable.')
+    // Being approved is not the same as being shown: someone may keep their
+    // profile to themselves. A public profile is readable here too -- making it
+    // more open must not make it invisible to your own friends.
     if (!(await areFriends(viewerId, profile.id)))
       throw new Error('This profile is only available to friends.')
+    if (profile.visibility === 'private')
+      throw new Error('This friend keeps their profile to themselves.')
     const [seen, outingsCount, favorites, sharedLists] = await Promise.all([
       db
         .select({ count: sql<number>`count(*)::int` })

@@ -1820,7 +1820,7 @@ label.favorite-toggle:hover input:not(:checked) {
   display: flex;
   gap: 0.5rem;
 }
-.nav-admin {
+.nav-with-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -2089,4 +2089,54 @@ a.recent-entry:hover h3,
 }
 .social-button:hover {
   background: var(--surface-muted);
+}
+.friend-private {
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+}
+
+/* Bulk catalog import. */
+.import-field {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 2rem;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+.import-field textarea {
+  padding: 1rem;
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.import-report {
+  margin-top: 2rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.import-report h2 {
+  margin: 0 0 0.85rem;
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1.35rem;
+}
+.import-report ul {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+.import-new {
+  color: var(--success);
+  font-size: 0.8rem;
+}
+.import-skip {
+  color: var(--ink-muted);
+  font-size: 0.8rem;
 }

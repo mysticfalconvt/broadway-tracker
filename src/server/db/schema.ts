@@ -25,7 +25,7 @@ export const user = pgTable('user', {
     enum: ['private', 'friends', 'public'],
   })
     .notNull()
-    .default('private'),
+    .default('friends'),
   role: text('role', { enum: ['member', 'admin'] })
     .notNull()
     .default('member'),
@@ -166,7 +166,7 @@ export const libraryEntries = pgTable(
     review: text('review'),
     visibility: text('visibility', { enum: ['private', 'friends', 'public'] })
       .notNull()
-      .default('private'),
+      .default('friends'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },
@@ -208,7 +208,7 @@ export const outings = pgTable(
     sharedNotes: text('shared_notes'),
     visibility: text('visibility', { enum: ['private', 'friends', 'public'] })
       .notNull()
-      .default('private'),
+      .default('friends'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },
@@ -241,7 +241,7 @@ export const outingAttendees = pgTable(
     review: text('review'),
     reviewVisibility: text('review_visibility', { enum: ['private', 'friends', 'public'] })
       .notNull()
-      .default('private'),
+      .default('friends'),
     privateNotes: text('private_notes'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -263,7 +263,7 @@ export const lists = pgTable(
     description: text('description'),
     visibility: text('visibility', { enum: ['private', 'friends', 'public'] })
       .notNull()
-      .default('private'),
+      .default('friends'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },
@@ -310,7 +310,7 @@ export const showImages = pgTable(
     objectKey: text('object_key').notNull().unique(),
     visibility: text('visibility', { enum: ['private', 'friends', 'public'] })
       .notNull()
-      .default('private'),
+      .default('friends'),
     reviewStatus: text('review_status', { enum: ['pending', 'approved', 'rejected'] })
       .notNull()
       .default('pending'),

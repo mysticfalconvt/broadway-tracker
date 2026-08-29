@@ -25,7 +25,7 @@ const outingInput = z
     city: z.string().trim().max(120).optional(),
     country: z.string().trim().max(120).optional(),
     sharedNotes: z.string().trim().max(5000).optional(),
-    visibility: z.enum(['private', 'friends']).default('private'),
+    visibility: z.enum(['private', 'friends']).default('friends'),
     datePrecision,
     occurredOn: z.string().date().optional(),
     occurredMonth: z.number().int().min(1).max(12).optional(),
@@ -35,7 +35,7 @@ const outingInput = z
     rating: z.number().int().min(1).max(10).optional(),
     favorite: z.boolean().default(false),
     review: z.string().trim().max(5000).optional(),
-    reviewVisibility: z.enum(['private', 'friends']).default('private'),
+    reviewVisibility: z.enum(['private', 'friends']).default('friends'),
     privateNotes: z.string().trim().max(5000).optional(),
   })
   .superRefine((data, context) => {

@@ -1,6 +1,6 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
-import { and, asc, eq, ne, or } from 'drizzle-orm'
+import { and, asc, eq, ne, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { auth } from './auth'
@@ -43,6 +43,26 @@ export const areFriends = createServerOnlyFn(async (userId: string, otherUserId:
   return Boolean(friendship)
 })
 
+/**
+ * How many friend requests are waiting on this person to answer.
+ *
+ * Only incoming ones count: a request you sent is not something you can act on,
+ * so putting it on a badge would be asking for attention you cannot resolve.
+ */
+export const pendingRequestCountFor = createServerOnlyFn(async (userId: string) => {
+  const [row] = await getDb()
+    .select({ count: sql<number>`count(*)::int` })
+    .from(friendships)
+    .where(
+      and(
+        eq(friendships.status, 'pending'),
+        ne(friendships.requestedByUserId, userId),
+        or(eq(friendships.userOneId, userId), eq(friendships.userTwoId, userId)),
+      ),
+    )
+  return row?.count ?? 0
+})
+
 export const findPersonByHandle = createServerOnlyFn(async (viewerId: string, handle: string) =>
   getDb()
     .select({ id: user.id, name: user.name, handle: user.handle })
@@ -60,7 +80,12 @@ export const friendsForUser = createServerOnlyFn(async (userId: string) => {
   const otherIds = rows.map((row) => (row.userOneId === userId ? row.userTwoId : row.userOneId))
   const people = otherIds.length
     ? await getDb()
-        .select({ id: user.id, name: user.name, handle: user.handle })
+        .select({
+          id: user.id,
+          name: user.name,
+          handle: user.handle,
+          profileVisibility: user.profileVisibility,
+        })
         .from(user)
         .where(or(...otherIds.map((id) => eq(user.id, id))))
     : []

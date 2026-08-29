@@ -7,7 +7,7 @@
 ## Guiding decisions
 
 - **Audience:** Family and friends initially; designed to grow without becoming an engagement-driven social network.
-- **Privacy:** Profiles and all user-created content default to **private**. Friends-only sharing requires an approved friendship. Public sharing is **anonymous** — a public page carries no name and no handle, and is addressed by an opaque account id rather than the email-derived handle.
+- **Privacy:** Profiles and user-created content default to **friends** — visible to an approved friend and nobody else. Private remains one click away on every item, and nothing is ever public without an explicit choice. Public sharing is **anonymous**: a public page carries no name and no handle, and is addressed by an opaque account id.
 - **Catalog:** Start with a manually curated catalog. Signed-in users can submit missing shows; an administrator approves, rejects, or merges submissions.
 - **Data model:** A *show* is the work itself; a *production* is a particular Broadway, touring, regional, or local staging of that work.
 - **Images:** Use RustFS through its S3-compatible API. Do not store image uploads on a Coolify application volume.
@@ -287,7 +287,20 @@ have no equivalent path at all, and there is no single place to see what people 
 - [x] Keep resolved reports readable rather than hiding them, and allow reopening.
 - [ ] Let an administrator reply to a reporter from the queue.
 
-## 14. Places: venues and cities
+## 14. Bulk catalog entry
+
+**Goal:** Adding a batch of shows or a list of theatres should take a paste, not an evening.
+
+- [x] Accept pasted JSON at `/admin/import`, administrators only.
+- [x] Check a paste before writing anything, reporting what is new and what already exists.
+- [x] Never overwrite: an existing record is skipped, so the same paste is safe to run twice.
+- [x] Resolve venues through the same deduplication as the rest of the app.
+- [x] Accept a bare array, a single object, and a venue list, not only the documented wrapper.
+- [x] Refuse a document containing nothing to import rather than succeeding silently.
+- [x] Document the format so it can be handed to a language model verbatim.
+- [ ] Let an administrator edit a production after import without going through the show screen.
+
+## 15. Places: venues and cities
 
 **Goal:** Stop the same theatre and the same city from being recorded four different ways.
 

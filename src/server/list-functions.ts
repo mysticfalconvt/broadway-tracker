@@ -27,7 +27,7 @@ async function optionalViewerId() {
 const listInput = z.object({
   title: z.string().trim().min(1).max(120),
   description: z.string().trim().max(1000).optional(),
-  visibility: z.enum(['private', 'friends', 'public']).default('private'),
+  visibility: z.enum(['private', 'friends', 'public']).default('friends'),
 })
 
 export const listsForOwner = createServerOnlyFn(async (ownerId: string) => {

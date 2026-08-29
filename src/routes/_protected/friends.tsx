@@ -125,13 +125,19 @@ function Friends() {
       >
         {(friendship) => (
           <>
-            <Link
-              className="button button-primary"
-              to="/people/$handle"
-              params={{ handle: friendship.person.handle }}
-            >
-              View theatre
-            </Link>
+            {/* Offering a link to a profile its owner keeps private produces an
+                error page; say so instead. */}
+            {friendship.person.profileVisibility === 'private' ? (
+              <span className="friend-private">Keeps their theatre private</span>
+            ) : (
+              <Link
+                className="button button-primary"
+                to="/people/$handle"
+                params={{ handle: friendship.person.handle }}
+              >
+                View theatre
+              </Link>
+            )}
             <button
               className="button button-secondary"
               type="button"
