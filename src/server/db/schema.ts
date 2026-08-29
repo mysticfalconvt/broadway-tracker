@@ -262,6 +262,46 @@ export const listItems = pgTable(
 
 // One canonical row per pair. The service layer orders user IDs before insert
 // and preserves requestedByUserId so inbound/outbound requests remain clear.
+/**
+ * Photographs people contribute for a show. The catalog's own cover art lives on
+ * `shows.coverImageKey` and is administered; these belong to the person who
+ * uploaded them.
+ *
+ * `visibility` is what the uploader asked for and `reviewStatus` is what an
+ * administrator has decided. A photo offered publicly reaches approved friends
+ * straight away but waits for review before it reaches everyone, because a
+ * public image on a shared record is seen by signed-out visitors too.
+ */
+export const showImages = pgTable(
+  'show_images',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    showId: uuid('show_id')
+      .notNull()
+      .references(() => shows.id, { onDelete: 'cascade' }),
+    uploadedByUserId: text('uploaded_by_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    objectKey: text('object_key').notNull().unique(),
+    visibility: text('visibility', { enum: ['private', 'friends', 'public'] })
+      .notNull()
+      .default('private'),
+    reviewStatus: text('review_status', { enum: ['pending', 'approved', 'rejected'] })
+      .notNull()
+      .default('pending'),
+    reviewedByUserId: text('reviewed_by_user_id').references(() => user.id, {
+      onDelete: 'set null',
+    }),
+    reviewedAt: timestamp('reviewed_at'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => [
+    index('show_images_show_idx').on(table.showId),
+    index('show_images_uploader_idx').on(table.uploadedByUserId),
+  ],
+)
+
 export const friendships = pgTable(
   'friendships',
   {

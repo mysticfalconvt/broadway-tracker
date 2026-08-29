@@ -47,7 +47,6 @@ function FriendProfile() {
                   title={show.title}
                   type={show.type}
                   coverImageKey={show.coverImageKey}
-                  tone="midnight"
                 />
                 <div>
                   <h2>{show.title}</h2>

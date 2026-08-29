@@ -58,12 +58,7 @@ function CoverField({
       </div>
       <div className="cover-field-row">
         <div className="cover-field-preview">
-          <ShowArtwork
-            title={show.title}
-            type="Cover"
-            coverImageKey={coverImageKey}
-            tone="oxblood"
-          />
+          <ShowArtwork title={show.title} type="Cover" coverImageKey={coverImageKey} />
         </div>
         <div>
           <label className="avatar-field-input">

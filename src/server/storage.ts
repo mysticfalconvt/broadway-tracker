@@ -45,7 +45,7 @@ function getStorage() {
 }
 
 /** The object-key namespaces the application writes to. */
-export const KEY_PREFIXES = ['shows', 'avatars'] as const
+export const KEY_PREFIXES = ['shows', 'avatars', 'show-photos'] as const
 export type KeyPrefix = (typeof KEY_PREFIXES)[number]
 
 const KEY_PATTERN = new RegExp(

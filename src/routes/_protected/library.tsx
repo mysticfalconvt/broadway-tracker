@@ -85,7 +85,6 @@ function Library() {
                 title={entry.title}
                 type={entry.type}
                 coverImageKey={entry.coverImageKey}
-                tone="midnight"
               />
               <div>
                 <h2>{entry.title}</h2>

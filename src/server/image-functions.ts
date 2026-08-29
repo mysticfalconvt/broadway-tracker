@@ -1,8 +1,8 @@
 import { createServerOnlyFn } from '@tanstack/react-start'
-import { and, eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 
 import { getDb } from './db/client'
-import { shows, user } from './db/schema'
+import { showImages, shows, user } from './db/schema'
 import { areFriends } from './friend-functions'
 import { inspectImage } from './image-validation'
 import { type Actor, assertAdmin } from './catalog-functions'
@@ -27,6 +27,29 @@ export const canViewImage = createServerOnlyFn(
         .where(and(eq(shows.coverImageKey, key), eq(shows.catalogStatus, 'published')))
         .limit(1)
       return Boolean(row)
+    }
+
+    if (prefix === 'show-photos') {
+      const [photo] = await db
+        .select({
+          uploadedByUserId: showImages.uploadedByUserId,
+          visibility: showImages.visibility,
+          reviewStatus: showImages.reviewStatus,
+        })
+        .from(showImages)
+        .where(eq(showImages.objectKey, key))
+        .limit(1)
+      if (!photo) return false
+      // Approved public photos are the only ones a signed-out visitor sees.
+      const isPubliclyApproved = photo.visibility === 'public' && photo.reviewStatus === 'approved'
+      if (isPubliclyApproved) return true
+      if (!viewerId) return false
+      if (photo.uploadedByUserId === viewerId) return true
+      // Offered publicly but not yet reviewed, or offered to friends: approved
+      // friends may see it. A rejected photo goes back to the uploader alone.
+      if (photo.reviewStatus === 'rejected') return false
+      if (photo.visibility === 'private') return false
+      return areFriends(viewerId, photo.uploadedByUserId)
     }
 
     if (prefix === 'avatars') {
@@ -94,4 +117,162 @@ export const removeAvatarForUser = createServerOnlyFn(async (userId: string) => 
   const [current] = await db.select({ image: user.image }).from(user).where(eq(user.id, userId))
   await db.update(user).set({ image: null, updatedAt: new Date() }).where(eq(user.id, userId))
   if (current?.image) await deleteImage(current.image)
+})
+
+/** Attaches a contributed photograph to a show. */
+export const addShowPhoto = createServerOnlyFn(
+  async (
+    userId: string,
+    showId: string,
+    bytes: Uint8Array,
+    visibility: 'private' | 'friends' | 'public',
+  ) => {
+    const info = inspectImage(bytes)
+    const db = getDb()
+    const [show] = await db
+      .select({ id: shows.id })
+      .from(shows)
+      .where(and(eq(shows.id, showId), eq(shows.catalogStatus, 'published')))
+      .limit(1)
+    if (!show) throw new Error('Choose a published show from the catalog.')
+
+    const key = buildObjectKey('show-photos', info.format)
+    await putImage(key, bytes, info.format)
+    const [row] = await db
+      .insert(showImages)
+      .values({ showId, uploadedByUserId: userId, objectKey: key, visibility })
+      .returning({ id: showImages.id, objectKey: showImages.objectKey })
+    if (!row) throw new Error('Unable to save that photo.')
+    return row
+  },
+)
+
+/** The photographs a viewer may see for a show, newest first. */
+export const showPhotosForViewer = createServerOnlyFn(
+  async (viewerId: string | null, showId: string) => {
+    const db = getDb()
+    const rows = await db
+      .select({
+        id: showImages.id,
+        objectKey: showImages.objectKey,
+        visibility: showImages.visibility,
+        reviewStatus: showImages.reviewStatus,
+        uploadedByUserId: showImages.uploadedByUserId,
+        uploaderName: user.name,
+        createdAt: showImages.createdAt,
+      })
+      .from(showImages)
+      .innerJoin(user, eq(showImages.uploadedByUserId, user.id))
+      .where(eq(showImages.showId, showId))
+      .orderBy(desc(showImages.createdAt))
+
+    const visible = []
+    for (const row of rows) {
+      if (await canViewImage(viewerId, row.objectKey)) {
+        const isOwn = row.uploadedByUserId === viewerId
+        visible.push({
+          id: row.id,
+          objectKey: row.objectKey,
+          isOwn,
+          visibility: row.visibility,
+          reviewStatus: row.reviewStatus,
+          // A public page is anonymous, so a contributor is named only to
+          // people who already know them.
+          uploaderName: isOwn || viewerId ? row.uploaderName : null,
+        })
+      }
+    }
+    return visible
+  },
+)
+
+/**
+ * The cover to show a given viewer for a show, chosen deterministically: their
+ * own photograph first, then the administered catalog cover, then the most
+ * recent publicly approved contribution. Never random -- a show that looked
+ * different on every visit would be unrecognisable, and a cover picked at
+ * render time would not survive hydration.
+ */
+export const resolveCoverForViewer = createServerOnlyFn(
+  async (viewerId: string | null, showId: string) => {
+    const db = getDb()
+    if (viewerId) {
+      const [own] = await db
+        .select({ objectKey: showImages.objectKey })
+        .from(showImages)
+        .where(and(eq(showImages.showId, showId), eq(showImages.uploadedByUserId, viewerId)))
+        .orderBy(desc(showImages.createdAt))
+        .limit(1)
+      if (own) return own.objectKey
+    }
+    const [show] = await db
+      .select({ coverImageKey: shows.coverImageKey })
+      .from(shows)
+      .where(eq(shows.id, showId))
+      .limit(1)
+    if (show?.coverImageKey) return show.coverImageKey
+
+    const [approved] = await db
+      .select({ objectKey: showImages.objectKey })
+      .from(showImages)
+      .where(
+        and(
+          eq(showImages.showId, showId),
+          eq(showImages.visibility, 'public'),
+          eq(showImages.reviewStatus, 'approved'),
+        ),
+      )
+      .orderBy(desc(showImages.createdAt))
+      .limit(1)
+    return approved?.objectKey ?? null
+  },
+)
+
+/** Photographs offered publicly and still awaiting a decision. */
+export const pendingShowPhotosForAdmin = createServerOnlyFn(async (actor: Actor) => {
+  assertAdmin(actor)
+  return getDb()
+    .select({
+      id: showImages.id,
+      objectKey: showImages.objectKey,
+      showTitle: shows.title,
+      uploaderName: user.name,
+      createdAt: showImages.createdAt,
+    })
+    .from(showImages)
+    .innerJoin(shows, eq(showImages.showId, shows.id))
+    .innerJoin(user, eq(showImages.uploadedByUserId, user.id))
+    .where(and(eq(showImages.visibility, 'public'), eq(showImages.reviewStatus, 'pending')))
+    .orderBy(desc(showImages.createdAt))
+})
+
+export const reviewShowPhoto = createServerOnlyFn(
+  async (actor: Actor, id: string, approve: boolean) => {
+    assertAdmin(actor)
+    await getDb()
+      .update(showImages)
+      .set({
+        reviewStatus: approve ? 'approved' : 'rejected',
+        reviewedByUserId: actor.id,
+        reviewedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(showImages.id, id))
+  },
+)
+
+/** Removes a contributed photo. The uploader or an administrator may do this. */
+export const removeShowPhoto = createServerOnlyFn(async (actor: Actor, id: string) => {
+  const db = getDb()
+  const [photo] = await db
+    .select({ objectKey: showImages.objectKey, uploadedByUserId: showImages.uploadedByUserId })
+    .from(showImages)
+    .where(eq(showImages.id, id))
+    .limit(1)
+  if (!photo) return
+  if (photo.uploadedByUserId !== actor.id && actor.role !== 'admin') {
+    throw new Error('Forbidden')
+  }
+  await db.delete(showImages).where(eq(showImages.id, id))
+  await deleteImage(photo.objectKey)
 })

@@ -1,8 +1,11 @@
+import { toneForTitle } from '../lib/artwork'
+
 type ShowArtworkProps = {
   title: string
   type: string
   /** Storage key for the cover, if the catalog has one. */
   coverImageKey?: string | null
+  /** Overrides the generated tone where a section needs a particular mood. */
   tone?: 'midnight' | 'oxblood' | 'paper'
 }
 
@@ -11,7 +14,7 @@ type ShowArtworkProps = {
  * a cover is missing. Covers live in private storage with no public URL, so the
  * key is resolved to the authorizing proxy route rather than a bucket address.
  */
-export function ShowArtwork({ title, type, coverImageKey, tone = 'midnight' }: ShowArtworkProps) {
+export function ShowArtwork({ title, type, coverImageKey, tone }: ShowArtworkProps) {
   if (coverImageKey) {
     return (
       <img
@@ -24,11 +27,15 @@ export function ShowArtwork({ title, type, coverImageKey, tone = 'midnight' }: S
     )
   }
 
+  // Without a photograph the show gets generated artwork keyed off its own
+  // title, so it is recognisable and consistent rather than a blank block.
+  const generated = `show-artwork-tone-${toneForTitle(title)}`
   return (
     <div
-      className={`show-artwork show-artwork-fallback show-artwork-${tone}`}
+      className={`show-artwork show-artwork-fallback ${tone ? `show-artwork-${tone}` : generated}`}
       aria-label={`${title} artwork unavailable`}
     >
+      <span className="show-artwork-mark" aria-hidden="true" />
       <span className="show-artwork-type">{type}</span>
       <strong>{title}</strong>
     </div>

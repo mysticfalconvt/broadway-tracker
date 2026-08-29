@@ -94,7 +94,6 @@ function SignedInHome({ home }: { home: NonNullable<Awaited<ReturnType<typeof ge
                     title={outing.showTitle}
                     type={outing.showType}
                     coverImageKey={outing.coverImageKey}
-                    tone="midnight"
                   />
                   <div>
                     <p className="memory-date">{formatFuzzyDateShort(outing)}</p>
@@ -136,7 +135,6 @@ function SignedInHome({ home }: { home: NonNullable<Awaited<ReturnType<typeof ge
                   title={show.title}
                   type={show.type}
                   coverImageKey={show.coverImageKey}
-                  tone="midnight"
                 />
                 <div className="library-show-content">
                   <h3>{show.title}</h3>

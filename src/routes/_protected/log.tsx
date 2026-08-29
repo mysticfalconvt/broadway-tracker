@@ -173,8 +173,9 @@ function LogOuting() {
               ))}
             </select>
           </label>
-          <label>
-            <input name="favorite" type="checkbox" /> Favorite
+          <label className="favorite-toggle">
+            <input name="favorite" type="checkbox" />
+            <span>Favorite</span>
           </label>
           <label>
             Shareable review

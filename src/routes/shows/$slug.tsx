@@ -32,12 +32,7 @@ function ShowDetail() {
     <main>
       <section className="show-hero">
         <div className="page-wrap show-hero-content">
-          <ShowArtwork
-            title={show.title}
-            type={show.type}
-            coverImageKey={show.coverImageKey}
-            tone="oxblood"
-          />
+          <ShowArtwork title={show.title} type={show.type} coverImageKey={show.coverImageKey} />
           <div>
             <p className="eyebrow">{show.type}</p>
             <h1>{show.title}</h1>
@@ -154,8 +149,9 @@ function LibraryButtons({ showId }: { showId: string }) {
               ))}
             </select>
           </label>
-          <label>
-            <input name="favorite" type="checkbox" /> Favorite
+          <label className="favorite-toggle">
+            <input name="favorite" type="checkbox" />
+            <span>Favorite</span>
           </label>
           <label>
             Visible to

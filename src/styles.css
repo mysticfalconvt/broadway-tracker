@@ -1559,3 +1559,105 @@ h3 {
   min-height: 12rem;
   object-fit: cover;
 }
+
+/* Favorite is the product's one emotional action, so it reads as a deliberate
+   switch rather than a checkbox wedged into a stacked form label. The knob's
+   position carries the state alongside the oxblood fill, so it never depends on
+   colour alone. */
+label.favorite-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1;
+}
+label.favorite-toggle input {
+  position: relative;
+  flex: 0 0 auto;
+  appearance: none;
+  margin: 0;
+  width: 2.75rem;
+  height: 1.55rem;
+  border: 1px solid var(--field-border);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  cursor: pointer;
+  /* Brief section 27: a small 180-250ms emphasis, disabled under
+     prefers-reduced-motion by the global rule. */
+  transition:
+    background 200ms ease,
+    border-color 200ms ease;
+}
+label.favorite-toggle input::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0.16rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(32 30 29 / 0.28);
+  transition: left 200ms ease;
+}
+label.favorite-toggle input:checked {
+  border-color: var(--oxblood);
+  background: var(--oxblood);
+}
+label.favorite-toggle input:checked::after {
+  left: calc(100% - 1.31rem);
+}
+label.favorite-toggle:hover input:not(:checked) {
+  border-color: var(--ink-muted);
+}
+@media (pointer: coarse) {
+  /* The switch keeps its size; the whole label becomes the tap target. */
+  label.favorite-toggle {
+    min-height: 44px;
+  }
+}
+
+/* Generated artwork for a show with no photograph. Six curated tones drawn from
+   the Collected Nights palette, chosen from the show's own title so the same
+   show always looks the same. The mark suggests overlapping saved pages, per the
+   brand direction -- deliberately abstract, never a mask or a marquee bulb. */
+.show-artwork-fallback {
+  position: relative;
+  isolation: isolate;
+}
+.show-artwork-mark {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.5;
+  background-image:
+    linear-gradient(115deg, rgb(255 255 255 / 0.16) 0 42%, transparent 42%),
+    linear-gradient(115deg, rgb(255 255 255 / 0.12) 0 30%, transparent 30%),
+    radial-gradient(120% 90% at 82% 8%, rgb(255 255 255 / 0.14), transparent 60%);
+  background-position:
+    -14% 0,
+    6% 0,
+    0 0;
+  background-repeat: no-repeat;
+}
+.show-artwork-tone-0 {
+  background: linear-gradient(150deg, #344452, var(--midnight));
+}
+.show-artwork-tone-1 {
+  background: linear-gradient(150deg, #9b4a51, var(--oxblood-deep));
+}
+.show-artwork-tone-2 {
+  background: linear-gradient(150deg, #3f5a52, #1d3029);
+}
+.show-artwork-tone-3 {
+  background: linear-gradient(150deg, #7d6440, #40311c);
+}
+.show-artwork-tone-4 {
+  background: linear-gradient(150deg, #4a4260, #251f34);
+}
+.show-artwork-tone-5 {
+  background: linear-gradient(150deg, #8a5638, #3d2317);
+}

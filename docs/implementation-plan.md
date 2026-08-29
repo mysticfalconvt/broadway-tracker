@@ -214,6 +214,87 @@ object is only ever served after an authorization check, which suits a private-b
 - [ ] Create initial admin account(s) and seed the first curated catalog records.
 - [ ] Invite the first family/friend users.
 
+## 11. Show imagery and contributed photos
+
+**Goal:** Let a show look like something without depending on licensed marketing art, and let
+people contribute their own pictures without turning a shared catalog record into an unmoderated
+public wall.
+
+Today a show without a cover renders a tonal block with its title. That is a deliberate floor, not a
+placeholder, and it must keep working — but a show people have actually seen should be able to carry
+their photographs.
+
+**Model:** a `show_images` table — show, uploader, object key, visibility, created-at — rather than
+more columns on `shows`. A show then has one admin cover plus any number of contributed images.
+
+- [x] Add `show_images` with per-image visibility and review status, defaulting to private.
+- [x] Let a signed-in user attach their own photo to a show. *(Server side; no UI yet.)*
+- [ ] Show a user their own photo as that show's cover wherever it appears for them.
+- [ ] Build a gallery on the show detail page for public contributed images.
+- [x] Decide the cover-selection rule and make it **deterministic**: the viewer's own photo, then the administered cover, then the most recent approved public contribution.
+- [x] Add a moderation path before a contributed image becomes public. *(Offered publicly reaches approved friends at once; everyone only after review.)*
+- [x] Reuse the existing proxy: contributed images are authorized per image, like avatars.
+- [x] Cascade deletion so removing a show or an account does not orphan objects.
+- [x] Generate default artwork from the show's title instead of a flat colour block.
+- [ ] Build the upload UI on the show page and the contributed-photo gallery.
+- [ ] Apply the viewer's own photo as the cover on list and card screens, not only show detail.
+
+**Open question — variety without randomness.** Picking a cover at random per render would break
+hydration (React re-renders the tree when server and client disagree, which is the bug class already
+hit with the clock) and would stop a show from being recognisable — the same show would look
+different on every visit, which works against a product built on memory. Deterministic alternatives
+that still give variety across the catalog: the viewer's own photo first, then the admin cover, then
+a stable pick among public contributions (most recent, or admin-featured). Variety then comes from
+*different shows and different viewers* looking different, not from the same card changing.
+
+**Open question — moderation.** A public contributed image appears on a shared record for everyone,
+including signed-out visitors. That is the first surface in this product where one user can put
+content in front of all others. Options: public requires admin approval, public is friends-only
+until reviewed, or contributions stay private-only for now. The catalog already has an admin review
+queue that this could reuse.
+
+**Open question — photographs contain people.** Outing photos were kept out of public sharing for
+exactly this reason. Contributed show photos may include the people someone attended with, so
+private should stay the default and publishing should be an explicit, per-image act.
+
+## 12. Catalog curation and administration
+
+**Goal:** The catalog is filling up with records people entered themselves. Administrators need to
+see what arrived, keep it tidy, and fix it — without that being a second job.
+
+Show submissions already land in a `pending` queue with publish, reject, edit, and merge. What is
+missing is everything around it: nothing tells an administrator that something is waiting, venues
+have no equivalent path at all, and there is no single place to see what people have been adding.
+
+- [ ] Build one administration home that surfaces everything awaiting attention, with counts.
+- [ ] Surface a pending count in the navigation so a submission is not missed.
+- [ ] Extend the queue to cover venues and contributed photographs, not only shows.
+- [ ] Show provenance on a catalog record: who submitted it, when, and who reviewed it.
+- [ ] Let an administrator edit a published show without going through the review flow.
+- [ ] Add a duplicate-suspicion view that groups near-identical titles and venues before they spread.
+- [ ] Decide whether contributors are told when their submission is published or rejected.
+- [ ] Keep the reviewing screens dense and quick; the design brief allows admin to be more
+      functional than the rest of the product.
+
+## 13. Places: venues and cities
+
+**Goal:** Stop the same theatre and the same city from being recorded four different ways.
+
+Place text is stored twice — on `productions` and on `outings` — as free text with no shared
+vocabulary, so drift compounds across both. There is already a `NYC` in the data.
+
+- [ ] Add first-class `venues` (name, city, country) rather than more free text.
+- [ ] Let a production and an outing reference a venue, keeping free text as a fallback.
+- [ ] Build an autocomplete that offers existing venues before allowing a new one.
+- [ ] Normalise on write (trim, collapse whitespace, case-fold for matching) so near-duplicates collide.
+- [ ] Give administrators a venue merge tool, mirroring the existing duplicate-show merge.
+- [ ] Backfill existing free-text venues and cities onto the new entities.
+- [ ] Keep entry fast: the backfill flow must not become slower for the sake of tidy data.
+
+This also unlocks the *Favorite venues* and *Cities* views listed under Stats in the design brief,
+which free text cannot support, and it gives the assisted-recall idea below something to resolve
+candidates against.
+
 ---
 
 ## Deferred ideas
