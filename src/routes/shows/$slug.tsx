@@ -5,16 +5,20 @@ import { authClient } from '../../lib/auth-client'
 import { ShowArtwork } from '../../components/ShowArtwork'
 import { getPublishedShow } from '../../server/catalog-functions'
 import { saveLibraryEntry } from '../../server/library-functions'
+import { deleteShowPhoto, getShowPhotos } from '../../server/image-functions'
 import { getMyOutingsForShow } from '../../server/outing-functions'
 import { formatFuzzyDate } from '../../lib/fuzzy-date'
 
 export const Route = createFileRoute('/shows/$slug')({
-  loader: ({ params }) => getPublishedShow({ data: { slug: params.slug } }),
+  loader: async ({ params }) => {
+    const show = await getPublishedShow({ data: { slug: params.slug } })
+    return { show, photos: show ? await getShowPhotos({ data: { showId: show.id } }) : [] }
+  },
   component: ShowDetail,
 })
 
 function ShowDetail() {
-  const show = Route.useLoaderData()
+  const { show, photos } = Route.useLoaderData()
 
   if (!show) {
     return (
@@ -52,6 +56,7 @@ function ShowDetail() {
           <YourHistory showId={show.id} />
         </aside>
       </section>
+      <PhotoGallery showId={show.id} photos={photos} />
     </main>
   )
 }
@@ -170,5 +175,122 @@ function LibraryButtons({ showId }: { showId: string }) {
         </form>
       </details>
     </div>
+  )
+}
+
+/**
+ * Photographs people have contributed for this show. A photo offered publicly
+ * reaches approved friends immediately and everyone only after review, so the
+ * gallery labels anything still waiting rather than implying it is live.
+ */
+function PhotoGallery({
+  showId,
+  photos,
+}: {
+  showId: string
+  photos: Awaited<ReturnType<typeof getShowPhotos>>
+}) {
+  const { data: session } = authClient.useSession()
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+  const [visibility, setVisibility] = useState('private')
+
+  async function upload(file: File) {
+    setProblem(null)
+    setBusy(true)
+    try {
+      const body = new FormData()
+      body.set('kind', 'show-photo')
+      body.set('showId', showId)
+      body.set('visibility', visibility)
+      body.set('file', file)
+      const response = await fetch('/api/uploads', { method: 'POST', body })
+      const payload = (await response.json()) as { key?: string; error?: string }
+      if (!response.ok || !payload.key) throw new Error(payload.error ?? 'Upload failed.')
+      window.location.reload()
+    } catch (caughtError) {
+      setProblem(caughtError instanceof Error ? caughtError.message : 'Upload failed.')
+      setBusy(false)
+    }
+  }
+
+  async function remove(id: string) {
+    await deleteShowPhoto({ data: { id } })
+    window.location.reload()
+  }
+
+  return (
+    <section className="photo-gallery page-wrap">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Photographs</p>
+          <h2>From people who were there.</h2>
+        </div>
+      </div>
+
+      {photos.length ? (
+        <ul className="photo-grid">
+          {photos.map((photo) => (
+            <li key={photo.id}>
+              <img src={`/api/images/${photo.objectKey}`} alt="" loading="lazy" decoding="async" />
+              <div className="photo-meta">
+                <span>{photo.isOwn ? 'Yours' : (photo.uploaderName ?? 'A theatregoer')}</span>
+                {photo.isOwn &&
+                photo.visibility === 'public' &&
+                photo.reviewStatus === 'pending' ? (
+                  <span className="photo-pending">Visible to friends · awaiting review</span>
+                ) : null}
+                {photo.isOwn && photo.reviewStatus === 'rejected' ? (
+                  <span className="photo-pending">Not approved · only you can see this</span>
+                ) : null}
+                {photo.isOwn ? (
+                  <button
+                    className="text-action"
+                    type="button"
+                    onClick={() => void remove(photo.id)}
+                  >
+                    Remove
+                  </button>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="profile-empty">
+          No photographs yet. If you have been, yours would be the first.
+        </p>
+      )}
+
+      {session ? (
+        <div className="photo-upload">
+          <label className="avatar-field-input">
+            <span>{busy ? 'Uploading…' : 'Add a photograph'}</span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              disabled={busy}
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (file) void upload(file)
+              }}
+            />
+          </label>
+          <label className="avatar-field-input">
+            <span>Who can see it</span>
+            <select value={visibility} onChange={(event) => setVisibility(event.target.value)}>
+              <option value="private">Only me</option>
+              <option value="friends">Friends</option>
+              <option value="public">Everyone — after a quick review</option>
+            </select>
+          </label>
+          {problem ? (
+            <p className="form-error" role="alert">
+              {problem}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
   )
 }

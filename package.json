@@ -23,7 +23,8 @@
     "db:seed-catalog": "tsx src/server/db/seed-catalog.ts",
     "db:grant-admin": "tsx src/server/db/grant-admin.ts",
     "db:up": "docker compose -f compose.dev.yml up -d",
-    "db:down": "docker compose -f compose.dev.yml down"
+    "db:down": "docker compose -f compose.dev.yml down",
+    "db:backfill-venues": "tsx src/server/db/backfill-venues.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1121.0",

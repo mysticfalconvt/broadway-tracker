@@ -230,13 +230,13 @@ more columns on `shows`. A show then has one admin cover plus any number of cont
 - [x] Add `show_images` with per-image visibility and review status, defaulting to private.
 - [x] Let a signed-in user attach their own photo to a show. *(Server side; no UI yet.)*
 - [ ] Show a user their own photo as that show's cover wherever it appears for them.
-- [ ] Build a gallery on the show detail page for public contributed images.
+- [x] Build a gallery on the show detail page for contributed images.
 - [x] Decide the cover-selection rule and make it **deterministic**: the viewer's own photo, then the administered cover, then the most recent approved public contribution.
 - [x] Add a moderation path before a contributed image becomes public. *(Offered publicly reaches approved friends at once; everyone only after review.)*
 - [x] Reuse the existing proxy: contributed images are authorized per image, like avatars.
 - [x] Cascade deletion so removing a show or an account does not orphan objects.
 - [x] Generate default artwork from the show's title instead of a flat colour block.
-- [ ] Build the upload UI on the show page and the contributed-photo gallery.
+- [x] Build the upload UI on the show page and the contributed-photo gallery.
 - [ ] Apply the viewer's own photo as the cover on list and card screens, not only show detail.
 
 **Open question — variety without randomness.** Picking a cover at random per render would break
@@ -283,13 +283,13 @@ have no equivalent path at all, and there is no single place to see what people 
 Place text is stored twice — on `productions` and on `outings` — as free text with no shared
 vocabulary, so drift compounds across both. There is already a `NYC` in the data.
 
-- [ ] Add first-class `venues` (name, city, country) rather than more free text.
-- [ ] Let a production and an outing reference a venue, keeping free text as a fallback.
-- [ ] Build an autocomplete that offers existing venues before allowing a new one.
-- [ ] Normalise on write (trim, collapse whitespace, case-fold for matching) so near-duplicates collide.
-- [ ] Give administrators a venue merge tool, mirroring the existing duplicate-show merge.
-- [ ] Backfill existing free-text venues and cities onto the new entities.
-- [ ] Keep entry fast: the backfill flow must not become slower for the sake of tidy data.
+- [x] Add first-class `venues` (name, city, country) rather than more free text.
+- [x] Let a production and an outing reference a venue, keeping free text as a fallback.
+- [x] Build an autocomplete that offers existing venues before allowing a new one. *(Logging and backfill both use it.)*
+- [x] Normalise on write so near-duplicates collide, including city aliases such as NYC and New York City.
+- [ ] Give administrators a venue merge tool, mirroring the existing duplicate-show merge. *(Server side and tested; no admin screen yet.)*
+- [x] Backfill existing free-text venues and cities onto the new entities. *(`pnpm db:backfill-venues`, idempotent.)*
+- [x] Keep entry fast: suggestions are debounced and free text is still accepted.
 
 This also unlocks the *Favorite venues* and *Cities* views listed under Stats in the design brief,
 which free text cannot support, and it gives the assisted-recall idea below something to resolve

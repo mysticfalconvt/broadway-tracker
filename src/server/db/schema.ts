@@ -103,10 +103,34 @@ export const shows = pgTable(
   (table) => [index('shows_catalog_status_idx').on(table.catalogStatus)],
 )
 
+/**
+ * A theatre, as a first-class record rather than free text on every log.
+ *
+ * `matchKey` is the normalised name-within-city that deduplication runs on, and
+ * it is unique: two people entering "Walter Kerr Theatre" and "the walter kerr"
+ * land on the same row instead of creating a second one. The displayed `name`
+ * and `city` keep whatever wording the first person used.
+ */
+export const venues = pgTable(
+  'venues',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    name: text('name').notNull(),
+    city: text('city'),
+    country: text('country'),
+    matchKey: text('match_key').notNull().unique(),
+    createdByUserId: text('created_by_user_id').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => [index('venues_name_idx').on(table.name)],
+)
+
 export const productions = pgTable(
   'productions',
   {
     id: uuid('id').defaultRandom().primaryKey(),
+    venueId: uuid('venue_id').references(() => venues.id, { onDelete: 'set null' }),
     showId: uuid('show_id')
       .notNull()
       .references(() => shows.id, { onDelete: 'cascade' }),
@@ -158,6 +182,7 @@ export const outings = pgTable(
   'outings',
   {
     id: uuid('id').defaultRandom().primaryKey(),
+    venueId: uuid('venue_id').references(() => venues.id, { onDelete: 'set null' }),
     showId: uuid('show_id')
       .notNull()
       .references(() => shows.id, { onDelete: 'cascade' }),

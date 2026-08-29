@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 
+import { VenueField } from '../../components/VenueField'
 import { formatFuzzyDate } from '../../lib/fuzzy-date'
 import { getPublishedProductions, searchPublishedShows } from '../../server/catalog-functions'
 import { createOuting } from '../../server/outing-functions'
@@ -345,16 +346,7 @@ function DateStep({
             </select>
           </label>
         ) : null}
-        <div className="backfill-pair">
-          <label>
-            Venue
-            <input value={venue} onChange={(event) => setVenue(event.target.value)} />
-          </label>
-          <label>
-            City
-            <input value={city} onChange={(event) => setCity(event.target.value)} />
-          </label>
-        </div>
+        <VenueField venue={venue} city={city} onVenue={setVenue} onCity={setCity} layout="pair" />
       </details>
 
       <div className="backfill-actions">

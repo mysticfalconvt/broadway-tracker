@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState, type FormEvent } from 'react'
 
+import { VenueField } from '../../components/VenueField'
 import { toLocalISODate } from '../../lib/time'
 
 import { getPublishedProductions, searchPublishedShows } from '../../server/catalog-functions'
@@ -21,6 +22,8 @@ function LogOuting() {
   // Resolved after mount: the server runs in UTC, so its "today" is the wrong
   // day for much of the world for part of every day.
   const [today, setToday] = useState('')
+  const [venue, setVenue] = useState('')
+  const [city, setCity] = useState('')
   useEffect(() => setToday(toLocalISODate(new Date())), [])
   const [error, setError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
@@ -150,14 +153,7 @@ function LogOuting() {
             </label>
           ) : null}
         </fieldset>
-        <label>
-          Venue <span>Optional</span>
-          <input name="venue" />
-        </label>
-        <label>
-          City <span>Optional</span>
-          <input name="city" />
-        </label>
+        <VenueField venue={venue} city={city} onVenue={setVenue} onCity={setCity} />
         <fieldset>
           <legend>
             What did you think? <span>Optional</span>

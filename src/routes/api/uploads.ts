@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { auth } from '../../server/auth'
 import type { Actor } from '../../server/catalog-functions'
-import { setAvatarForUser, setShowCover } from '../../server/image-functions'
+import { addShowPhoto, setAvatarForUser, setShowCover } from '../../server/image-functions'
 import { InvalidImageError, MAX_IMAGE_BYTES } from '../../server/image-validation'
 
 /**
@@ -44,6 +44,15 @@ export const Route = createFileRoute('/api/uploads')({
         try {
           if (kind === 'avatar') {
             return Response.json({ key: await setAvatarForUser(session.user.id, bytes) })
+          }
+          if (kind === 'show-photo') {
+            const showId = String(form.get('showId') ?? '')
+            if (!showId) return Response.json({ error: 'Choose a show.' }, { status: 400 })
+            const requested = String(form.get('visibility') ?? 'private')
+            const visibility =
+              requested === 'public' ? 'public' : requested === 'friends' ? 'friends' : 'private'
+            const photo = await addShowPhoto(session.user.id, showId, bytes, visibility)
+            return Response.json({ key: photo.objectKey, id: photo.id })
           }
           if (kind === 'show-cover') {
             const showId = String(form.get('showId') ?? '')

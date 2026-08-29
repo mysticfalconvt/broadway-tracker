@@ -1,4 +1,5 @@
-import { createServerOnlyFn } from '@tanstack/react-start'
+import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
+import { z } from 'zod'
 import { and, desc, eq } from 'drizzle-orm'
 
 import { getDb } from './db/client'
@@ -276,3 +277,36 @@ export const removeShowPhoto = createServerOnlyFn(async (actor: Actor, id: strin
   await db.delete(showImages).where(eq(showImages.id, id))
   await deleteImage(photo.objectKey)
 })
+
+async function requireSession() {
+  const { auth } = await import('./auth')
+  const { getRequestHeaders } = await import('@tanstack/react-start/server')
+  const session = await auth.api.getSession({ headers: getRequestHeaders() })
+  if (!session) throw new Error('Unauthorized')
+  return session
+}
+
+async function optionalViewerId() {
+  const { auth } = await import('./auth')
+  const { getRequestHeaders } = await import('@tanstack/react-start/server')
+  const session = await auth.api.getSession({ headers: getRequestHeaders() })
+  return session?.user.id ?? null
+}
+
+export const getShowPhotos = createServerFn({ method: 'GET' })
+  .validator(z.object({ showId: z.string().uuid() }))
+  .handler(async ({ data }) => showPhotosForViewer(await optionalViewerId(), data.showId))
+
+export const deleteShowPhoto = createServerFn({ method: 'POST' })
+  .validator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data }) => removeShowPhoto((await requireSession()).user as Actor, data.id))
+
+export const getPendingShowPhotos = createServerFn({ method: 'GET' }).handler(async () =>
+  pendingShowPhotosForAdmin((await requireSession()).user as Actor),
+)
+
+export const decideShowPhoto = createServerFn({ method: 'POST' })
+  .validator(z.object({ id: z.string().uuid(), approve: z.boolean() }))
+  .handler(async ({ data }) =>
+    reviewShowPhoto((await requireSession()).user as Actor, data.id, data.approve),
+  )

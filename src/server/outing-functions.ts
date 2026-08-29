@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { auth } from './auth'
 import { getDb } from './db/client'
+import { findOrCreateVenue } from './venue-functions'
 import {
   friendships,
   libraryEntries,
@@ -152,11 +153,18 @@ export const createOutingForUser = createServerOnlyFn(
         })
       }
 
+      // A typed venue is resolved to the shared record so the same theatre
+      // entered four different ways stays one place.
+      const venue = data.venue
+        ? await findOrCreateVenue(session.user.id, data.venue, data.city, data.country)
+        : null
+
       const [outing] = await tx
         .insert(outings)
         .values({
           showId: data.showId,
           productionId: data.productionId || null,
+          venueId: venue?.id ?? null,
           createdByUserId: session.user.id,
           venue: data.venue || null,
           city: data.city || null,
