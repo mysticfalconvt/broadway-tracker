@@ -2,4 +2,6 @@
 nixPkgs = ["nodejs_23", "pnpm-9_x"]
 
 [start]
-cmd = "pnpm db:migrate && node .output/server/index.mjs"
+# Migrations also run from the `start` script, because a host that invokes
+# `pnpm start` directly bypasses this command entirely.
+cmd = "pnpm start"

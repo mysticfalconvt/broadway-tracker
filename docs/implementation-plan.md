@@ -207,7 +207,7 @@ object is only ever served after an authorization check, which suits a private-b
 - [ ] Review environment variables: no secrets in Git, all production values stored in Coolify.
 - [ ] Confirm email verification and password reset deliver successfully from the production domain.
 - [ ] Confirm Google OAuth callback and sign-in work against the production hostname.
-- [ ] Confirm database migrations run safely on deployment.
+- [x] Confirm database migrations run safely on deployment. *(`scripts/migrate.mjs` runs from the `start` script using runtime dependencies only; a failed migration stops the app rather than serving a schema-less database.)*
 - [ ] Confirm Postgres and RustFS backups can be restored in a test environment.
 - [ ] Run the full build, lint, typecheck, and test suite.
 - [ ] Review privacy rules manually with two test accounts that are not friends, pending friends, and approved friends.
@@ -362,7 +362,8 @@ cp .env.example .env
 pnpm install
 
 # Database
-pnpm db:migrate
+pnpm db:migrate      # development, via drizzle-kit
+pnpm migrate         # what the deployment runs; runtime dependencies only
 pnpm db:generate
 pnpm db:studio
 pnpm db:seed-catalog
