@@ -17,7 +17,7 @@ import {
 } from './db/schema'
 
 const datePrecision = z.enum(['exact', 'month', 'year', 'approximate', 'unknown'])
-const outingInput = z
+export const outingInput = z
   .object({
     showId: z.string().uuid(),
     productionId: z.string().uuid().optional(),

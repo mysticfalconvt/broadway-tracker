@@ -110,3 +110,17 @@ describe('stylesheet invariants', () => {
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)/)
   })
 })
+
+describe('button layout', () => {
+  it('declares a display, because the class is used on anchors too', () => {
+    // An <a class="button"> is inline by default: its padding would not affect
+    // the line box and it would overlap the text around it.
+    const rule = css.match(/\.button\s*\{([^}]*)\}/)
+    expect(rule?.[1]).toMatch(/display:\s*inline-flex/)
+  })
+
+  it('removes the underline an anchor would otherwise carry', () => {
+    const rule = css.match(/\.button\s*\{([^}]*)\}/)
+    expect(rule?.[1]).toMatch(/text-decoration:\s*none/)
+  })
+})

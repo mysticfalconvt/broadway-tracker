@@ -1,10 +1,10 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { and, asc, eq, ilike, ne } from 'drizzle-orm'
+import { and, asc, eq, ilike, ne, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
 
 import { getDb } from './db/client'
-import { libraryEntries, listItems, outings, productions, shows, user } from './db/schema'
+import { libraryEntries, listItems, outings, productions, shows, user, venues } from './db/schema'
 
 type ShowType = 'musical' | 'play' | 'other'
 
@@ -61,13 +61,20 @@ export const publishedProductionsForShow = createServerOnlyFn(async (showId: str
     .select({
       id: productions.id,
       name: productions.name,
-      venue: productions.venue,
-      city: productions.city,
+      productionType: productions.productionType,
+      // The canonical venue where one is linked, falling back to whatever was
+      // typed, so a production recorded before venues existed still reads.
+      venue: sql<string | null>`coalesce(${venues.name}, ${productions.venue})`,
+      city: sql<string | null>`coalesce(${venues.city}, ${productions.city})`,
+      country: productions.country,
+      openedOn: productions.openedOn,
+      closedOn: productions.closedOn,
     })
     .from(productions)
     .innerJoin(shows, eq(productions.showId, shows.id))
+    .leftJoin(venues, eq(productions.venueId, venues.id))
     .where(and(eq(productions.showId, showId), eq(shows.catalogStatus, 'published')))
-    .orderBy(asc(productions.name)),
+    .orderBy(asc(productions.openedOn), asc(productions.name)),
 )
 
 export const searchPublishedShows = createServerFn({ method: 'GET' })

@@ -158,6 +158,12 @@ h3 {
   padding-bottom: 0.35rem;
 }
 .button {
+  /* Declared, because this class is used on both <button> and <a>. An anchor is
+     inline by default, so its padding and min-height would not affect the line
+     box and it would overlap the text around it. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 2.8rem;
   border: 1px solid transparent;
   border-radius: 8px;
@@ -165,6 +171,8 @@ h3 {
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 650;
+  text-align: center;
+  text-decoration: none;
 }
 .button:focus-visible,
 .text-action:focus-visible {
@@ -2178,4 +2186,42 @@ a.recent-entry:hover h3,
 }
 .warning-existing {
   color: var(--success) !important;
+}
+.show-hero-log {
+  margin: 1.25rem 0 0.75rem;
+}
+
+/* Productions on a show page: catalog facts, listed plainly. */
+.productions-section {
+  margin: 3rem auto 0;
+}
+.production-list-public {
+  display: grid;
+  gap: 0.6rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.production-list-public li {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.95rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.production-list-public strong {
+  display: block;
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1.15rem;
+}
+.production-list-public span {
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+}
+.production-run {
+  white-space: nowrap;
 }

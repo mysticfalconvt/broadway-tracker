@@ -2,19 +2,25 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState, type FormEvent } from 'react'
 
 import { VenueField } from '../../components/VenueField'
+import { formFlag, formNumber, formRequired, formText } from '../../lib/form'
 import { toLocalISODate } from '../../lib/time'
 
 import { getPublishedProductions, searchPublishedShows } from '../../server/catalog-functions'
 import { createOuting } from '../../server/outing-functions'
 
 export const Route = createFileRoute('/_protected/log')({
+  // Arriving from a show page, that show is already chosen.
+  validateSearch: (search: Record<string, unknown>): { show?: string } => ({
+    show: typeof search.show === 'string' ? search.show : undefined,
+  }),
   loader: () => searchPublishedShows({ data: { query: '' } }),
   component: LogOuting,
 })
 
 function LogOuting() {
   const shows = Route.useLoaderData()
-  const [showId, setShowId] = useState('')
+  const { show: showFromLink } = Route.useSearch()
+  const [showId, setShowId] = useState(showFromLink ?? '')
   const [productions, setProductions] = useState<
     Awaited<ReturnType<typeof getPublishedProductions>>
   >([])
@@ -22,6 +28,7 @@ function LogOuting() {
   // Resolved after mount: the server runs in UTC, so its "today" is the wrong
   // day for much of the world for part of every day.
   const [today, setToday] = useState('')
+  const [productionId, setProductionId] = useState('')
   const [venue, setVenue] = useState('')
   const [city, setCity] = useState('')
   useEffect(() => setToday(toLocalISODate(new Date())), [])
@@ -33,7 +40,18 @@ function LogOuting() {
       setProductions([])
       return
     }
-    void getPublishedProductions({ data: { showId } }).then(setProductions)
+    void getPublishedProductions({ data: { showId } }).then((rows) => {
+      setProductions(rows)
+      // If the catalog only knows one place this show has been staged, that is
+      // almost certainly where you saw it. Only ever fills an empty field, so it
+      // cannot overwrite something already typed.
+      const only = rows.length === 1 ? rows[0] : undefined
+      if (only?.venue) {
+        setVenue((current) => current || (only.venue ?? ''))
+        setCity((current) => current || (only.city ?? ''))
+        setProductionId((current) => current || only.id)
+      }
+    })
   }, [showId])
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -44,19 +62,21 @@ function LogOuting() {
     try {
       const outing = await createOuting({
         data: {
-          showId: String(form.get('showId')),
-          productionId: String(form.get('productionId')) || undefined,
-          venue: String(form.get('venue')).trim() || undefined,
-          city: String(form.get('city')).trim() || undefined,
+          showId: formRequired(form, 'showId'),
+          productionId: formText(form, 'productionId'),
+          venue: formText(form, 'venue'),
+          city: formText(form, 'city'),
           datePrecision: precision as 'exact' | 'month' | 'year' | 'approximate' | 'unknown',
-          occurredOn: String(form.get('occurredOn')) || undefined,
-          occurredMonth: Number(form.get('occurredMonth')) || undefined,
-          occurredYear: Number(form.get('occurredYear')) || undefined,
-          approximateDate: String(form.get('approximateDate')).trim() || undefined,
-          rating: Number(form.get('rating')) || undefined,
-          favorite: form.get('favorite') === 'on',
-          review: String(form.get('review')).trim() || undefined,
-          privateNotes: String(form.get('privateNotes')).trim() || undefined,
+          // Only the field matching the chosen precision is rendered, so the
+          // others are absent from the form rather than empty.
+          occurredOn: formText(form, 'occurredOn'),
+          occurredMonth: formNumber(form, 'occurredMonth'),
+          occurredYear: formNumber(form, 'occurredYear'),
+          approximateDate: formText(form, 'approximateDate'),
+          rating: formNumber(form, 'rating'),
+          favorite: formFlag(form, 'favorite'),
+          review: formText(form, 'review'),
+          privateNotes: formText(form, 'privateNotes'),
         },
       })
       window.location.assign(`/outings/${outing.id}`)
@@ -94,7 +114,20 @@ function LogOuting() {
         </label>
         <label>
           Production <span>Optional</span>
-          <select name="productionId" disabled={!showId}>
+          <select
+            name="productionId"
+            value={productionId}
+            disabled={!showId}
+            onChange={(event) => {
+              setProductionId(event.target.value)
+              // Picking a production tells us the theatre, so fill it in.
+              const chosen = productions.find((p) => p.id === event.target.value)
+              if (chosen?.venue) {
+                setVenue(chosen.venue)
+                setCity(chosen.city ?? '')
+              }
+            }}
+          >
             <option value="">Choose a production</option>
             {productions.map((production) => (
               <option key={production.id} value={production.id}>

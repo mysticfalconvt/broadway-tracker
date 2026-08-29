@@ -3,7 +3,8 @@ import { useEffect, useState, type FormEvent } from 'react'
 
 import { authClient } from '../../lib/auth-client'
 import { ShowArtwork } from '../../components/ShowArtwork'
-import { getPublishedShow } from '../../server/catalog-functions'
+import { getSession } from '../../server/auth-functions'
+import { getPublishedProductions, getPublishedShow } from '../../server/catalog-functions'
 import { saveLibraryEntry } from '../../server/library-functions'
 import { deleteShowPhoto, getShowPhotos } from '../../server/image-functions'
 import { getMyOutingsForShow } from '../../server/outing-functions'
@@ -12,13 +13,20 @@ import { formatFuzzyDate } from '../../lib/fuzzy-date'
 export const Route = createFileRoute('/shows/$slug')({
   loader: async ({ params }) => {
     const show = await getPublishedShow({ data: { slug: params.slug } })
-    return { show, photos: show ? await getShowPhotos({ data: { showId: show.id } }) : [] }
+    return {
+      show,
+      photos: show ? await getShowPhotos({ data: { showId: show.id } }) : [],
+      productions: show ? await getPublishedProductions({ data: { showId: show.id } }) : [],
+      // Resolved on the server: the client session hook is empty during SSR, so
+      // anything gated on it would only appear after hydration.
+      session: await getSession(),
+    }
   },
   component: ShowDetail,
 })
 
 function ShowDetail() {
-  const { show, photos } = Route.useLoaderData()
+  const { show, photos, productions, session } = Route.useLoaderData()
 
   if (!show) {
     return (
@@ -40,8 +48,9 @@ function ShowDetail() {
           <div>
             <p className="eyebrow">{show.type}</p>
             <h1>{show.title}</h1>
+            {session ? <LogAction showId={show.id} /> : null}
             <p>This shared catalog record is ready for your theatre history.</p>
-            <LibraryButtons showId={show.id} />
+            <LibraryButtons showId={show.id} serverSession={session} />
           </div>
         </div>
       </section>
@@ -53,16 +62,24 @@ function ShowDetail() {
         </div>
         <aside>
           <p className="eyebrow">Your theatre</p>
-          <YourHistory showId={show.id} />
+          <YourHistory showId={show.id} serverSession={session} />
         </aside>
       </section>
+      <Productions productions={productions} />
       <PhotoGallery showId={show.id} photos={photos} />
     </main>
   )
 }
 
-function YourHistory({ showId }: { showId: string }) {
-  const { data: session } = authClient.useSession()
+function YourHistory({
+  showId,
+  serverSession,
+}: {
+  showId: string
+  serverSession: Awaited<ReturnType<typeof getSession>>
+}) {
+  const { data: clientSession } = authClient.useSession()
+  const session = clientSession ?? serverSession
   const [outings, setOutings] = useState<Awaited<ReturnType<typeof getMyOutingsForShow>>>([])
   useEffect(() => {
     if (session) void getMyOutingsForShow({ data: { showId } }).then(setOutings)
@@ -83,8 +100,18 @@ function YourHistory({ showId }: { showId: string }) {
   )
 }
 
-function LibraryButtons({ showId }: { showId: string }) {
-  const { data: session, isPending } = authClient.useSession()
+function LibraryButtons({
+  showId,
+  serverSession,
+}: {
+  showId: string
+  serverSession: Awaited<ReturnType<typeof getSession>>
+}) {
+  // Falling back to the server session rather than keying off `isPending`: the
+  // hook does not reliably report pending during SSR, and a signed-in reader
+  // must never be shown "sign in" while hydration catches up.
+  const { data: clientSession } = authClient.useSession()
+  const session = clientSession ?? serverSession
   const [message, setMessage] = useState<string | null>(null)
 
   async function save(status: 'want_to_see' | 'seen') {
@@ -116,7 +143,7 @@ function LibraryButtons({ showId }: { showId: string }) {
     }
   }
 
-  if (isPending) return null
+  // No pending state to wait on: the server session is already known.
   if (!session)
     return (
       <Link className="button button-quiet" to="/sign-in">
@@ -154,6 +181,10 @@ function LibraryButtons({ showId }: { showId: string }) {
               ))}
             </select>
           </label>
+          <p className="settings-note">
+            Dates, venues, and who you were with belong to a performance — use “Log a performance”
+            above to record one.
+          </p>
           <label className="favorite-toggle">
             <input name="favorite" type="checkbox" />
             <span>Favorite</span>
@@ -294,4 +325,64 @@ function PhotoGallery({
       ) : null}
     </section>
   )
+}
+
+/**
+ * The date, venue, and companions of a night out live on the outing, not on the
+ * library entry — the form below records what you think of a show, this records
+ * a particular performance of it.
+ */
+function LogAction({ showId }: { showId: string }) {
+  return (
+    <Link className="button button-primary show-hero-log" to="/log" search={{ show: showId }}>
+      + Log a performance
+    </Link>
+  )
+}
+
+/**
+ * Where and when this work has been staged. Catalog facts, so everybody sees
+ * them — separate from the reader's own history with the show, which sits above.
+ */
+function Productions({
+  productions,
+}: {
+  productions: Awaited<ReturnType<typeof getPublishedProductions>>
+}) {
+  if (!productions.length) return null
+  return (
+    <section className="productions-section page-wrap">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Productions</p>
+          <h2>Where it has been staged.</h2>
+        </div>
+      </div>
+      <ul className="production-list-public">
+        {productions.map((production) => (
+          <li key={production.id}>
+            <div>
+              <strong>{production.name}</strong>
+              <span>{[production.venue, production.city].filter(Boolean).join(' · ')}</span>
+            </div>
+            <span className="production-run">{describeRun(production)}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+/** A run reads as a span, an opening, or nothing — never an invented date. */
+function describeRun(production: { openedOn?: string | null; closedOn?: string | null }) {
+  const opened = production.openedOn
+    ? formatFuzzyDate({ datePrecision: 'exact', occurredOn: production.openedOn })
+    : null
+  const closed = production.closedOn
+    ? formatFuzzyDate({ datePrecision: 'exact', occurredOn: production.closedOn })
+    : null
+  if (opened && closed) return `${opened} — ${closed}`
+  if (opened) return `Opened ${opened} · still running`
+  if (closed) return `Closed ${closed}`
+  return ''
 }

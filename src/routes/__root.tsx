@@ -91,8 +91,10 @@ function ReportLink() {
  */
 function NavLinks() {
   const { session: serverSession, badges } = Route.useLoaderData()
-  const { data: clientSession, isPending } = authClient.useSession()
-  const session = isPending ? serverSession : clientSession
+  // Same reasoning as the show page: prefer the client session once it exists,
+  // fall back to the server's rather than trusting `isPending` during SSR.
+  const { data: clientSession } = authClient.useSession()
+  const session = clientSession ?? serverSession
   if (!session) {
     return (
       <div className="nav-links" aria-label="Product areas">
