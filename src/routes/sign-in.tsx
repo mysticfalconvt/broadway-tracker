@@ -2,12 +2,15 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 import { z } from 'zod'
 
+import { GoogleSignIn } from '../components/GoogleSignIn'
 import { authClient } from '../lib/auth-client'
 import { auth } from '../server/auth'
+import { getSocialProviders } from '../server/social-functions'
 
 export const Route = createFileRoute('/sign-in')({
   validateSearch: z.object({ error: z.string().optional() }),
   server: { handlers: { POST: signInFromForm } },
+  loader: () => getSocialProviders(),
   component: SignIn,
 })
 
@@ -53,6 +56,7 @@ async function signInFromForm({ request }: { request: Request }) {
 }
 
 function SignIn() {
+  const providers = Route.useLoaderData()
   const { error: serverError } = Route.useSearch()
   const [error, setError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
@@ -130,6 +134,7 @@ function SignIn() {
             {isPending ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
+        {providers.google ? <GoogleSignIn label="Continue with Google" /> : null}
         <p className="auth-switch">
           <Link to="/forgot-password">Forgot your password?</Link>
         </p>

@@ -1,12 +1,18 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState, type FormEvent } from 'react'
 
+import { GoogleSignIn } from '../components/GoogleSignIn'
 import { authClient } from '../lib/auth-client'
 import { checkHandle } from '../server/auth-functions'
+import { getSocialProviders } from '../server/social-functions'
 
-export const Route = createFileRoute('/sign-up')({ component: SignUp })
+export const Route = createFileRoute('/sign-up')({
+  loader: () => getSocialProviders(),
+  component: SignUp,
+})
 
 function SignUp() {
+  const providers = Route.useLoaderData()
   const [handle, setHandle] = useState('')
   const [handleState, setHandleState] = useState<Awaited<ReturnType<typeof checkHandle>> | null>(
     null,
@@ -117,6 +123,7 @@ function SignUp() {
             </button>
           </form>
         )}
+        {providers.google && !submitted ? <GoogleSignIn label="Sign up with Google" /> : null}
         <p className="auth-switch">
           Already have an account? <Link to="/sign-in">Sign in</Link>
         </p>

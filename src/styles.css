@@ -2054,3 +2054,39 @@ a.recent-entry:hover h3,
   border-color: color-mix(in srgb, var(--success) 35%, var(--border));
   color: var(--success);
 }
+
+/* Social sign-in. Shown only where the deployment has credentials, so it is
+   never a button that cannot work. */
+.social-signin {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.social-divider {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.85rem;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+.social-divider::before,
+.social-divider::after {
+  content: "";
+  height: 1px;
+  background: var(--border);
+}
+.social-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+  border-color: var(--field-border);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 650;
+}
+.social-button:hover {
+  background: var(--surface-muted);
+}
