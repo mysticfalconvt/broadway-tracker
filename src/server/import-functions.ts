@@ -212,15 +212,21 @@ export const importCatalog = createServerOnlyFn(async (actor: Actor, payload: Im
       if (insertedProduction && production.cast?.length) {
         const { addCasting } = await import('./people-functions')
         for (const member of production.cast) {
-          await addCasting(actor.id, {
-            productionId: insertedProduction.id,
-            personName: member.name,
-            role: member.role,
-            kind: member.kind,
-            isPrincipal: member.isPrincipal ?? member.kind === 'performer',
-            startedOn: member.startedOn ?? undefined,
-            endedOn: member.endedOn ?? undefined,
-          })
+          await addCasting(
+            actor.id,
+            {
+              productionId: insertedProduction.id,
+              personName: member.name,
+              role: member.role,
+              kind: member.kind,
+              isPrincipal: member.isPrincipal ?? member.kind === 'performer',
+              startedOn: member.startedOn ?? undefined,
+              endedOn: member.endedOn ?? undefined,
+            },
+            // Read by a person before it was pasted, but nobody in the room
+            // vouched for these dates.
+            { source: 'import' },
+          )
           result.castings += 1
         }
       }

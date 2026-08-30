@@ -634,3 +634,73 @@ describe('correcting who you actually saw', () => {
     expect(asFriend.likelyCast.map((c) => c.name)).toEqual(['Alex Brightman'])
   })
 })
+
+describe('where a cast fact came from', () => {
+  it('records a hand-entered casting as somebody saying so', async () => {
+    const { member, production } = await schmigadoon()
+    await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Alex Brightman',
+      role: 'Josh Skinner',
+      kind: 'performer',
+      isPrincipal: true,
+    })
+    const [row] = await db.select().from(castings)
+    expect(row?.source).toBe('member')
+  })
+
+  it('records an imported casting as imported, not as somebody saying so', async () => {
+    // Nobody in the room vouched for these dates, and the app must not imply
+    // otherwise — they are what "who you probably saw" is worked out from.
+    const { member, production } = await schmigadoon()
+    await addCasting(
+      member.id,
+      {
+        productionId: production.id,
+        personName: 'Alex Brightman',
+        role: 'Josh Skinner',
+        kind: 'performer',
+        isPrincipal: true,
+        startedOn: '2026-04-20',
+      },
+      { source: 'import' },
+    )
+    const [row] = await db.select().from(castings)
+    expect(row?.source).toBe('import')
+  })
+
+  it('keeps a citation for something a machine found', async () => {
+    const { member, production } = await schmigadoon()
+    await addCasting(
+      member.id,
+      {
+        productionId: production.id,
+        personName: 'Alex Brightman',
+        role: 'Josh Skinner',
+        kind: 'performer',
+        isPrincipal: true,
+      },
+      { source: 'research', sourceNote: 'https://example.org/the-cast' },
+    )
+    const [row] = await db.select().from(castings)
+    expect(row?.source).toBe('research')
+    expect(row?.sourceNote).toBe('https://example.org/the-cast')
+  })
+
+  it('carries the source through to the reader', async () => {
+    const { member, production } = await schmigadoon()
+    await addCasting(
+      member.id,
+      {
+        productionId: production.id,
+        personName: 'Alex Brightman',
+        role: 'Josh Skinner',
+        kind: 'performer',
+        isPrincipal: true,
+      },
+      { source: 'research' },
+    )
+    const cast = await castForProduction(production.id)
+    expect(cast[0]?.source).toBe('research')
+  })
+})

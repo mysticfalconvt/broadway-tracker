@@ -75,7 +75,13 @@ const castingInput = z.object({
 
 /** Records that somebody held a role in a production. */
 export const addCasting = createServerOnlyFn(
-  async (userId: string, data: z.infer<typeof castingInput>) => {
+  async (
+    userId: string,
+    data: z.infer<typeof castingInput>,
+    // Defaults to the honest thing for the hand-entry path: somebody typed it.
+    // Callers that got it from somewhere else say so.
+    provenance: { source?: 'member' | 'import' | 'research'; sourceNote?: string | null } = {},
+  ) => {
     const db = getDb()
     const [production] = await db
       .select({ id: productions.id })
@@ -105,6 +111,8 @@ export const addCasting = createServerOnlyFn(
         isPrincipal: data.isPrincipal,
         startedOn: data.startedOn || null,
         endedOn: data.endedOn || null,
+        source: provenance.source ?? 'member',
+        sourceNote: provenance.sourceNote ?? null,
         createdByUserId: userId,
       })
       .returning({ id: castings.id })
@@ -123,6 +131,7 @@ export const castForProduction = createServerOnlyFn(async (productionId: string)
       role: castings.role,
       kind: castings.kind,
       isPrincipal: castings.isPrincipal,
+      source: castings.source,
       startedOn: castings.startedOn,
       endedOn: castings.endedOn,
     })
@@ -150,6 +159,7 @@ export const likelyCastOn = createServerOnlyFn(
         role: castings.role,
         kind: castings.kind,
         isPrincipal: castings.isPrincipal,
+        source: castings.source,
       })
       .from(castings)
       .innerJoin(people, eq(castings.personId, people.id))
@@ -420,6 +430,7 @@ export const castForShow = createServerOnlyFn(async (showId: string) =>
       role: castings.role,
       kind: castings.kind,
       isPrincipal: castings.isPrincipal,
+      source: castings.source,
       productionName: productions.name,
     })
     .from(castings)

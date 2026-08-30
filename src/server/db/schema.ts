@@ -235,6 +235,23 @@ export const castings = pgTable(
     isPrincipal: boolean('is_principal').notNull().default(false),
     startedOn: date('started_on'),
     endedOn: date('ended_on'),
+    /**
+     * Where this came from, which is not the same as who typed it.
+     *
+     * These dates decide what the app tells somebody they probably saw, so a
+     * wrong one becomes a false memory for every member and looks exactly like
+     * a fact that was checked. Three kinds, and the difference is who would
+     * know if it were wrong:
+     *
+     *   `member`   — somebody in the room said so
+     *   `import`   — pasted in from a prepared document, reviewed by a person
+     *   `research` — found by a machine reading the web, confirmed by nobody
+     */
+    source: text('source', { enum: ['member', 'import', 'research'] })
+      .notNull()
+      .default('member'),
+    /** Where it was found: a URL, a book, whatever would let somebody check. */
+    sourceNote: text('source_note'),
     createdByUserId: text('created_by_user_id').references(() => user.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -282,6 +299,11 @@ export const productions = pgTable(
     country: text('country'),
     openedOn: date('opened_on'),
     closedOn: date('closed_on'),
+    /** As on castings: a run's dates are only as good as where they came from. */
+    source: text('source', { enum: ['member', 'import', 'research'] })
+      .notNull()
+      .default('member'),
+    sourceNote: text('source_note'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },

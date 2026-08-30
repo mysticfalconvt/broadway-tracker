@@ -149,10 +149,11 @@ everything a session can do is a session with no expiry and no sign-in.
 
 Getting facts in comes first, because nothing downstream works without them.
 
-1. **Provenance and the sourced state.** A column on castings and productions
-   recording where a fact came from, and the app saying so. Small, and every
-   later step writes into it — retrofitting provenance after a few hundred
-   researched rows exist is much worse than having it first.
+1. ~~**Provenance and the sourced state.**~~ **Done.** `castings.source` and
+   `productions.source` are one of `member`, `import`, or `research`, with an
+   optional citation. The eleven castings that already existed are marked
+   `import`, which is honestly how they arrived — a distinction that was still
+   recoverable at eleven rows and would have been a guess at a few hundred.
 2. **A research-to-import path**, using the format that already exists. An
    external model with the web produces a `catalog-import` payload; the import
    screen already checks it, warns about near-duplicate venues, and refuses to
