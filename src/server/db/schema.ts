@@ -196,6 +196,26 @@ export const productions = pgTable(
     productionType: text('production_type', {
       enum: ['broadway', 'off_broadway', 'tour', 'regional', 'local', 'other'],
     }).notNull(),
+    /**
+     * Whether this staging belongs in everybody's list for the show.
+     *
+     * A school's production of a popular musical is a real production, but
+     * putting it in the dropdown that every member sees when they log that
+     * show would bury the professional stagings under hundreds of them. Local
+     * stagings surface at their venue instead.
+     */
+    scope: text('scope', { enum: ['catalog', 'local'] })
+      .notNull()
+      .default('catalog'),
+    /**
+     * What two strangers from the same town actually agree about.
+     *
+     * Professional stagings deduplicate on their name, because everybody calls
+     * it "the national tour". Nobody invents the same name for a school
+     * production, so local ones key on the show, the venue, and the year: two
+     * people who saw different nights of the same run land on one record.
+     */
+    localKey: text('local_key').unique(),
     venue: text('venue'),
     city: text('city'),
     country: text('country'),

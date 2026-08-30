@@ -1,0 +1,194 @@
+import { beforeEach, describe, expect, it } from 'vitest'
+
+import {
+  findOrCreateLocalProduction,
+  findOrCreateProduction,
+  localProductionsAt,
+  publishedProductionsForShow,
+} from '../src/server/catalog-functions'
+import { createOutingForUser } from '../src/server/outing-functions'
+import { makeShow, makeUser, resetDatabase } from './helpers'
+
+beforeEach(resetDatabase)
+
+async function dearEvanHansen() {
+  const show = await makeShow({ title: 'Dear Evan Hansen', slug: 'dear-evan-hansen' })
+  return show
+}
+
+describe('two people from the same town', () => {
+  it('land on one record however differently they name it', async () => {
+    const show = await dearEvanHansen()
+    const first = await makeUser()
+    const second = await makeUser()
+
+    const a = await findOrCreateLocalProduction(
+      first.id,
+      show.id,
+      'Lincoln High School',
+      'Springfield',
+      2019,
+    )
+    const b = await findOrCreateLocalProduction(
+      second.id,
+      show.id,
+      'lincoln high school',
+      'springfield',
+      2019,
+    )
+
+    expect(a.created).toBe(true)
+    expect(b.created).toBe(false)
+    expect(b.id).toBe(a.id)
+  })
+
+  it('stay apart for different years of the same school', async () => {
+    const show = await dearEvanHansen()
+    const member = await makeUser()
+    const first = await findOrCreateLocalProduction(member.id, show.id, 'Lincoln High', null, 2019)
+    const later = await findOrCreateLocalProduction(member.id, show.id, 'Lincoln High', null, 2022)
+    expect(later.id).not.toBe(first.id)
+  })
+
+  it('stay apart for different schools in the same year', async () => {
+    const show = await dearEvanHansen()
+    const member = await makeUser()
+    const ours = await findOrCreateLocalProduction(member.id, show.id, 'Lincoln High', null, 2019)
+    const theirs = await findOrCreateLocalProduction(
+      member.id,
+      show.id,
+      'Roosevelt High',
+      null,
+      2019,
+    )
+    expect(theirs.id).not.toBe(ours.id)
+  })
+
+  it('names the staging after the school and the year', async () => {
+    const show = await dearEvanHansen()
+    const member = await makeUser()
+    await findOrCreateLocalProduction(
+      member.id,
+      show.id,
+      'Lincoln High School',
+      'Springfield',
+      2019,
+    )
+    const [staging] = await localProductionsAt(show.id, 'Lincoln High School', 'Springfield')
+    expect(staging?.name).toBe('Lincoln High School, 2019')
+  })
+
+  it('adopts the school\u2019s canonical name rather than the second person\u2019s typing', async () => {
+    const show = await dearEvanHansen()
+    const first = await makeUser()
+    const second = await makeUser()
+    await findOrCreateLocalProduction(first.id, show.id, 'Lincoln High School', 'Springfield', 2019)
+    // The second person types it carelessly and still lands on the same record,
+    // under the name the school is already known by.
+    const again = await findOrCreateLocalProduction(
+      second.id,
+      show.id,
+      'lincoln   high  school',
+      'springfield',
+      2019,
+    )
+    expect(again.created).toBe(false)
+    const [staging] = await localProductionsAt(show.id, 'LINCOLN HIGH SCHOOL', 'Springfield')
+    expect(staging?.name).toBe('Lincoln High School, 2019')
+  })
+
+  it('offers the second person what the first recorded', async () => {
+    const show = await dearEvanHansen()
+    const first = await makeUser()
+    await findOrCreateLocalProduction(first.id, show.id, 'Lincoln High School', 'Springfield', 2019)
+    const offered = await localProductionsAt(show.id, 'lincoln high', 'Springfield')
+    expect(offered).toHaveLength(0)
+    const found = await localProductionsAt(show.id, 'Lincoln High School', 'Springfield')
+    expect(found.map((row) => row.name)).toEqual(['Lincoln High School, 2019'])
+  })
+})
+
+describe('the shared catalog stays curated', () => {
+  it('keeps school stagings out of the list every member sees', async () => {
+    const show = await dearEvanHansen()
+    const member = await makeUser()
+    await findOrCreateProduction(
+      member.id,
+      show.id,
+      'Original Broadway',
+      'broadway',
+      'Music Box',
+      'New York',
+    )
+    await findOrCreateLocalProduction(
+      member.id,
+      show.id,
+      'Lincoln High School',
+      'Springfield',
+      2019,
+    )
+
+    const everybodySees = await publishedProductionsForShow(show.id)
+    expect(everybodySees.map((row) => row.name)).toEqual(['Original Broadway'])
+  })
+
+  it('only surfaces a local staging at its own venue', async () => {
+    const show = await dearEvanHansen()
+    const member = await makeUser()
+    await findOrCreateLocalProduction(
+      member.id,
+      show.id,
+      'Lincoln High School',
+      'Springfield',
+      2019,
+    )
+    expect(await localProductionsAt(show.id, 'Roosevelt High School', 'Springfield')).toHaveLength(
+      0,
+    )
+    // The same school name in another town is another school.
+    expect(await localProductionsAt(show.id, 'Lincoln High School', 'Portland')).toHaveLength(0)
+  })
+})
+
+describe('recording a local staging', () => {
+  it('refuses a year nobody could have seen', async () => {
+    const show = await dearEvanHansen()
+    const member = await makeUser()
+    await expect(
+      findOrCreateLocalProduction(member.id, show.id, 'Lincoln High', null, 12019),
+    ).rejects.toThrow('needs the year')
+  })
+
+  it('refuses a show that is not in the catalog', async () => {
+    const member = await makeUser()
+    const unpublished = await makeShow({
+      title: 'Not Reviewed Yet',
+      slug: 'not-reviewed-yet',
+      catalogStatus: 'pending',
+    })
+    await expect(
+      findOrCreateLocalProduction(member.id, unpublished.id, 'Lincoln High', null, 2019),
+    ).rejects.toThrow('published show')
+  })
+
+  it('carries a night at the staging like any other', async () => {
+    const show = await dearEvanHansen()
+    const member = await makeUser()
+    const staging = await findOrCreateLocalProduction(
+      member.id,
+      show.id,
+      'Lincoln High School',
+      'Springfield',
+      2019,
+    )
+    const outing = await createOutingForUser(member.id, {
+      showId: show.id,
+      productionId: staging.id,
+      datePrecision: 'exact',
+      occurredOn: '2019-05-18',
+      attendeeIds: [],
+      favorite: false,
+    })
+    expect(outing.id).toBeTruthy()
+  })
+})

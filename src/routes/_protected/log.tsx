@@ -6,7 +6,9 @@ import { formFlag, formNumber, formRequired, formText } from '../../lib/form'
 import { toLocalISODate } from '../../lib/time'
 
 import {
+  addLocalProduction,
   addProduction,
+  getLocalProductionsAt,
   getPublishedProductions,
   searchPublishedShows,
 } from '../../server/catalog-functions'
@@ -37,8 +39,18 @@ function LogOuting() {
   // not in the catalog yet, and stopping to ask an administrator would end the
   // evening's logging right there.
   const [addingProduction, setAddingProduction] = useState(false)
+  // A school production and a national tour are recorded differently: one is
+  // named, the other is found by where and when. Asking a parent to name their
+  // child's school musical is asking them to invent something.
+  const [productionKind, setProductionKind] = useState<'catalog' | 'local'>('catalog')
   const [newProductionName, setNewProductionName] = useState('')
   const [newProductionType, setNewProductionType] = useState('tour')
+  const [newLocalYear, setNewLocalYear] = useState('')
+  // Local stagings are not in everybody's list for the show, so they are looked
+  // up by the theatre once one is named.
+  const [localProductions, setLocalProductions] = useState<
+    Awaited<ReturnType<typeof getLocalProductionsAt>>
+  >([])
   const [productionMessage, setProductionMessage] = useState<string | null>(null)
   const [venue, setVenue] = useState('')
   const [city, setCity] = useState('')
@@ -64,6 +76,22 @@ function LogOuting() {
       }
     })
   }, [showId])
+
+  useEffect(() => {
+    if (!showId || !venue.trim()) {
+      setLocalProductions([])
+      return
+    }
+    let current = true
+    void getLocalProductionsAt({ data: { showId, venue, city: city || undefined } }).then(
+      (rows) => {
+        if (current) setLocalProductions(rows)
+      },
+    )
+    return () => {
+      current = false
+    }
+  }, [showId, venue, city])
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -146,6 +174,15 @@ function LogOuting() {
                 {production.venue ? ` · ${production.venue}` : ''}
               </option>
             ))}
+            {localProductions.length ? (
+              <optgroup label="At this theatre">
+                {localProductions.map((production) => (
+                  <option key={production.id} value={production.id}>
+                    {production.name}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
           </select>
           {showId ? (
             <button
@@ -159,62 +196,169 @@ function LogOuting() {
         </label>
         {addingProduction ? (
           <div className="new-production">
-            <label>
-              What was it called?
-              <input
-                value={newProductionName}
-                placeholder="First National Tour"
-                onChange={(event) => setNewProductionName(event.target.value)}
-              />
-              <span>A staging, not a place — the same tour in two cities is one production.</span>
-            </label>
-            <label>
-              Kind
-              <select
-                value={newProductionType}
-                onChange={(event) => setNewProductionType(event.target.value)}
-              >
-                <option value="broadway">Broadway</option>
-                <option value="off_broadway">Off-Broadway</option>
-                <option value="tour">Touring</option>
-                <option value="regional">Regional</option>
-                <option value="local">Local or community</option>
-                <option value="other">Something else</option>
-              </select>
-            </label>
-            <button
-              className="button button-quiet"
-              type="button"
-              disabled={!newProductionName.trim()}
-              onClick={async () => {
-                setProductionMessage(null)
-                try {
-                  const result = await addProduction({
-                    data: {
-                      showId,
-                      name: newProductionName,
-                      productionType: newProductionType as 'tour',
-                      venue: venue || undefined,
-                      city: city || undefined,
-                    },
-                  })
-                  const rows = await getPublishedProductions({ data: { showId } })
-                  setProductions(rows)
-                  setProductionId(result.id)
-                  setAddingProduction(false)
-                  setNewProductionName('')
-                  setProductionMessage(
-                    result.created ? 'Production added.' : 'That production was already recorded.',
-                  )
-                } catch (caughtError) {
-                  setProductionMessage(
-                    caughtError instanceof Error ? caughtError.message : 'We could not add that.',
-                  )
-                }
-              }}
-            >
-              Add it
-            </button>
+            <fieldset className="production-kind">
+              <legend>What kind of staging?</legend>
+              <label>
+                <input
+                  checked={productionKind === 'catalog'}
+                  name="productionKind"
+                  onChange={() => setProductionKind('catalog')}
+                  type="radio"
+                />
+                A professional staging
+                <span>A Broadway run, a tour, a regional company.</span>
+              </label>
+              <label>
+                <input
+                  checked={productionKind === 'local'}
+                  name="productionKind"
+                  onChange={() => setProductionKind('local')}
+                  type="radio"
+                />
+                A school or community group
+                <span>Found by where and when, so it stays out of everyone else’s list.</span>
+              </label>
+            </fieldset>
+
+            {productionKind === 'catalog' ? (
+              <>
+                <label>
+                  What was it called?
+                  <input
+                    onChange={(event) => setNewProductionName(event.target.value)}
+                    placeholder="First National Tour"
+                    value={newProductionName}
+                  />
+                  <span>
+                    A staging, not a place — the same tour in two cities is one production.
+                  </span>
+                </label>
+                <label>
+                  Kind
+                  <select
+                    onChange={(event) => setNewProductionType(event.target.value)}
+                    value={newProductionType}
+                  >
+                    <option value="broadway">Broadway</option>
+                    <option value="off_broadway">Off-Broadway</option>
+                    <option value="tour">Touring</option>
+                    <option value="regional">Regional</option>
+                    <option value="local">Local or community</option>
+                    <option value="other">Something else</option>
+                  </select>
+                </label>
+                <button
+                  className="button button-quiet"
+                  disabled={!newProductionName.trim()}
+                  onClick={async () => {
+                    setProductionMessage(null)
+                    try {
+                      const result = await addProduction({
+                        data: {
+                          showId,
+                          name: newProductionName,
+                          productionType: newProductionType as 'tour',
+                          venue: venue || undefined,
+                          city: city || undefined,
+                        },
+                      })
+                      const rows = await getPublishedProductions({ data: { showId } })
+                      setProductions(rows)
+                      setProductionId(result.id)
+                      setAddingProduction(false)
+                      setNewProductionName('')
+                      setProductionMessage(
+                        result.created
+                          ? 'Production added.'
+                          : 'That production was already recorded.',
+                      )
+                    } catch (caughtError) {
+                      setProductionMessage(
+                        caughtError instanceof Error
+                          ? caughtError.message
+                          : 'We could not add that.',
+                      )
+                    }
+                  }}
+                  type="button"
+                >
+                  Add it
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="settings-note">
+                  Name the theatre below and the year you saw it. Anyone else from the same place
+                  who logs that year lands on this same record.
+                </p>
+                <label>
+                  Where was it?
+                  <input
+                    onChange={(event) => setVenue(event.target.value)}
+                    placeholder="Lincoln High School"
+                    value={venue}
+                  />
+                </label>
+                <label>
+                  Town or city <span>Optional</span>
+                  <input
+                    onChange={(event) => setCity(event.target.value)}
+                    placeholder="Springfield"
+                    value={city}
+                  />
+                  <span>Two schools share a name more often than you would think.</span>
+                </label>
+                <label>
+                  Which year?
+                  <input
+                    max="2200"
+                    min="1800"
+                    onChange={(event) => setNewLocalYear(event.target.value)}
+                    placeholder="2019"
+                    type="number"
+                    value={newLocalYear}
+                  />
+                </label>
+                <button
+                  className="button button-quiet"
+                  disabled={!venue.trim() || !newLocalYear.trim()}
+                  onClick={async () => {
+                    setProductionMessage(null)
+                    try {
+                      const result = await addLocalProduction({
+                        data: {
+                          showId,
+                          venue,
+                          city: city || undefined,
+                          year: Number(newLocalYear),
+                        },
+                      })
+                      const rows = await getLocalProductionsAt({
+                        data: { showId, venue, city: city || undefined },
+                      })
+                      setLocalProductions(rows)
+                      setProductionId(result.id)
+                      setAddingProduction(false)
+                      setNewLocalYear('')
+                      setProductionMessage(
+                        result.created
+                          ? 'Staging added.'
+                          : 'Somebody had already recorded that staging — you are both on it now.',
+                      )
+                    } catch (caughtError) {
+                      setProductionMessage(
+                        caughtError instanceof Error
+                          ? caughtError.message
+                          : 'We could not add that.',
+                      )
+                    }
+                  }}
+                  type="button"
+                >
+                  Add it
+                </button>
+              </>
+            )}
           </div>
         ) : null}
         {productionMessage ? <p className="settings-note">{productionMessage}</p> : null}

@@ -73,7 +73,16 @@ export const publishedProductionsForShow = createServerOnlyFn(async (showId: str
     .from(productions)
     .innerJoin(shows, eq(productions.showId, shows.id))
     .leftJoin(venues, eq(productions.venueId, venues.id))
-    .where(and(eq(productions.showId, showId), eq(shows.catalogStatus, 'published')))
+    .where(
+      and(
+        eq(productions.showId, showId),
+        eq(shows.catalogStatus, 'published'),
+        // A school's staging is a real production, but putting it in the list
+        // every member sees for a popular show would bury the professional
+        // ones. Local stagings surface at their venue instead.
+        eq(productions.scope, 'catalog'),
+      ),
+    )
     .orderBy(asc(productions.openedOn), asc(productions.name)),
 )
 
@@ -525,6 +534,140 @@ export function normalizeProductionName(value: string) {
     .filter((word) => word && !noise.has(word))
     .join(' ')
 }
+
+/**
+ * A local staging of a catalog show, recorded by a member without review.
+ *
+ * The whole difficulty is convergence. Two people from the same town who both
+ * saw their high school's *Dear Evan Hansen* must land on one record, and they
+ * will never type the same name for it — one writes "Lincoln High School 2019",
+ * the other "LHS spring musical". What they do agree on is the school and the
+ * year, so that is the key. Different nights of one run converge; the 2019 and
+ * 2022 stagings stay apart.
+ *
+ * A run spanning New Year is recorded as two, which is wrong but rare, and less
+ * wrong than folding two years' productions into one.
+ */
+export const findOrCreateLocalProduction = createServerOnlyFn(
+  async (userId: string, showId: string, venueName: string, city: string | null, year: number) => {
+    if (!Number.isInteger(year) || year < 1800 || year > 2200) {
+      throw new Error('A local staging needs the year you saw it.')
+    }
+    const db = getDb()
+    const [show] = await db
+      .select({ id: shows.id })
+      .from(shows)
+      .where(and(eq(shows.id, showId), eq(shows.catalogStatus, 'published')))
+      .limit(1)
+    if (!show) throw new Error('Choose a published show from the catalog.')
+
+    const venue = await (await import('./venue-functions')).findOrCreateVenue(
+      userId,
+      venueName,
+      city,
+    )
+    const localKey = `${showId}:${venue.id}:${year}`
+
+    const [existing] = await db
+      .select({ id: productions.id })
+      .from(productions)
+      .where(eq(productions.localKey, localKey))
+      .limit(1)
+    if (existing) return { id: existing.id, created: false }
+
+    const [created] = await db
+      .insert(productions)
+      .values({
+        showId,
+        name: `${venue.name}, ${year}`,
+        productionType: 'local',
+        scope: 'local',
+        localKey,
+        venueId: venue.id,
+        venue: venue.name,
+        city: venue.city,
+      })
+      .onConflictDoNothing({ target: productions.localKey })
+      .returning({ id: productions.id })
+    if (created) return { id: created.id, created: true }
+
+    // Somebody else in town recorded it between the read and the write.
+    const [raced] = await db
+      .select({ id: productions.id })
+      .from(productions)
+      .where(eq(productions.localKey, localKey))
+      .limit(1)
+    if (!raced) throw new Error('Unable to record that staging.')
+    return { id: raced.id, created: false }
+  },
+)
+
+/**
+ * Local stagings of a show at one venue, so the second person to log a night
+ * there is offered the first person's record instead of making another.
+ */
+export const localProductionsAt = createServerOnlyFn(
+  async (showId: string, venueName: string, city: string | null) => {
+    const { venueKey, tidyPlace } = await import('../lib/place')
+    const cleanName = tidyPlace(venueName)
+    if (!cleanName) return []
+    const key = venueKey(cleanName, city ? tidyPlace(city) : null)
+    return getDb()
+      .select({
+        id: productions.id,
+        name: productions.name,
+        productionType: productions.productionType,
+        venue: venues.name,
+        city: venues.city,
+        country: productions.country,
+        openedOn: productions.openedOn,
+        closedOn: productions.closedOn,
+      })
+      .from(productions)
+      .innerJoin(venues, eq(productions.venueId, venues.id))
+      .where(
+        and(
+          eq(productions.showId, showId),
+          eq(productions.scope, 'local'),
+          eq(venues.matchKey, key),
+        ),
+      )
+      .orderBy(asc(productions.name))
+  },
+)
+
+export const addLocalProduction = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      showId: z.string().uuid(),
+      venue: z.string().trim().min(1).max(200),
+      city: z.string().trim().max(120).optional(),
+      year: z.number().int().min(1800).max(2200),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const session = await requireSession()
+    return findOrCreateLocalProduction(
+      session.user.id,
+      data.showId,
+      data.venue,
+      data.city ?? null,
+      data.year,
+    )
+  })
+
+export const getLocalProductionsAt = createServerFn({ method: 'GET' })
+  .validator(
+    z.object({
+      showId: z.string().uuid(),
+      venue: z.string().trim().max(200),
+      city: z.string().trim().max(120).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await requireSession()
+    return localProductionsAt(data.showId, data.venue, data.city ?? null)
+  })
 
 export const addProduction = createServerFn({ method: 'POST' })
   .validator(

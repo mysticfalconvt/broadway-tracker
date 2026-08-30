@@ -331,17 +331,30 @@ community theatre's original revue, or a specific high-school staging, is none o
 
 - [ ] Let a performance name a show that is not in the shared catalog, without a submission.
 - [ ] Decide where such a record lives: personal to the logger, or shared with their friends.
-- [ ] Let a member add a local or regional production of a catalog show without administrator review.
-- [ ] Keep unreviewed local records out of catalog search, so the shared archive stays curated.
+- [x] Let a member add a local or regional production of a catalog show without administrator review.
+      *(`addProduction` was already open to members; the log form now offers two paths, because a
+      school production and a national tour are found differently.)*
+- [x] Keep local stagings out of the list every member sees for a show. They surface at their
+      venue instead, so a popular musical's dropdown is not buried under school productions.
 - [ ] Offer promotion: an administrator can lift a local record into the shared catalog if it
       turns out to be of general interest.
 - [ ] Review the logging copy, which currently assumes a professional production.
 
-**The tension to resolve first.** Everything else here follows from one decision: whether a
-locally-entered show is *private data that happens to look like catalog data*, or *catalog data
-with a smaller audience*. The first keeps the shared archive clean and makes local entry
-instant; the second means two families who saw the same school production can share it. They
-pull in opposite directions and the answer shapes the schema.
+**Decided: catalog data with a smaller audience** — but the tension dissolves once the *show* and
+the *staging* are separated.
+
+A local staging of a known work needs no local show at all: *Dear Evan Hansen* is already shared,
+and only the staging is local. So `productions` gained a `scope`, and local ones are excluded from
+the list every member sees while surfacing at their venue.
+
+Convergence was the real problem. Professional stagings deduplicate on their name, because
+everybody calls it "the national tour"; nobody invents the same name for a school production. Two
+people from the same town do agree on the school and the year, so local stagings key on
+`show + venue + year`. Different nights of one run converge, and the 2019 and 2022 stagings stay
+apart.
+
+An *original* local work — a community theatre's own revue, with no catalog show behind it — is
+still open, and is the remaining half of this section.
 
 ## 16. Mapping
 

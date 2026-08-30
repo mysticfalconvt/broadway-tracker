@@ -2544,3 +2544,33 @@ a.recent-entry:hover h3,
   color: var(--ink);
   font-size: 1rem;
 }
+
+/* Choosing between a professional staging and a school's. */
+.production-kind {
+  margin: 0 0 1rem;
+  padding: 0;
+  border: 0;
+}
+.production-kind legend {
+  padding: 0;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+.production-kind label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 0.55rem;
+  align-items: center;
+  margin-top: 0.6rem;
+  font-size: 0.95rem;
+}
+.production-kind input {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
+}
+.production-kind label span {
+  grid-column: 2;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
