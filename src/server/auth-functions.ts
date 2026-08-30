@@ -23,6 +23,7 @@ export const updateAccountSettings = createServerFn({ method: 'POST' })
           message: 'Use 3-30 lowercase letters, numbers, or hyphens.',
         }),
       profileVisibility: z.enum(['private', 'friends', 'public']),
+      digestCadence: z.enum(['off', 'weekly', 'monthly']).optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -37,12 +38,18 @@ export const updateAccountSettings = createServerFn({ method: 'POST' })
 
       const [updatedUser] = await getDb()
         .update(user)
-        .set({ name: data.name, handle: data.handle, updatedAt: new Date() })
+        .set({
+          name: data.name,
+          handle: data.handle,
+          ...(data.digestCadence ? { digestCadence: data.digestCadence } : {}),
+          updatedAt: new Date(),
+        })
         .where(eq(user.id, session.user.id))
         .returning({
           name: user.name,
           handle: user.handle,
           profileVisibility: user.profileVisibility,
+          digestCadence: user.digestCadence,
         })
 
       if (!updatedUser) throw new Error('Account not found')

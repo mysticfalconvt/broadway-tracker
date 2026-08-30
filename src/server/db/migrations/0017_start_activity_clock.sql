@@ -1,0 +1,11 @@
+-- Start everybody's activity clock at the moment this ships.
+--
+-- Digests go to people who have been away, judged by `last_active_at`. Every
+-- account that existed before that column did has NULL there, which reads as
+-- "never seen" — so the first scheduled run would write to every member at
+-- once, including the ones who use this daily. That is the difference between
+-- a nudge and a mailshot, and it would land once, on everybody, permanently.
+--
+-- NULL keeps its meaning for accounts created afterwards: somebody who signs up
+-- and never returns is genuinely away, and should hear from us.
+UPDATE "user" SET "last_active_at" = now() WHERE "last_active_at" IS NULL;

@@ -71,6 +71,56 @@ export const anniversariesFor = createServerOnlyFn(async (viewerId: string, toda
 })
 
 /**
+ * Anniversaries falling in the days ahead.
+ *
+ * "On this day" is right for a page somebody is looking at. A letter arriving
+ * once a month needs what is coming, not what happens to coincide with the
+ * morning it was sent.
+ *
+ * Compared on month and day rather than by arithmetic on dates, so a window
+ * crossing New Year is handled by asking for both halves.
+ */
+export const anniversariesAhead = createServerOnlyFn(
+  async (viewerId: string, from: Date, days: number) => {
+    // Compared as "MM-DD" strings rather than by arithmetic on dates, so a
+    // window running over New Year needs no special case: it is simply a list
+    // of days that happens to wrap.
+    const wanted: string[] = []
+    for (let offset = 0; offset < days; offset++) {
+      const at = new Date(from)
+      at.setDate(at.getDate() + offset)
+      wanted.push(
+        `${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`,
+      )
+    }
+    const thisYear = from.getFullYear()
+
+    const rows = await getDb()
+      .select({
+        id: outings.id,
+        showId: outings.showId,
+        showTitle: shows.title,
+        occurredOn: outings.occurredOn,
+        venue: sql<string | null>`coalesce(${venues.name}, ${outings.venue})`,
+        yearsAgo: sql<number>`(${thisYear}::int - extract(year from ${outings.occurredOn})::int)`,
+      })
+      .from(outingAttendees)
+      .innerJoin(outings, eq(outingAttendees.outingId, outings.id))
+      .innerJoin(shows, eq(outings.showId, shows.id))
+      .leftJoin(venues, eq(outings.venueId, venues.id))
+      .where(
+        and(
+          eq(outingAttendees.userId, viewerId),
+          eq(outings.datePrecision, 'exact'),
+          inArray(sql`to_char(${outings.occurredOn}, 'MM-DD')`, wanted),
+        ),
+      )
+      .orderBy(outings.occurredOn)
+    return rows.filter((row) => row.yearsAgo > 0)
+  },
+)
+
+/**
  * Shows the reader has seen that somebody else has too.
  *
  * The app knows this and has never said it, and it is the strongest prompt to

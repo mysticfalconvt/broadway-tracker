@@ -27,6 +27,7 @@ import { Route as ProtectedProfileRouteImport } from './routes/_protected/profil
 import { Route as ProtectedSettingsRouteImport } from './routes/_protected/settings'
 import { Route as ProtectedSubmitShowRouteImport } from './routes/_protected/submit-show'
 import { Route as ProtectedWriteRouteImport } from './routes/_protected/write'
+import { Route as ApiDigestRouteImport } from './routes/api/digest'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiUploadsRouteImport } from './routes/api/uploads'
 import { Route as ArtistsIdRouteImport } from './routes/artists/$id'
@@ -50,6 +51,7 @@ import { Route as ProtectedListsIndexRouteImport } from './routes/_protected/lis
 import { Route as ProtectedOutingsIdRouteImport } from './routes/_protected/outings/$id'
 import { Route as ProtectedPeopleHandleRouteImport } from './routes/_protected/people/$handle'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiDigestStopRouteImport } from './routes/api/digest.stop'
 import { Route as ApiImagesSplatRouteImport } from './routes/api/images/$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -140,6 +142,11 @@ const ProtectedWriteRoute = ProtectedWriteRouteImport.update({
   id: '/write',
   path: '/write',
   getParentRoute: () => ProtectedRoute,
+} as any)
+const ApiDigestRoute = ApiDigestRouteImport.update({
+  id: '/api/digest',
+  path: '/api/digest',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
@@ -257,6 +264,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDigestStopRoute = ApiDigestStopRouteImport.update({
+  id: '/stop',
+  path: '/stop',
+  getParentRoute: () => ApiDigestRoute,
+} as any)
 const ApiImagesSplatRoute = ApiImagesSplatRouteImport.update({
   id: '/api/images/$',
   path: '/api/images/$',
@@ -281,6 +293,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof ProtectedSettingsRoute
   '/submit-show': typeof ProtectedSubmitShowRoute
   '/write': typeof ProtectedWriteRoute
+  '/api/digest': typeof ApiDigestRouteWithChildren
   '/api/health': typeof ApiHealthRoute
   '/api/uploads': typeof ApiUploadsRoute
   '/artists/$id': typeof ArtistsIdRoute
@@ -302,6 +315,7 @@ export interface FileRoutesByFullPath {
   '/outings/$id': typeof ProtectedOutingsIdRoute
   '/people/$handle': typeof ProtectedPeopleHandleRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/digest/stop': typeof ApiDigestStopRoute
   '/api/images/$': typeof ApiImagesSplatRoute
   '/admin/': typeof ProtectedAdminIndexRoute
   '/lists/': typeof ProtectedListsIndexRoute
@@ -324,6 +338,7 @@ export interface FileRoutesByTo {
   '/settings': typeof ProtectedSettingsRoute
   '/submit-show': typeof ProtectedSubmitShowRoute
   '/write': typeof ProtectedWriteRoute
+  '/api/digest': typeof ApiDigestRouteWithChildren
   '/api/health': typeof ApiHealthRoute
   '/api/uploads': typeof ApiUploadsRoute
   '/artists/$id': typeof ArtistsIdRoute
@@ -345,6 +360,7 @@ export interface FileRoutesByTo {
   '/outings/$id': typeof ProtectedOutingsIdRoute
   '/people/$handle': typeof ProtectedPeopleHandleRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/digest/stop': typeof ApiDigestStopRoute
   '/api/images/$': typeof ApiImagesSplatRoute
   '/admin': typeof ProtectedAdminIndexRoute
   '/lists': typeof ProtectedListsIndexRoute
@@ -369,6 +385,7 @@ export interface FileRoutesById {
   '/_protected/settings': typeof ProtectedSettingsRoute
   '/_protected/submit-show': typeof ProtectedSubmitShowRoute
   '/_protected/write': typeof ProtectedWriteRoute
+  '/api/digest': typeof ApiDigestRouteWithChildren
   '/api/health': typeof ApiHealthRoute
   '/api/uploads': typeof ApiUploadsRoute
   '/artists/$id': typeof ArtistsIdRoute
@@ -390,6 +407,7 @@ export interface FileRoutesById {
   '/_protected/outings/$id': typeof ProtectedOutingsIdRoute
   '/_protected/people/$handle': typeof ProtectedPeopleHandleRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/digest/stop': typeof ApiDigestStopRoute
   '/api/images/$': typeof ApiImagesSplatRoute
   '/_protected/admin/': typeof ProtectedAdminIndexRoute
   '/_protected/lists/': typeof ProtectedListsIndexRoute
@@ -414,6 +432,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/submit-show'
     | '/write'
+    | '/api/digest'
     | '/api/health'
     | '/api/uploads'
     | '/artists/$id'
@@ -435,6 +454,7 @@ export interface FileRouteTypes {
     | '/outings/$id'
     | '/people/$handle'
     | '/api/auth/$'
+    | '/api/digest/stop'
     | '/api/images/$'
     | '/admin/'
     | '/lists/'
@@ -457,6 +477,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/submit-show'
     | '/write'
+    | '/api/digest'
     | '/api/health'
     | '/api/uploads'
     | '/artists/$id'
@@ -478,6 +499,7 @@ export interface FileRouteTypes {
     | '/outings/$id'
     | '/people/$handle'
     | '/api/auth/$'
+    | '/api/digest/stop'
     | '/api/images/$'
     | '/admin'
     | '/lists'
@@ -501,6 +523,7 @@ export interface FileRouteTypes {
     | '/_protected/settings'
     | '/_protected/submit-show'
     | '/_protected/write'
+    | '/api/digest'
     | '/api/health'
     | '/api/uploads'
     | '/artists/$id'
@@ -522,6 +545,7 @@ export interface FileRouteTypes {
     | '/_protected/outings/$id'
     | '/_protected/people/$handle'
     | '/api/auth/$'
+    | '/api/digest/stop'
     | '/api/images/$'
     | '/_protected/admin/'
     | '/_protected/lists/'
@@ -535,6 +559,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
+  ApiDigestRoute: typeof ApiDigestRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
   ApiUploadsRoute: typeof ApiUploadsRoute
   ArtistsIdRoute: typeof ArtistsIdRoute
@@ -675,6 +700,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/write'
       preLoaderRoute: typeof ProtectedWriteRouteImport
       parentRoute: typeof ProtectedRoute
+    }
+    '/api/digest': {
+      id: '/api/digest'
+      path: '/api/digest'
+      fullPath: '/api/digest'
+      preLoaderRoute: typeof ApiDigestRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/health': {
       id: '/api/health'
@@ -837,6 +869,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/digest/stop': {
+      id: '/api/digest/stop'
+      path: '/stop'
+      fullPath: '/api/digest/stop'
+      preLoaderRoute: typeof ApiDigestStopRouteImport
+      parentRoute: typeof ApiDigestRoute
+    }
     '/api/images/$': {
       id: '/api/images/$'
       path: '/api/images/$'
@@ -905,6 +944,18 @@ const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(
   ProtectedRouteChildren,
 )
 
+interface ApiDigestRouteChildren {
+  ApiDigestStopRoute: typeof ApiDigestStopRoute
+}
+
+const ApiDigestRouteChildren: ApiDigestRouteChildren = {
+  ApiDigestStopRoute: ApiDigestStopRoute,
+}
+
+const ApiDigestRouteWithChildren = ApiDigestRoute._addFileChildren(
+  ApiDigestRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ProtectedRoute: ProtectedRouteWithChildren,
@@ -913,6 +964,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
+  ApiDigestRoute: ApiDigestRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
   ApiUploadsRoute: ApiUploadsRoute,
   ArtistsIdRoute: ArtistsIdRoute,

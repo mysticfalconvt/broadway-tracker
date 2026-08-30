@@ -27,6 +27,30 @@ export const user = pgTable('user', {
   })
     .notNull()
     .default('public'),
+  /**
+   * How often to write to somebody who has stopped visiting.
+   *
+   * Monthly by default rather than weekly: at the size this is built for the
+   * whole app produces under two nights a week, so a weekly letter would often
+   * carry one anniversary and nothing else, and a thin letter is how you teach
+   * somebody to ignore your letters.
+   */
+  digestCadence: text('digest_cadence', { enum: ['off', 'weekly', 'monthly'] })
+    .notNull()
+    .default('monthly'),
+  /**
+   * When they last looked at anything. Sessions record signing in, which is not
+   * the same. Written at most once an hour, so reading a page is not a write.
+   */
+  lastActiveAt: timestamp('last_active_at'),
+  lastDigestAt: timestamp('last_digest_at'),
+  /**
+   * Lets somebody stop the letters from inside a letter.
+   *
+   * Unsubscribing must never require remembering a password — that is the
+   * difference between stopping the mail and reporting it as spam.
+   */
+  digestToken: uuid('digest_token').notNull().defaultRandom(),
   role: text('role', { enum: ['member', 'admin'] })
     .notNull()
     .default('member'),

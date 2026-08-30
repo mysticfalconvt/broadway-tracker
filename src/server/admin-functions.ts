@@ -221,5 +221,11 @@ export const navBadgesFor = createServerOnlyFn(
  */
 export const getNavBadges = createServerFn({ method: 'GET' }).handler(async () => {
   const session = await auth.api.getSession({ headers: getRequestHeaders() })
+  if (session) {
+    // Every page makes this call, so it is where being here is noticed. Cheap
+    // because it only writes when the record is more than an hour stale.
+    const { touchActivity } = await import('./digest-functions')
+    await touchActivity(session.user.id)
+  }
   return navBadgesFor(session?.user ?? null)
 })

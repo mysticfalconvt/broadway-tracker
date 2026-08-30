@@ -113,6 +113,20 @@
       "when": 1788104392331,
       "tag": "0015_dazzling_newton_destine",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1788108593382,
+      "tag": "0016_famous_yellowjacket",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788109074840,
+      "tag": "0017_start_activity_clock",
+      "breakpoints": true
     }
   ]
 }

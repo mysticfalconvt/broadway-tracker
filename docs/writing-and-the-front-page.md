@@ -206,9 +206,7 @@ gain, and it is the cheapest thing here. Posts are the larger build and they
 are worth doing, but a front page that only had posts on it would be empty
 until somebody wrote something.
 
-## In the hopper: a reminder for people who have drifted
-
-Not planned yet. Captured because it fits what is already built.
+## Built: a reminder for people who have drifted
 
 The idea: an occasional email to somebody who has not visited — an anniversary,
 a piece they have not read, a friend's night they missed. A profile setting,
@@ -220,13 +218,22 @@ posts listing already assemble exactly this, already respect each item's
 sharing, and are already tested. The digest is a template and a schedule over
 queries that exist.
 
-What it needs that does not exist:
+How it works:
 
-- **Somewhere to record last activity.** Sessions know when somebody signed in,
-  not when they last looked at anything. One column, written cheaply.
-- **A schedule.** Production runs a single instance, so a cron on the host
-  calling a protected endpoint is enough; nothing needs a job runner.
-- **One-click unsubscribe**, honoured without a login. Not optional.
+- `user.lastActiveAt`, written from the navigation's own round trip and only
+  when the record is more than an hour stale, so reading a page is not a write.
+- `POST /api/digest`, guarded by `DIGEST_SECRET` and refusing outright when
+  that is unset. `?dryRun=1` assembles everything and sends nothing, so a
+  schedule can be pointed at production and inspected first. A cron on the host
+  calls it; nothing needs a job runner.
+- `GET /api/digest/stop?token=…` unsubscribes with no login, and answers
+  identically for a token that means nothing.
+
+**Learned by nearly doing it:** every account that predates `last_active_at`
+has NULL there, which reads as "never seen" — so the first scheduled run would
+have written to every member at once, including daily users. A data migration
+starts the clock at deploy. NULL keeps its meaning for accounts created
+afterwards, where it genuinely means somebody signed up and never came back.
 
 The decisions that matter more than the plumbing:
 

@@ -91,6 +91,12 @@ function describeImpact(counts: {
   return parts.join(', ')
 }
 
+function cadenceFrom(value: FormDataEntryValue | null) {
+  if (value === 'weekly') return 'weekly' as const
+  if (value === 'off') return 'off' as const
+  return 'monthly' as const
+}
+
 function profileVisibilityFrom(value: FormDataEntryValue | null) {
   if (value === 'friends') return 'friends' as const
   if (value === 'public') return 'public' as const
@@ -122,6 +128,7 @@ function Settings() {
           name: String(form.get('name')),
           handle: String(form.get('handle')),
           profileVisibility: profileVisibilityFrom(form.get('profileVisibility')),
+          digestCadence: cadenceFrom(form.get('digestCadence')),
         },
       })
       const moved = result?.sharing?.moved
@@ -168,6 +175,47 @@ function Settings() {
           <span>Used when friends look for you. Lowercase letters, numbers, and hyphens only.</span>
         </label>
         <AvatarField currentKey={user.image} />
+        <fieldset>
+          <legend>Letters</legend>
+          <p className="settings-note settings-sharing-lede">
+            Only ever sent if you have been away, and only if there is something in it.
+          </p>
+          <label>
+            <input
+              defaultChecked={user.digestCadence === 'monthly'}
+              name="digestCadence"
+              type="radio"
+              value="monthly"
+            />
+            <span>
+              <strong>Monthly</strong>
+              Anniversaries, anything written, where friends have been.
+            </span>
+          </label>
+          <label>
+            <input
+              defaultChecked={user.digestCadence === 'weekly'}
+              name="digestCadence"
+              type="radio"
+              value="weekly"
+            />
+            <span>
+              <strong>Weekly</strong>
+              More often, and often thinner.
+            </span>
+          </label>
+          <label>
+            <input
+              defaultChecked={user.digestCadence === 'off'}
+              name="digestCadence"
+              type="radio"
+              value="off"
+            />
+            <span>
+              <strong>Never</strong>
+            </span>
+          </label>
+        </fieldset>
         <fieldset>
           <legend>Who your theatre is for</legend>
           <p className="settings-note settings-sharing-lede">

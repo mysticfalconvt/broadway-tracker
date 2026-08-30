@@ -70,6 +70,7 @@ export const auth = betterAuth({
       ...coreFields,
       handle: generateHandle(coreFields.name),
       profileVisibility: 'public',
+      digestCadence: 'monthly',
       role: roleFor(coreFields.email, 'member', process.env.ADMIN_EMAILS) ?? 'member',
       id,
     }),
@@ -118,6 +119,14 @@ export const auth = betterAuth({
         // itself, overriding both the database default and the synthetic-user
         // hook, so changing one without the other silently does nothing.
         defaultValue: 'public',
+        input: false,
+      },
+      digestCadence: {
+        type: ['off', 'weekly', 'monthly'],
+        required: false,
+        // Same trap as profileVisibility: Better Auth applies this itself and
+        // wins over the column default, so the two must be changed together.
+        defaultValue: 'monthly',
         input: false,
       },
       role: { type: ['member', 'admin'], required: false, defaultValue: 'member', input: false },
