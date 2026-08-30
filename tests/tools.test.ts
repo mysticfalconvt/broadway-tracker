@@ -42,7 +42,7 @@ async function aCatalog() {
 
 describe('what the model is told it can do', () => {
   it('describes every tool in a shape a model can be handed', () => {
-    const described = toolDescriptions()
+    const described = toolDescriptions({ allowWrites: true })
     expect(described).toHaveLength(TOOLS.length)
     for (const entry of described) {
       expect(entry.function.name).toMatch(/^[a-z_]+$/)
@@ -53,8 +53,12 @@ describe('what the model is told it can do', () => {
 
   it('stays small enough for a local model to choose between', () => {
     // Not arbitrary: a 120B model picking between a handful of obvious
-    // functions is reliable, and across thirty it is not.
-    expect(TOOLS.length).toBeLessThanOrEqual(12)
+    // functions is reliable, and across thirty it is not. Only the reading set
+    // is measured, because that is all the local model is ever offered — an
+    // agent holding somebody's key is a better model with a longer attention
+    // span, and the writing tools are its problem, not the house model's.
+    expect(toolDescriptions()).toHaveLength(9)
+    expect(TOOLS.length).toBeLessThanOrEqual(16)
   })
 })
 
@@ -163,13 +167,25 @@ describe('a tool sees only what its actor may see', () => {
   })
 })
 
-describe('no tool can change anything', () => {
-  it('every tool is a read', () => {
-    // The guarantee the layer exists for: a confused model cannot rewrite
-    // somebody's history. If a writing tool is ever added, this fails.
-    const writing = TOOLS.filter((tool) =>
-      /^(add|save|create|delete|remove|update|set|publish|merge|join|import)_/.test(tool.name),
+describe('what a tool is allowed to change', () => {
+  it('declares every tool that writes, by its name', () => {
+    // The guarantee the layer exists for, restated once writing tools arrived:
+    // a tool that changes something must say so, because `writes` is what
+    // `runTool` checks before letting a caller near it. A new writing tool
+    // added without the flag fails here rather than quietly reaching /ask.
+    const named = TOOLS.filter((tool) =>
+      /^(add|save|create|delete|remove|update|set|publish|merge|join|import|log)_/.test(tool.name),
     )
-    expect(writing).toEqual([])
+    expect(named.filter((tool) => !tool.writes)).toEqual([])
+  })
+
+  it('offers the app’s own model nothing that writes', () => {
+    // /ask calls runTool without allowWrites. This is the same fact from the
+    // other side: even the descriptions it is handed contain no writing tool,
+    // so it cannot ask for one by guessing a name.
+    for (const described of toolDescriptions()) {
+      const tool = TOOLS.find((one) => one.name === described.function.name)
+      expect(tool?.writes).toBeFalsy()
+    }
   })
 })

@@ -155,6 +155,13 @@
       "when": 1788121844986,
       "tag": "0021_slow_alex_power",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1788128923028,
+      "tag": "0022_careless_zemo",
+      "breakpoints": true
     }
   ]
 }

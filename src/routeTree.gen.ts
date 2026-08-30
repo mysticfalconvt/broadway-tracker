@@ -21,6 +21,7 @@ import { Route as ProtectedBuildHistoryRouteImport } from './routes/_protected/b
 import { Route as ProtectedCircleRouteImport } from './routes/_protected/circle'
 import { Route as ProtectedFeedbackRouteImport } from './routes/_protected/feedback'
 import { Route as ProtectedFriendsRouteImport } from './routes/_protected/friends'
+import { Route as ProtectedKeysRouteImport } from './routes/_protected/keys'
 import { Route as ProtectedLibraryRouteImport } from './routes/_protected/library'
 import { Route as ProtectedLogRouteImport } from './routes/_protected/log'
 import { Route as ProtectedPlacesRouteImport } from './routes/_protected/places'
@@ -30,6 +31,7 @@ import { Route as ProtectedSubmitShowRouteImport } from './routes/_protected/sub
 import { Route as ProtectedWriteRouteImport } from './routes/_protected/write'
 import { Route as ApiDigestRouteImport } from './routes/api/digest'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiUploadsRouteImport } from './routes/api/uploads'
 import { Route as ArtistsIdRouteImport } from './routes/artists/$id'
 import { Route as ListsIdRouteImport } from './routes/lists/$id'
@@ -115,6 +117,11 @@ const ProtectedFriendsRoute = ProtectedFriendsRouteImport.update({
   path: '/friends',
   getParentRoute: () => ProtectedRoute,
 } as any)
+const ProtectedKeysRoute = ProtectedKeysRouteImport.update({
+  id: '/keys',
+  path: '/keys',
+  getParentRoute: () => ProtectedRoute,
+} as any)
 const ProtectedLibraryRoute = ProtectedLibraryRouteImport.update({
   id: '/library',
   path: '/library',
@@ -158,6 +165,11 @@ const ApiDigestRoute = ApiDigestRouteImport.update({
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMcpRoute = ApiMcpRouteImport.update({
+  id: '/api/mcp',
+  path: '/api/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiUploadsRoute = ApiUploadsRouteImport.update({
@@ -299,6 +311,7 @@ export interface FileRoutesByFullPath {
   '/circle': typeof ProtectedCircleRoute
   '/feedback': typeof ProtectedFeedbackRoute
   '/friends': typeof ProtectedFriendsRoute
+  '/keys': typeof ProtectedKeysRoute
   '/library': typeof ProtectedLibraryRoute
   '/log': typeof ProtectedLogRoute
   '/places': typeof ProtectedPlacesRoute
@@ -308,6 +321,7 @@ export interface FileRoutesByFullPath {
   '/write': typeof ProtectedWriteRoute
   '/api/digest': typeof ApiDigestRouteWithChildren
   '/api/health': typeof ApiHealthRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/api/uploads': typeof ApiUploadsRoute
   '/artists/$id': typeof ArtistsIdRoute
   '/lists/$id': typeof ListsIdRoute
@@ -346,6 +360,7 @@ export interface FileRoutesByTo {
   '/circle': typeof ProtectedCircleRoute
   '/feedback': typeof ProtectedFeedbackRoute
   '/friends': typeof ProtectedFriendsRoute
+  '/keys': typeof ProtectedKeysRoute
   '/library': typeof ProtectedLibraryRoute
   '/log': typeof ProtectedLogRoute
   '/places': typeof ProtectedPlacesRoute
@@ -355,6 +370,7 @@ export interface FileRoutesByTo {
   '/write': typeof ProtectedWriteRoute
   '/api/digest': typeof ApiDigestRouteWithChildren
   '/api/health': typeof ApiHealthRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/api/uploads': typeof ApiUploadsRoute
   '/artists/$id': typeof ArtistsIdRoute
   '/lists/$id': typeof ListsIdRoute
@@ -395,6 +411,7 @@ export interface FileRoutesById {
   '/_protected/circle': typeof ProtectedCircleRoute
   '/_protected/feedback': typeof ProtectedFeedbackRoute
   '/_protected/friends': typeof ProtectedFriendsRoute
+  '/_protected/keys': typeof ProtectedKeysRoute
   '/_protected/library': typeof ProtectedLibraryRoute
   '/_protected/log': typeof ProtectedLogRoute
   '/_protected/places': typeof ProtectedPlacesRoute
@@ -404,6 +421,7 @@ export interface FileRoutesById {
   '/_protected/write': typeof ProtectedWriteRoute
   '/api/digest': typeof ApiDigestRouteWithChildren
   '/api/health': typeof ApiHealthRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/api/uploads': typeof ApiUploadsRoute
   '/artists/$id': typeof ArtistsIdRoute
   '/lists/$id': typeof ListsIdRoute
@@ -444,6 +462,7 @@ export interface FileRouteTypes {
     | '/circle'
     | '/feedback'
     | '/friends'
+    | '/keys'
     | '/library'
     | '/log'
     | '/places'
@@ -453,6 +472,7 @@ export interface FileRouteTypes {
     | '/write'
     | '/api/digest'
     | '/api/health'
+    | '/api/mcp'
     | '/api/uploads'
     | '/artists/$id'
     | '/lists/$id'
@@ -491,6 +511,7 @@ export interface FileRouteTypes {
     | '/circle'
     | '/feedback'
     | '/friends'
+    | '/keys'
     | '/library'
     | '/log'
     | '/places'
@@ -500,6 +521,7 @@ export interface FileRouteTypes {
     | '/write'
     | '/api/digest'
     | '/api/health'
+    | '/api/mcp'
     | '/api/uploads'
     | '/artists/$id'
     | '/lists/$id'
@@ -539,6 +561,7 @@ export interface FileRouteTypes {
     | '/_protected/circle'
     | '/_protected/feedback'
     | '/_protected/friends'
+    | '/_protected/keys'
     | '/_protected/library'
     | '/_protected/log'
     | '/_protected/places'
@@ -548,6 +571,7 @@ export interface FileRouteTypes {
     | '/_protected/write'
     | '/api/digest'
     | '/api/health'
+    | '/api/mcp'
     | '/api/uploads'
     | '/artists/$id'
     | '/lists/$id'
@@ -585,6 +609,7 @@ export interface RootRouteChildren {
   SignUpRoute: typeof SignUpRoute
   ApiDigestRoute: typeof ApiDigestRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiMcpRoute: typeof ApiMcpRoute
   ApiUploadsRoute: typeof ApiUploadsRoute
   ArtistsIdRoute: typeof ArtistsIdRoute
   ListsIdRoute: typeof ListsIdRoute
@@ -683,6 +708,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedFriendsRouteImport
       parentRoute: typeof ProtectedRoute
     }
+    '/_protected/keys': {
+      id: '/_protected/keys'
+      path: '/keys'
+      fullPath: '/keys'
+      preLoaderRoute: typeof ProtectedKeysRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/_protected/library': {
       id: '/_protected/library'
       path: '/library'
@@ -744,6 +776,13 @@ declare module '@tanstack/react-router' {
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/mcp': {
+      id: '/api/mcp'
+      path: '/api/mcp'
+      fullPath: '/api/mcp'
+      preLoaderRoute: typeof ApiMcpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/uploads': {
@@ -930,6 +969,7 @@ interface ProtectedRouteChildren {
   ProtectedCircleRoute: typeof ProtectedCircleRoute
   ProtectedFeedbackRoute: typeof ProtectedFeedbackRoute
   ProtectedFriendsRoute: typeof ProtectedFriendsRoute
+  ProtectedKeysRoute: typeof ProtectedKeysRoute
   ProtectedLibraryRoute: typeof ProtectedLibraryRoute
   ProtectedLogRoute: typeof ProtectedLogRoute
   ProtectedPlacesRoute: typeof ProtectedPlacesRoute
@@ -959,6 +999,7 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedCircleRoute: ProtectedCircleRoute,
   ProtectedFeedbackRoute: ProtectedFeedbackRoute,
   ProtectedFriendsRoute: ProtectedFriendsRoute,
+  ProtectedKeysRoute: ProtectedKeysRoute,
   ProtectedLibraryRoute: ProtectedLibraryRoute,
   ProtectedLogRoute: ProtectedLogRoute,
   ProtectedPlacesRoute: ProtectedPlacesRoute,
@@ -1008,6 +1049,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignUpRoute: SignUpRoute,
   ApiDigestRoute: ApiDigestRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
+  ApiMcpRoute: ApiMcpRoute,
   ApiUploadsRoute: ApiUploadsRoute,
   ArtistsIdRoute: ArtistsIdRoute,
   ListsIdRoute: ListsIdRoute,

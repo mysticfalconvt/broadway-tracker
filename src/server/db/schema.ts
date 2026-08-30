@@ -646,6 +646,46 @@ export const seenPerformers = pgTable(
   ],
 )
 
+/**
+ * A key that lets somebody's own agent act as them.
+ *
+ * The point is a person pointing Claude Code — or anything else that can read
+ * the web properly — at their own account, to research a show and enter it. The
+ * app's own model runs in the house and is small; it read a cast table and put
+ * Tony Danza under Leo Bloom. A better reader fixes that, and lives elsewhere.
+ *
+ * So a key is that member. It carries no scope column and no permission bits,
+ * because a second permission system that has to be kept in step with the real
+ * one is how a hole gets in: every call goes through the same functions a
+ * signed-in person's clicks do, and sees exactly what they see. What a key
+ * cannot do is anything they could not — including publishing to the catalog,
+ * which stays with review.
+ *
+ * Only the hash is kept. A plain SHA-256 rather than a password hash on
+ * purpose: these are 160 bits from a CSPRNG, so there is no dictionary to run
+ * and nothing for a slow hash to buy. The token is shown once, at creation, and
+ * is not recoverable afterwards.
+ */
+export const apiKeys = pgTable(
+  'api_keys',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    /** What it is for, in the owner's words: "laptop", "the mac mini". */
+    name: text('name').notNull(),
+    tokenHash: text('token_hash').notNull().unique(),
+    /** The opening characters, so a key can be told apart in a list and revoked. */
+    prefix: text('prefix').notNull(),
+    /** Answers "is this one still in use?", which is what makes revoking safe. */
+    lastUsedAt: timestamp('last_used_at'),
+    revokedAt: timestamp('revoked_at'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => [index('api_keys_user_idx').on(table.userId)],
+)
+
 export const friendships = pgTable(
   'friendships',
   {

@@ -260,3 +260,40 @@ and might never be needed.
   invites one useful thing.
 - Is anybody but you going to type into it? If not, MCP from your own editor is
   cheaper than a screen, and there is no key to look after.
+
+## A member's own agent
+
+The model in the house is small, and research is the one job it is bad at.
+Reading a cast table off a web page and keeping the roles straight is exactly
+what a 120B model gets wrong: it put Tony Danza under Leo Bloom, repeatably, and
+no amount of prompting fixed it. Everything built around it was fine — the tool
+layer, the provenance marking, landing as a submission — so what moves is who
+does the reading, not the design.
+
+`/api/mcp` exposes the tool layer over MCP. A member makes a key at `/keys` and
+points Claude Code at it:
+
+    claude mcp add --transport http broadway https://.../api/mcp \
+      --header "Authorization: Bearer bt_..."
+
+**A key is its owner.** There is no scope column and no permission bits, because
+a second permission system that has to be kept in step with the real one is how
+a hole gets in. Every call goes through the same function the website calls,
+with the same actor id, so an agent sees what its owner sees and can do what its
+owner can do — which does not include publishing to the catalog. Writes land
+pending, marked `research`, attributed to the member, exactly as the submission
+form's do.
+
+Writing is opt-in per caller rather than per tool file. `runTool` refuses a tool
+marked `writes` unless the caller passes `allowWrites`, and `/ask` never does.
+That is what stands between a confused sentence typed into the app and somebody
+else's history.
+
+### What stays local
+
+`/ask` keeps using the model in the house. It answers from the catalog, over
+somebody's private journal — their nights, their friends, who they went with —
+and that is the data the local-model decision was protecting. The MCP layer is
+for the other half: filling the catalog, which is public record either way. A
+member choosing to point their own agent at their own account is their call to
+make, and it is scoped to their account.

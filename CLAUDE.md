@@ -132,3 +132,19 @@ docs/            architecture, backups, catalog import, the plan, design notes
 
 `docs/implementation-plan.md` is the running record — 186 items done, 6 open,
 each with a note on what was decided and why.
+
+## The MCP layer (`/api/mcp`)
+
+A member mints a key at `/keys`; `actorForToken` turns it into a user row and
+everything downstream is the code the website already runs. Points worth knowing
+before changing it:
+
+- **A key is its owner, with no separate scopes.** Do not add a permission
+  column. If a key should not be able to do something, the member should not be
+  able to do it either, and the guard belongs in the function they both call.
+- **`writes: true` on a tool is not itself the guard.** The guard is that
+  callers must pass `allowWrites`. `/ask` does not, which is why its local model
+  cannot log a night. `tests/api-keys.test.ts` holds both halves.
+- **Only the SHA-256 of a token is stored.** Plain SHA-256 rather than a
+  password hash is deliberate: 160 bits from a CSPRNG has no dictionary to run.
+- Tokens are shown once. Nothing can recover one afterwards.

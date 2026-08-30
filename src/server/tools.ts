@@ -12,8 +12,9 @@ import { z } from 'zod'
  * Three properties hold for every tool here, and the layer is worth having
  * mostly because they hold in one place rather than at each call site:
  *
- *   - **Nothing writes.** The most a tool returns is a draft for a person to
- *     confirm. The model cannot change anybody's history by being confused.
+ *   - **Writing is opt-in.** Tools are read-only unless marked, and a caller
+ *     must ask for the writing ones by name. The app's own `/ask` never does,
+ *     so its model cannot change anybody's history by being confused.
  *   - **Everything runs as somebody.** Each takes an actor id and goes through
  *     the same functions the rest of the app uses, so a tool cannot see more
  *     than the person on whose behalf it runs.
@@ -29,6 +30,14 @@ type Tool<Schema extends z.ZodTypeAny> = {
   /** Written for the model. What it is for, and when to reach for it. */
   description: string
   parameters: Schema
+  /**
+   * Whether calling this changes anything.
+   *
+   * Off by default and opt-in per caller, so a tool that writes cannot reach a
+   * model by being added to this file. The app's own `/ask` runs read-only; a
+   * member's own agent, holding their key, does not.
+   */
+  writes?: boolean
   run: (actorId: string, args: z.infer<Schema>) => Promise<unknown>
 }
 
@@ -169,11 +178,125 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
         }))
     },
   }),
+
+  // ─── The ones that change something ─────────────────────────────────────
+  //
+  // Reached only by somebody's own agent, holding their key, acting as them.
+  // Each goes through the function the website calls, so a key can do what its
+  // owner can do at a keyboard and nothing more — including landing a show as a
+  // submission rather than as catalog.
+
+  tool({
+    name: 'add_researched_show',
+    description:
+      'Add a show, its productions and its cast, from research you have done yourself. ' +
+      'Give every principal performer and the dates they held the role, including ' +
+      'replacements — the order they are listed in is kept and is what lets the app work ' +
+      'out which year somebody saw it. Only stage productions; never a film cast. The show ' +
+      'lands as a submission awaiting review, not as catalog, and everything is marked as ' +
+      'found by research rather than confirmed by anybody. Use find_show first: this ' +
+      'refuses to make a second copy of something already here.',
+    writes: true,
+    parameters: z.object({
+      research: z
+        .string()
+        .min(2)
+        .max(200_000)
+        .describe('JSON of the shape {"shows":[{title, type, synopsis, productions:[…]}]}'),
+    }),
+    run: async (actorId, { research }) => {
+      const { acceptResearch } = await import('./research-functions')
+      return await acceptResearch(actorId, research)
+    },
+  }),
+
+  tool({
+    name: 'add_production',
+    description:
+      'Record a staging of a show that is already in the catalog — a tour, a revival, a ' +
+      'local production — with its theatre. Returns the production, whether it was created ' +
+      'or already existed.',
+    writes: true,
+    parameters: z.object({
+      showId: z.string().uuid(),
+      name: z.string().trim().min(1).max(200),
+      productionType: z.enum(['broadway', 'off_broadway', 'tour', 'regional', 'local', 'other']),
+      venue: z.string().trim().max(200).optional(),
+      city: z.string().trim().max(120).optional(),
+    }),
+    run: async (actorId, { showId, name, productionType, venue, city }) => {
+      const { findOrCreateProduction } = await import('./catalog-functions')
+      return await findOrCreateProduction(actorId, showId, name, productionType, venue, city)
+    },
+  }),
+
+  tool({
+    name: 'add_casting',
+    description:
+      'Record that somebody held a role in a production, with the dates if they are known. ' +
+      'Leave the dates out rather than guessing: they decide who the app tells people they ' +
+      'saw. Marked as research, because nobody in the room confirmed it.',
+    writes: true,
+    parameters: z.object({
+      productionId: z.string().uuid(),
+      personName: z.string().trim().min(1).max(160),
+      role: z.string().trim().min(1).max(160),
+      kind: z.enum(['performer', 'creative']).default('performer'),
+      isPrincipal: z.boolean().default(true),
+      startedOn: z.string().date().optional(),
+      endedOn: z.string().date().optional(),
+      replacementOrder: z
+        .number()
+        .int()
+        .min(1)
+        .max(200)
+        .optional()
+        .describe('Where they came in the sequence of people who played the role.'),
+      sourceNote: z.string().trim().max(500).optional().describe('A URL somebody could check.'),
+    }),
+    run: async (actorId, args) => {
+      const { addCasting } = await import('./people-functions')
+      const { sourceNote, ...casting } = args
+      return await addCasting(actorId, casting, { source: 'research', sourceNote })
+    },
+  }),
+
+  tool({
+    name: 'log_night',
+    description:
+      'Record a night this person went to the theatre. Say how sure the date is: `exact` ' +
+      'with a full date, `month`, `year` when only the year is known, `approximate` with a ' +
+      'phrase like "some time in the nineties". Never invent a precision they did not ' +
+      'give — a guessed date recorded as exact is a false memory. Check my_nights_at first ' +
+      'so an evening is not logged twice.',
+    writes: true,
+    parameters: z.object({
+      showId: z.string().uuid(),
+      productionId: z.string().uuid().optional(),
+      venue: z.string().trim().max(200).optional(),
+      city: z.string().trim().max(120).optional(),
+      datePrecision: z.enum(['exact', 'month', 'year', 'approximate', 'unknown']),
+      occurredOn: z.string().date().optional(),
+      occurredMonth: z.number().int().min(1).max(12).optional(),
+      occurredYear: z.number().int().min(1800).max(2200).optional(),
+      approximateDate: z.string().trim().max(100).optional(),
+      sharedNotes: z.string().trim().max(5_000).optional(),
+      attendeeIds: z
+        .array(z.string().uuid())
+        .max(50)
+        .default([])
+        .describe('Friends who were there, by the user id my_friends returns.'),
+    }),
+    run: async (actorId, args) => {
+      const { createOutingForUser } = await import('./outing-functions')
+      return await createOutingForUser(actorId, { ...args, favorite: false })
+    },
+  }),
 ]
 
 /** Handed to the model so it knows what it may ask for. */
-export const toolDescriptions = createServerOnlyFn(() =>
-  TOOLS.map((definition) => ({
+export const toolDescriptions = createServerOnlyFn(({ allowWrites = false } = {}) =>
+  TOOLS.filter((definition) => allowWrites || !definition.writes).map((definition) => ({
     type: 'function' as const,
     function: {
       name: definition.name,
@@ -191,9 +314,17 @@ export const toolDescriptions = createServerOnlyFn(() =>
  * allowed to try again, not have the conversation collapse.
  */
 export const runTool = createServerOnlyFn(
-  async (actorId: string, name: string, args: unknown): Promise<ToolResult> => {
+  async (
+    actorId: string,
+    name: string,
+    args: unknown,
+    { allowWrites = false } = {},
+  ): Promise<ToolResult> => {
     const definition = TOOLS.find((candidate) => candidate.name === name)
     if (!definition) return { ok: false, error: `There is no tool called ${name}.` }
+    if (definition.writes && !allowWrites) {
+      return { ok: false, error: `${name} changes things, and this conversation may only read.` }
+    }
 
     const parsed = definition.parameters.safeParse(args ?? {})
     if (!parsed.success) {
