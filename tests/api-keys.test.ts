@@ -134,3 +134,25 @@ describe('what a tool may change', () => {
     expect(logged?.createdByUserId).not.toBe(stranger.id)
   })
 })
+
+describe('what reaches the browser', () => {
+  it('never sends the stored hash back with a new key', async () => {
+    // This value crosses to the page. Storing only a hash buys nothing if the
+    // hash is then published next to the thing it protects.
+    const member = await makeUser()
+    const made = await createApiKey(member.id, 'laptop')
+
+    const [stored] = await db.select().from(apiKeys)
+    const sent = JSON.stringify(made)
+    expect(sent).not.toContain(stored!.tokenHash)
+    expect(Object.keys(made.key)).not.toContain('tokenHash')
+  })
+
+  it('does not list hashes either', async () => {
+    const member = await makeUser()
+    await createApiKey(member.id, 'laptop')
+    const [stored] = await db.select().from(apiKeys)
+
+    expect(JSON.stringify(await apiKeysFor(member.id))).not.toContain(stored!.tokenHash)
+  })
+})

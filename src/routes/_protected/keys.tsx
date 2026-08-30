@@ -57,14 +57,21 @@ function Keys() {
       >
         <label>
           <span className="sr-only">What is this key for?</span>
+          {/*
+            `required` rather than a disabled button. A button that is dead for
+            a reason the page does not give looks broken, and the browser
+            already says "fill this in" at the moment somebody tries — which is
+            the only moment it is worth saying.
+          */}
           <input
             maxLength={80}
             onChange={(event) => setName(event.target.value)}
             placeholder="Laptop"
+            required
             value={name}
           />
         </label>
-        <button className="button button-primary" disabled={busy || !name.trim()} type="submit">
+        <button className="button button-primary" disabled={busy} type="submit">
           {busy ? 'Making…' : 'New key'}
         </button>
       </form>

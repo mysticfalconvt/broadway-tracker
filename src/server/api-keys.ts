@@ -46,9 +46,19 @@ export const createApiKey = createServerOnlyFn(async (userId: string, name: stri
       tokenHash: fingerprint(token),
       prefix: token.slice(0, PREFIX.length + 6),
     })
-    .returning()
+    // Named columns rather than the whole row: `.returning()` hands back
+    // `tokenHash` too, and this value crosses to the browser. Storing only a
+    // hash is pointless if it is then published to the page.
+    .returning({
+      id: apiKeys.id,
+      name: apiKeys.name,
+      prefix: apiKeys.prefix,
+      lastUsedAt: apiKeys.lastUsedAt,
+      revokedAt: apiKeys.revokedAt,
+      createdAt: apiKeys.createdAt,
+    })
 
-  // The only time the token exists outside the caller's hands.
+  // The only time the token itself exists outside the caller's hands.
   return { token, key: row! }
 })
 
