@@ -8,7 +8,12 @@ import { venueKey } from './place'
  * decision visible: the administrator sees what will be written, and can still
  * change their mind before importing.
  */
-export type VenueFix = { given: string; city: string | null; name: string; venueCity: string | null }
+export type VenueFix = {
+  given: string
+  city: string | null
+  name: string
+  venueCity: string | null
+}
 
 type Mutable = Record<string, unknown>
 
@@ -18,8 +23,7 @@ function matches(name: unknown, city: unknown, fix: VenueFix) {
   // Compare on the same key the importer would, so a cosmetic difference in the
   // paste still matches the warning it produced.
   return (
-    venueKey(name, cityValue) === venueKey(fix.given, fix.city) &&
-    name.trim() === fix.given.trim()
+    venueKey(name, cityValue) === venueKey(fix.given, fix.city) && name.trim() === fix.given.trim()
   )
 }
 

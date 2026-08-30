@@ -6,7 +6,8 @@ import {
   requestFriendship,
   respondToFriendship,
 } from '../src/server/friend-functions'
-import { makeFriendship, makeUser, resetDatabase } from './helpers'
+import { navBadgesFor } from '../src/server/admin-functions'
+import { makeAdmin, makeFriendship, makeShow, makeUser, resetDatabase } from './helpers'
 
 beforeEach(resetDatabase)
 
@@ -80,5 +81,42 @@ describe('pending friend request count', () => {
     const b = await makeUser()
     await requestFriendship(a.id, b.id)
     expect(await pendingRequestCountFor(me.id)).toBe(0)
+  })
+})
+
+describe('the badge the navigation actually receives', () => {
+  it('gives a member their waiting requests', async () => {
+    const me = await makeUser()
+    const sender = await makeUser()
+    await requestFriendship(sender.id, me.id)
+    const badges = await navBadgesFor(me)
+    expect(badges.friendRequests).toBe(1)
+    expect(badges.isAdmin).toBe(false)
+  })
+
+  it('gives an administrator theirs too', async () => {
+    // An administrator is still somebody's friend. The badge was assembled in
+    // two branches and the administrator one forgot this entirely.
+    const admin = await makeAdmin()
+    const sender = await makeUser()
+    await requestFriendship(sender.id, admin.id)
+    const badges = await navBadgesFor(admin)
+    expect(badges.isAdmin).toBe(true)
+    expect(badges.friendRequests).toBe(1)
+  })
+
+  it('counts an administrator’s queue and their requests separately', async () => {
+    const admin = await makeAdmin()
+    const sender = await makeUser()
+    await requestFriendship(sender.id, admin.id)
+    await makeShow({ title: 'Waiting Review', slug: 'waiting-review', catalogStatus: 'pending' })
+    const badges = await navBadgesFor(admin)
+    expect(badges.waiting).toBe(1)
+    expect(badges.friendRequests).toBe(1)
+  })
+
+  it('gives a signed-out visitor nothing', async () => {
+    const badges = await navBadgesFor(null)
+    expect(badges).toEqual({ isAdmin: false, waiting: 0, friendRequests: 0 })
   })
 })

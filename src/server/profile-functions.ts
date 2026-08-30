@@ -1,6 +1,6 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
-import { and, asc, desc, eq, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { auth } from './auth'
@@ -156,7 +156,7 @@ export const friendProfileForViewer = createServerOnlyFn(
       throw new Error('This profile is only available to friends.')
     if (profile.visibility === 'private')
       throw new Error('This friend keeps their profile to themselves.')
-    const [seen, outingsCount, favorites, sharedLists] = await Promise.all([
+    const [seen, outingsCount, favorites, seenShows, sharedLists] = await Promise.all([
       db
         .select({ count: sql<number>`count(*)::int` })
         .from(libraryEntries)
@@ -179,11 +179,36 @@ export const friendProfileForViewer = createServerOnlyFn(
           and(
             eq(libraryEntries.userId, profile.id),
             eq(libraryEntries.favorite, true),
-            eq(libraryEntries.visibility, 'friends'),
+            // Public is more open than friends, not less. Matching 'friends'
+            // exactly hid everything from the very people it was shared with,
+            // because new entries default to the profile's own setting and
+            // that defaults to public.
+            inArray(libraryEntries.visibility, ['friends', 'public']),
           ),
         )
         .orderBy(desc(libraryEntries.updatedAt))
         .limit(6),
+      // The stat said "24 shows seen" above a page listing none of them, unless
+      // the friend happened to have starred something.
+      db
+        .select({
+          id: shows.id,
+          title: shows.title,
+          slug: shows.slug,
+          type: shows.type,
+          coverImageKey: shows.coverImageKey,
+        })
+        .from(libraryEntries)
+        .innerJoin(shows, eq(libraryEntries.showId, shows.id))
+        .where(
+          and(
+            eq(libraryEntries.userId, profile.id),
+            eq(libraryEntries.status, 'seen'),
+            inArray(libraryEntries.visibility, ['friends', 'public']),
+          ),
+        )
+        .orderBy(desc(libraryEntries.updatedAt))
+        .limit(24),
       db
         .select({
           id: lists.id,
@@ -193,7 +218,7 @@ export const friendProfileForViewer = createServerOnlyFn(
         })
         .from(lists)
         .leftJoin(listItems, eq(listItems.listId, lists.id))
-        .where(and(eq(lists.userId, profile.id), eq(lists.visibility, 'friends')))
+        .where(and(eq(lists.userId, profile.id), inArray(lists.visibility, ['friends', 'public'])))
         .groupBy(lists.id)
         .orderBy(asc(lists.title)),
     ])
@@ -201,6 +226,7 @@ export const friendProfileForViewer = createServerOnlyFn(
       user: profile,
       stats: { seen: seen[0]?.count ?? 0, outings: outingsCount[0]?.count ?? 0 },
       favorites,
+      seenShows,
       lists: sharedLists,
     }
   },

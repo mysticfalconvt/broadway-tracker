@@ -29,7 +29,7 @@ function FriendProfile() {
       </main>
     )
   }
-  const { user, stats, favorites, lists } = profile
+  const { user, stats, favorites, seenShows, lists } = profile
   return (
     <main className="profile-page page-wrap">
       <header className="settings-header">
@@ -77,6 +77,42 @@ function FriendProfile() {
           </div>
         ) : (
           <p className="profile-empty">No favorites have been shared.</p>
+        )}
+      </section>
+      <section className="profile-favorites">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Seen</p>
+            <h2>Where they have been.</h2>
+          </div>
+        </div>
+        {seenShows.length ? (
+          <div className="library-grid">
+            {seenShows.map((show) => (
+              <Link
+                className="library-entry"
+                key={show.id}
+                params={{ slug: show.slug }}
+                to="/shows/$slug"
+              >
+                <ShowArtwork
+                  coverImageKey={show.coverImageKey}
+                  title={show.title}
+                  type={show.type}
+                />
+                <div>
+                  <h2>{show.title}</h2>
+                  <p>{show.type}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="profile-empty">
+            {stats.seen
+              ? 'Their history is kept private.'
+              : 'They have not recorded a night out yet.'}
+          </p>
         )}
       </section>
       <section className="profile-favorites">

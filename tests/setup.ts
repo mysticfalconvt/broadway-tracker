@@ -12,7 +12,8 @@ if (!configured) {
   throw new Error('DATABASE_URL is not set. Copy .env.example to .env and set it first.')
 }
 
-const testUrl = process.env.TEST_DATABASE_URL ?? configured.replace(/\/[^/?]+(\?|$)/, `/${TEST_DATABASE}$1`)
+const testUrl =
+  process.env.TEST_DATABASE_URL ?? configured.replace(/\/[^/?]+(\?|$)/, `/${TEST_DATABASE}$1`)
 // A suite truncates every table, so refuse to run anywhere but the test database.
 if (!new URL(testUrl).pathname.endsWith(`/${TEST_DATABASE}`)) {
   throw new Error(`Refusing to run tests against ${new URL(testUrl).pathname}`)

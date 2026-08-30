@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { adminOverview, duplicateSuspicions, publishedShowForAdmin } from '../src/server/admin-functions'
+import {
+  adminOverview,
+  duplicateSuspicions,
+  publishedShowForAdmin,
+} from '../src/server/admin-functions'
 import { showImages } from '../src/server/db/schema'
 import { submitShowForUser } from '../src/server/catalog-functions'
 import { findOrCreateVenue } from '../src/server/venue-functions'
@@ -15,8 +19,9 @@ describe('administration is gated', () => {
     const member = await makeUser()
     await expect(adminOverview(actor(member))).rejects.toThrow('Forbidden')
     await expect(duplicateSuspicions(actor(member))).rejects.toThrow('Forbidden')
-    await expect(publishedShowForAdmin(actor(member), '00000000-0000-0000-0000-000000000000'))
-      .rejects.toThrow('Forbidden')
+    await expect(
+      publishedShowForAdmin(actor(member), '00000000-0000-0000-0000-000000000000'),
+    ).rejects.toThrow('Forbidden')
   })
 })
 
@@ -42,10 +47,28 @@ describe('overview counts', () => {
     const member = await makeUser()
     const show = await makeShow()
     await db.insert(showImages).values([
-      { showId: show.id, uploadedByUserId: member.id, objectKey: 'show-photos/a.png', visibility: 'public', reviewStatus: 'pending' },
+      {
+        showId: show.id,
+        uploadedByUserId: member.id,
+        objectKey: 'show-photos/a.png',
+        visibility: 'public',
+        reviewStatus: 'pending',
+      },
       // Neither of these is waiting on anyone.
-      { showId: show.id, uploadedByUserId: member.id, objectKey: 'show-photos/b.png', visibility: 'friends', reviewStatus: 'pending' },
-      { showId: show.id, uploadedByUserId: member.id, objectKey: 'show-photos/c.png', visibility: 'public', reviewStatus: 'approved' },
+      {
+        showId: show.id,
+        uploadedByUserId: member.id,
+        objectKey: 'show-photos/b.png',
+        visibility: 'friends',
+        reviewStatus: 'pending',
+      },
+      {
+        showId: show.id,
+        uploadedByUserId: member.id,
+        objectKey: 'show-photos/c.png',
+        visibility: 'public',
+        reviewStatus: 'approved',
+      },
     ])
     expect((await adminOverview(actor(admin))).pendingPhotos).toBe(1)
   })

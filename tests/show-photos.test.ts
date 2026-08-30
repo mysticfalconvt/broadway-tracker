@@ -14,7 +14,9 @@ async function photo(
   reviewStatus: 'pending' | 'approved' | 'rejected' = 'pending',
 ) {
   const objectKey = `show-photos/00000000-0000-4000-8000-${`${(counter += 1)}`.padStart(12, '0')}.jpg`
-  await db.insert(showImages).values({ showId, uploadedByUserId: uploaderId, objectKey, visibility, reviewStatus })
+  await db
+    .insert(showImages)
+    .values({ showId, uploadedByUserId: uploaderId, objectKey, visibility, reviewStatus })
   return objectKey
 }
 

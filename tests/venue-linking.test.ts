@@ -26,7 +26,10 @@ describe('logging resolves the venue', () => {
       user.id,
       log(show.id, { venue: 'Walter Kerr Theatre', city: 'New York' }),
     )
-    const [outing] = await db.select({ venueId: outings.venueId }).from(outings).where(eq(outings.id, id))
+    const [outing] = await db
+      .select({ venueId: outings.venueId })
+      .from(outings)
+      .where(eq(outings.id, id))
     expect(outing?.venueId).not.toBeNull()
     expect(await db.select().from(venues)).toHaveLength(1)
   })
@@ -35,8 +38,14 @@ describe('logging resolves the venue', () => {
     const a = await makeUser()
     const b = await makeUser()
     const show = await makeShow()
-    const first = await createOutingForUser(a.id, log(show.id, { venue: 'Walter Kerr Theatre', city: 'New York' }))
-    const second = await createOutingForUser(b.id, log(show.id, { venue: 'the walter kerr', city: 'NYC' }))
+    const first = await createOutingForUser(
+      a.id,
+      log(show.id, { venue: 'Walter Kerr Theatre', city: 'New York' }),
+    )
+    const second = await createOutingForUser(
+      b.id,
+      log(show.id, { venue: 'the walter kerr', city: 'NYC' }),
+    )
     const rows = await db.select({ id: outings.id, venueId: outings.venueId }).from(outings)
     const ids = new Set(rows.map((r) => r.venueId))
     expect(ids.size).toBe(1)
@@ -48,7 +57,10 @@ describe('logging resolves the venue', () => {
     const user = await makeUser()
     const show = await makeShow()
     const { id } = await createOutingForUser(user.id, log(show.id))
-    const [outing] = await db.select({ venueId: outings.venueId }).from(outings).where(eq(outings.id, id))
+    const [outing] = await db
+      .select({ venueId: outings.venueId })
+      .from(outings)
+      .where(eq(outings.id, id))
     expect(outing?.venueId).toBeNull()
     expect(await db.select().from(venues)).toHaveLength(0)
   })

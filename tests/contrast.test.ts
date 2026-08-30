@@ -70,7 +70,11 @@ describe('non-text contrast meets WCAG 1.4.11 (3:1)', () => {
 describe('generated show artwork', () => {
   it('every curated tone carries white type at AA', () => {
     // The lighter stop of each gradient is the worst case for the title.
-    const stops = [...css.matchAll(/\.show-artwork-tone-\d+\s*\{\s*background: linear-gradient\([^,]+,\s*(#[0-9a-f]{6})/g)]
+    const stops = [
+      ...css.matchAll(
+        /\.show-artwork-tone-\d+\s*\{\s*background: linear-gradient\([^,]+,\s*(#[0-9a-f]{6})/g,
+      ),
+    ]
     expect(stops.length).toBeGreaterThanOrEqual(6)
     for (const [, lightStop] of stops) {
       expect(contrast('#ffffff', lightStop as string)).toBeGreaterThanOrEqual(4.5)

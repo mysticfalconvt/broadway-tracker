@@ -18,8 +18,7 @@ function authDefault(field: string) {
 describe('profile visibility default', () => {
   it('agrees between Better Auth, the schema, and the synthetic user', () => {
     const fromAuth = authDefault('profileVisibility')
-    const fromSchema = schema
-      .match(/profile_visibility[\s\S]*?\.default\('(\w+)'\)/)?.[1]
+    const fromSchema = schema.match(/profile_visibility[\s\S]*?\.default\('(\w+)'\)/)?.[1]
     const fromSynthetic = auth
       .slice(auth.indexOf('customSyntheticUser'))
       .match(/profileVisibility: '(\w+)'/)?.[1]

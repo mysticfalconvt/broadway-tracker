@@ -1,10 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import {
-  findOrCreateProduction,
-  normalizeProductionName,
-} from '../src/server/catalog-functions'
+import { findOrCreateProduction, normalizeProductionName } from '../src/server/catalog-functions'
 import { productions, venues } from '../src/server/db/schema'
 import { db, makeShow, makeUser, resetDatabase } from './helpers'
 
@@ -74,9 +71,21 @@ describe('a member adding a production', () => {
   it('records a local company run alongside the Broadway staging', async () => {
     const member = await makeUser()
     const show = await makeShow({ title: 'Dear Evan Hansen' })
-    await findOrCreateProduction(member.id, show.id, 'Original Broadway', 'broadway', 'Music Box Theatre', 'New York')
+    await findOrCreateProduction(
+      member.id,
+      show.id,
+      'Original Broadway',
+      'broadway',
+      'Music Box Theatre',
+      'New York',
+    )
     const local = await findOrCreateProduction(
-      member.id, show.id, 'Riverside Players 2026', 'local', 'Riverside High School', 'Ithaca',
+      member.id,
+      show.id,
+      'Riverside Players 2026',
+      'local',
+      'Riverside High School',
+      'Ithaca',
     )
     expect(local.created).toBe(true)
     const rows = await db.select().from(productions).where(eq(productions.showId, show.id))

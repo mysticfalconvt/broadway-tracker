@@ -145,35 +145,62 @@ export const getDuplicateSuspicions = createServerFn({ method: 'GET' }).handler(
   duplicateSuspicions((await requireSession()).user as Actor),
 )
 
+/** What the navigation badges show. */
+export type NavBadges = {
+  isAdmin: boolean
+  /** Everything waiting on an administrator: submissions, photographs, reports. */
+  waiting: number
+  /** Friend requests waiting on this person, administrator or not. */
+  friendRequests: number
+}
+
 /**
- * Everything the navigation badges need, in one round trip. Resolved on the
- * server because the client session type does not carry the role, and because a
- * badge that appears only after hydration reads as a glitch.
+ * Everything the navigation badges need, in one round trip.
+ *
+ * The return type is stated rather than inferred. It was not, and the
+ * administrator branch quietly returned an object without `friendRequests` —
+ * so every administrator lost their friend-request badge, and nothing caught
+ * it, because a server function's return type widens through serialisation.
+ */
+export const navBadgesFor = createServerOnlyFn(
+  async (actor: { id: string; role?: string | null } | null): Promise<NavBadges> => {
+    if (!actor) return { isAdmin: false, waiting: 0, friendRequests: 0 }
+
+    // A friend request is waiting on the person, not on their role.
+    const friendRequests = await pendingRequestCountFor(actor.id)
+    if (actor.role !== 'admin') return { isAdmin: false, waiting: 0, friendRequests }
+
+    const db = getDb()
+    const [pendingShows, pendingPhotos, openReports] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(shows)
+        .where(eq(shows.catalogStatus, 'pending')),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(showImages)
+        .where(and(eq(showImages.visibility, 'public'), eq(showImages.reviewStatus, 'pending'))),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(reports)
+        .where(eq(reports.status, 'open')),
+    ])
+    return {
+      isAdmin: true,
+      waiting:
+        (pendingShows[0]?.count ?? 0) +
+        (pendingPhotos[0]?.count ?? 0) +
+        (openReports[0]?.count ?? 0),
+      friendRequests,
+    }
+  },
+)
+
+/**
+ * Resolved on the server because the client session type does not carry the
+ * role, and because a badge that appears only after hydration reads as a glitch.
  */
 export const getNavBadges = createServerFn({ method: 'GET' }).handler(async () => {
   const session = await auth.api.getSession({ headers: getRequestHeaders() })
-  if (!session) return { isAdmin: false, waiting: 0, friendRequests: 0 }
-
-  const friendRequests = await pendingRequestCountFor(session.user.id)
-  if (session.user.role !== 'admin') return { isAdmin: false, waiting: 0, friendRequests }
-  const db = getDb()
-  const [pendingShows, pendingPhotos, openReports] = await Promise.all([
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(shows)
-      .where(eq(shows.catalogStatus, 'pending')),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(showImages)
-      .where(and(eq(showImages.visibility, 'public'), eq(showImages.reviewStatus, 'pending'))),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(reports)
-      .where(eq(reports.status, 'open')),
-  ])
-  return {
-    isAdmin: true,
-    waiting:
-      (pendingShows[0]?.count ?? 0) + (pendingPhotos[0]?.count ?? 0) + (openReports[0]?.count ?? 0),
-  }
+  return navBadgesFor(session?.user ?? null)
 })

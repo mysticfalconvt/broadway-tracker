@@ -23,7 +23,12 @@ describe('applyVenueFix', () => {
           title: 'A Show',
           type: 'play',
           productions: [
-            { name: 'Broadway', productionType: 'broadway', venue: 'Booth Theater', city: 'Boston' },
+            {
+              name: 'Broadway',
+              productionType: 'broadway',
+              venue: 'Booth Theater',
+              city: 'Boston',
+            },
           ],
         },
       ],
@@ -56,7 +61,12 @@ describe('applyVenueFix', () => {
   it('adds a city that was missing rather than leaving it out', () => {
     const json = JSON.stringify([{ name: 'Booth Theatre' }])
     const result = JSON.parse(
-      applyVenueFix(json, { given: 'Booth Theatre', city: null, name: 'Booth Theatre', venueCity: 'New York' }),
+      applyVenueFix(json, {
+        given: 'Booth Theatre',
+        city: null,
+        name: 'Booth Theatre',
+        venueCity: 'New York',
+      }),
     )
     expect(result[0]).toEqual({ name: 'Booth Theatre', city: 'New York' })
   })

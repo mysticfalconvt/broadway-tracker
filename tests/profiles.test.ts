@@ -2,7 +2,14 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { saveEntryForOwner } from '../src/server/library-functions'
 import { friendProfileForViewer } from '../src/server/profile-functions'
-import { makeFriendship, makeList, makeShow, makeUser, resetDatabase } from './helpers'
+import {
+  makeFriendship,
+  makeLibraryEntry,
+  makeList,
+  makeShow,
+  makeUser,
+  resetDatabase,
+} from './helpers'
 
 beforeEach(resetDatabase)
 
@@ -175,5 +182,85 @@ describe('a friend profile is reachable from the friends list', () => {
         'only available to friends',
       )
     }
+  })
+})
+
+describe('what a friend actually sees', () => {
+  async function sharedWith(visibility: 'private' | 'friends' | 'public') {
+    const owner = await friendsProfile()
+    const friend = await makeUser()
+    await makeFriendship(owner.id, friend.id, 'accepted')
+    const show = await makeShow({ title: 'Hadestown', slug: 'hadestown' })
+    await makeLibraryEntry(owner.id, show.id, {
+      status: 'seen',
+      favorite: true,
+      visibility,
+    })
+    return { owner, friend, show }
+  }
+
+  it('shows a friend what was shared with friends', async () => {
+    const { owner, friend } = await sharedWith('friends')
+    const profile = await friendProfileForViewer(friend.id, owner.handle)
+    expect(profile.favorites.map((s) => s.title)).toEqual(['Hadestown'])
+    expect(profile.seenShows.map((s) => s.title)).toEqual(['Hadestown'])
+  })
+
+  it('shows a friend what was shared publicly', async () => {
+    // Public is more open than friends. Hiding it from the owner's own friends
+    // is the exact opposite of what they asked for — and it is the default.
+    const { owner, friend } = await sharedWith('public')
+    const profile = await friendProfileForViewer(friend.id, owner.handle)
+    expect(profile.favorites.map((s) => s.title)).toEqual(['Hadestown'])
+    expect(profile.seenShows.map((s) => s.title)).toEqual(['Hadestown'])
+  })
+
+  it('keeps a private entry private, friendship or not', async () => {
+    const { owner, friend } = await sharedWith('private')
+    const profile = await friendProfileForViewer(friend.id, owner.handle)
+    expect(profile.favorites).toHaveLength(0)
+    expect(profile.seenShows).toHaveLength(0)
+  })
+
+  it('lists shows a friend has seen even when none are favorites', async () => {
+    const owner = await friendsProfile()
+    const friend = await makeUser()
+    await makeFriendship(owner.id, friend.id, 'accepted')
+    for (const [title, slug] of [
+      ['Hadestown', 'hadestown'],
+      ['Six', 'six'],
+    ]) {
+      const show = await makeShow({ title: title as string, slug: slug as string })
+      await makeLibraryEntry(owner.id, show.id, {
+        status: 'seen',
+        favorite: false,
+        visibility: 'public',
+      })
+    }
+    const profile = await friendProfileForViewer(friend.id, owner.handle)
+    expect(profile.favorites).toHaveLength(0)
+    expect(profile.seenShows.map((s) => s.title).sort()).toEqual(['Hadestown', 'Six'])
+    expect(profile.stats.seen).toBe(2)
+  })
+
+  it('leaves out what the friend only wants to see', async () => {
+    const owner = await friendsProfile()
+    const friend = await makeUser()
+    await makeFriendship(owner.id, friend.id, 'accepted')
+    const show = await makeShow({ title: 'Wicked', slug: 'wicked' })
+    await makeLibraryEntry(owner.id, show.id, { status: 'want_to_see', visibility: 'public' })
+    const profile = await friendProfileForViewer(friend.id, owner.handle)
+    expect(profile.seenShows).toHaveLength(0)
+  })
+
+  it('shows a friend both a friends-only and a public list', async () => {
+    const owner = await friendsProfile()
+    const friend = await makeUser()
+    await makeFriendship(owner.id, friend.id, 'accepted')
+    await makeList(owner.id, { title: 'For the group', visibility: 'friends' })
+    await makeList(owner.id, { title: 'Out in the open', visibility: 'public' })
+    await makeList(owner.id, { title: 'Just mine', visibility: 'private' })
+    const profile = await friendProfileForViewer(friend.id, owner.handle)
+    expect(profile.lists.map((l) => l.title).sort()).toEqual(['For the group', 'Out in the open'])
   })
 })

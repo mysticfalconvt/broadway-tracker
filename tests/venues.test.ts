@@ -91,7 +91,11 @@ describe('administration', () => {
     const member = await makeUser()
     await expect(venuesForAdmin(actor(member))).rejects.toThrow('Forbidden')
     await expect(
-      mergeVenues(actor(member), '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002'),
+      mergeVenues(
+        actor(member),
+        '00000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000002',
+      ),
     ).rejects.toThrow('Forbidden')
   })
 
@@ -100,8 +104,13 @@ describe('administration', () => {
     const show = await makeShow()
     const venue = await findOrCreateVenue(admin.id, 'Walter Kerr Theatre', 'New York')
     const { id } = await createOutingForUser(admin.id, {
-      showId: show.id, visibility: 'private', datePrecision: 'year', occurredYear: 2026,
-      attendeeIds: [], favorite: false, reviewVisibility: 'private',
+      showId: show.id,
+      visibility: 'private',
+      datePrecision: 'year',
+      occurredYear: 2026,
+      attendeeIds: [],
+      favorite: false,
+      reviewVisibility: 'private',
     })
     await db.update(outings).set({ venueId: venue.id }).where(eq(outings.id, id))
     const [row] = await venuesForAdmin(actor(admin))
@@ -115,15 +124,23 @@ describe('administration', () => {
     const wrong = await findOrCreateVenue(admin.id, 'Walter Ker Theatre', 'New York')
     const right = await findOrCreateVenue(admin.id, 'Walter Kerr Theatre', 'New York')
     const { id } = await createOutingForUser(admin.id, {
-      showId: show.id, visibility: 'private', datePrecision: 'year', occurredYear: 2026,
-      attendeeIds: [], favorite: false, reviewVisibility: 'private',
+      showId: show.id,
+      visibility: 'private',
+      datePrecision: 'year',
+      occurredYear: 2026,
+      attendeeIds: [],
+      favorite: false,
+      reviewVisibility: 'private',
     })
     await db.update(outings).set({ venueId: wrong.id }).where(eq(outings.id, id))
 
     await mergeVenues(actor(admin), wrong.id, right.id)
 
     expect(await db.select().from(venues)).toHaveLength(1)
-    const [outing] = await db.select({ venueId: outings.venueId }).from(outings).where(eq(outings.id, id))
+    const [outing] = await db
+      .select({ venueId: outings.venueId })
+      .from(outings)
+      .where(eq(outings.id, id))
     expect(outing?.venueId).toBe(right.id)
   })
 
@@ -139,9 +156,9 @@ describe('administration', () => {
     const admin = await makeAdmin()
     const a = await findOrCreateVenue(admin.id, 'Walter Kerr Theatre', 'New York')
     const b = await findOrCreateVenue(admin.id, 'Music Box Theatre', 'New York')
-    await expect(
-      updateVenue(actor(admin), b.id, 'the walter kerr', 'NYC', null),
-    ).rejects.toThrow('Merge them instead')
+    await expect(updateVenue(actor(admin), b.id, 'the walter kerr', 'NYC', null)).rejects.toThrow(
+      'Merge them instead',
+    )
     expect(a.id).not.toBe(b.id)
   })
 

@@ -18,11 +18,26 @@ describe('toneForTitle', () => {
 
   it('spreads a realistic catalog across every tone', () => {
     const titles = [
-      'Hadestown', 'Suffs', 'Wicked', 'Hamilton', 'Cabaret', 'Gypsy',
-      'Rent', 'The Lion King', 'The Outsiders', 'Operation Mincemeat',
-      'Maybe Happy Ending', 'Angels in America', 'Death of a Salesman',
-      'John Proctor Is the Villain', 'Les Misérables', 'Company', 'Six',
-      'Chicago', 'Hair', 'Oklahoma!',
+      'Hadestown',
+      'Suffs',
+      'Wicked',
+      'Hamilton',
+      'Cabaret',
+      'Gypsy',
+      'Rent',
+      'The Lion King',
+      'The Outsiders',
+      'Operation Mincemeat',
+      'Maybe Happy Ending',
+      'Angels in America',
+      'Death of a Salesman',
+      'John Proctor Is the Villain',
+      'Les Misérables',
+      'Company',
+      'Six',
+      'Chicago',
+      'Hair',
+      'Oklahoma!',
     ]
     const used = new Set(titles.map(toneForTitle))
     expect(used.size).toBe(ARTWORK_TONES)

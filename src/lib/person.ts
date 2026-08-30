@@ -9,15 +9,17 @@
  * administrator can merge.
  */
 export function normalizePersonName(value: string): string {
-  return value
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    // An apostrophe joins a word rather than separating it: O'Hara, D'Arcy.
-    .replace(/['’]/g, '')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()
-    .replace(/\s+/g, ' ')
+  return (
+    value
+      .normalize('NFKD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      // An apostrophe joins a word rather than separating it: O'Hara, D'Arcy.
+      .replace(/['’]/g, '')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim()
+      .replace(/\s+/g, ' ')
+  )
 }
 
 /** Tidies what gets stored for display, preserving the wording. */

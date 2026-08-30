@@ -43,8 +43,13 @@ export function handleProblem(value: string): string | null {
  * name, which their friends already see, plus a random suffix -- random rather
  * than derived, so it reveals nothing and confirms nothing.
  */
-export function generateHandle(name: string | null | undefined, random: () => number = Math.random) {
-  const base = normalizeHandle(name ?? '').slice(0, 20).replace(/-$/, '')
+export function generateHandle(
+  name: string | null | undefined,
+  random: () => number = Math.random,
+) {
+  const base = normalizeHandle(name ?? '')
+    .slice(0, 20)
+    .replace(/-$/, '')
   const suffix = String(Math.floor(random() * 9000) + 1000)
   const stem = base.length >= 3 ? base : 'theatregoer'
   return `${stem}-${suffix}`

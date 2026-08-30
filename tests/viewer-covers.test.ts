@@ -15,10 +15,14 @@ describe('a viewer sees their own photograph as the cover', () => {
     const show = await makeShow()
     await db.update(shows).set({ coverImageKey: 'shows/cover.png' }).where(eq(shows.id, show.id))
     await db.insert(showImages).values({
-      showId: show.id, uploadedByUserId: owner.id,
-      objectKey: 'show-photos/mine.png', visibility: 'private',
+      showId: show.id,
+      uploadedByUserId: owner.id,
+      objectKey: 'show-photos/mine.png',
+      visibility: 'private',
     })
-    const [row] = await applyViewerCovers(owner.id, [{ id: show.id, coverImageKey: 'shows/cover.png' }])
+    const [row] = await applyViewerCovers(owner.id, [
+      { id: show.id, coverImageKey: 'shows/cover.png' },
+    ])
     expect(row?.coverImageKey).toBe('show-photos/mine.png')
   })
 
@@ -27,10 +31,14 @@ describe('a viewer sees their own photograph as the cover', () => {
     const other = await makeUser()
     const show = await makeShow()
     await db.insert(showImages).values({
-      showId: show.id, uploadedByUserId: owner.id,
-      objectKey: 'show-photos/mine.png', visibility: 'private',
+      showId: show.id,
+      uploadedByUserId: owner.id,
+      objectKey: 'show-photos/mine.png',
+      visibility: 'private',
     })
-    const [row] = await applyViewerCovers(other.id, [{ id: show.id, coverImageKey: 'shows/cover.png' }])
+    const [row] = await applyViewerCovers(other.id, [
+      { id: show.id, coverImageKey: 'shows/cover.png' },
+    ])
     expect(row?.coverImageKey).toBe('shows/cover.png')
   })
 
@@ -44,12 +52,18 @@ describe('a viewer sees their own photograph as the cover', () => {
     const owner = await makeUser()
     const show = await makeShow()
     await db.insert(showImages).values({
-      showId: show.id, uploadedByUserId: owner.id, objectKey: 'show-photos/older.png',
-      visibility: 'private', createdAt: new Date('2020-01-01'),
+      showId: show.id,
+      uploadedByUserId: owner.id,
+      objectKey: 'show-photos/older.png',
+      visibility: 'private',
+      createdAt: new Date('2020-01-01'),
     })
     await db.insert(showImages).values({
-      showId: show.id, uploadedByUserId: owner.id, objectKey: 'show-photos/newer.png',
-      visibility: 'private', createdAt: new Date('2026-01-01'),
+      showId: show.id,
+      uploadedByUserId: owner.id,
+      objectKey: 'show-photos/newer.png',
+      visibility: 'private',
+      createdAt: new Date('2026-01-01'),
     })
     const [row] = await applyViewerCovers(owner.id, [{ id: show.id, coverImageKey: null }])
     expect(row?.coverImageKey).toBe('show-photos/newer.png')
@@ -59,11 +73,16 @@ describe('a viewer sees their own photograph as the cover', () => {
     const owner = await makeUser()
     const show = await makeShow({ title: 'Hadestown' })
     await saveEntryForOwner(owner.id, {
-      showId: show.id, status: 'seen', favorite: false, visibility: 'private',
+      showId: show.id,
+      status: 'seen',
+      favorite: false,
+      visibility: 'private',
     })
     await db.insert(showImages).values({
-      showId: show.id, uploadedByUserId: owner.id,
-      objectKey: 'show-photos/mine.png', visibility: 'private',
+      showId: show.id,
+      uploadedByUserId: owner.id,
+      objectKey: 'show-photos/mine.png',
+      visibility: 'private',
     })
     const [entry] = await libraryForOwner(owner.id)
     expect(entry?.coverImageKey).toBe('show-photos/mine.png')

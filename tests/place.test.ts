@@ -48,7 +48,9 @@ describe('normalizeVenueName', () => {
 
 describe('venueKey', () => {
   it('treats the same theatre in the same city as one venue', () => {
-    expect(venueKey('Walter Kerr Theatre', 'NYC')).toBe(venueKey('the walter kerr', 'New York City'))
+    expect(venueKey('Walter Kerr Theatre', 'NYC')).toBe(
+      venueKey('the walter kerr', 'New York City'),
+    )
   })
 
   it('keeps same-named theatres in different cities apart', () => {
@@ -70,7 +72,9 @@ describe('tidyPlace', () => {
 
 describe('punctuation that joins rather than separates', () => {
   it('folds an apostrophe away, so O\u2019Neill and ONeill agree', () => {
-    expect(normalizeVenueName("Eugene O'Neill Theatre")).toBe(normalizeVenueName('Eugene ONeill Theatre'))
+    expect(normalizeVenueName("Eugene O'Neill Theatre")).toBe(
+      normalizeVenueName('Eugene ONeill Theatre'),
+    )
     expect(venueKey("Eugene O'Neill Theatre", 'New York')).toBe(
       venueKey('Eugene ONeill Theatre', 'NYC'),
     )
@@ -83,7 +87,9 @@ describe('punctuation that joins rather than separates', () => {
   })
 
   it('still keeps genuinely different theatres apart', () => {
-    expect(normalizeVenueName('Al Hirschfeld Theatre')).not.toBe(normalizeVenueName('Hirschfeld Theatre'))
+    expect(normalizeVenueName('Al Hirschfeld Theatre')).not.toBe(
+      normalizeVenueName('Hirschfeld Theatre'),
+    )
     expect(normalizeVenueName('Music Box Theatre')).not.toBe(normalizeVenueName('Booth Theatre'))
   })
 })

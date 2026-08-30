@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  InvalidImageError,
-  MAX_IMAGE_BYTES,
-  inspectImage,
-} from '../src/server/image-validation'
+import { InvalidImageError, MAX_IMAGE_BYTES, inspectImage } from '../src/server/image-validation'
 
 function png(width: number, height: number, extra = 0) {
   const b = new Uint8Array(24 + extra)

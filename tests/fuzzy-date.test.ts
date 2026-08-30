@@ -13,9 +13,9 @@ describe('formatFuzzyDate', () => {
   })
 
   it('renders a month and year', () => {
-    expect(
-      formatFuzzyDate({ datePrecision: 'month', occurredMonth: 5, occurredYear: 2026 }),
-    ).toBe('May 2026')
+    expect(formatFuzzyDate({ datePrecision: 'month', occurredMonth: 5, occurredYear: 2026 })).toBe(
+      'May 2026',
+    )
   })
 
   it('renders a year alone', () => {
@@ -23,9 +23,9 @@ describe('formatFuzzyDate', () => {
   })
 
   it('renders an approximate date as written', () => {
-    expect(
-      formatFuzzyDate({ datePrecision: 'approximate', approximateDate: 'Around 2005' }),
-    ).toBe('Around 2005')
+    expect(formatFuzzyDate({ datePrecision: 'approximate', approximateDate: 'Around 2005' })).toBe(
+      'Around 2005',
+    )
   })
 
   it('never invents a placeholder for an unknown date', () => {

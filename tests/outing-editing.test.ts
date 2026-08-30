@@ -53,7 +53,10 @@ describe('editing the shared facts', () => {
       datePrecision: 'exact',
       occurredOn: '2026-05-18',
     })
-    const [row] = await db.select({ venueId: outings.venueId }).from(outings).where(eq(outings.id, id))
+    const [row] = await db
+      .select({ venueId: outings.venueId })
+      .from(outings)
+      .where(eq(outings.id, id))
     expect(row?.venueId).not.toBeNull()
     expect(await db.select().from(venues)).toHaveLength(1)
   })
@@ -142,7 +145,11 @@ describe('editing your own reaction', () => {
     await makeFriendship(owner.id, friend.id, 'accepted')
     const show = await makeShow()
     const { id } = await createOutingForUser(owner.id, log(show.id, { attendeeIds: [friend.id] }))
-    await updateMyReaction(friend.id, { outingId: id, favorite: false, reviewVisibility: 'friends' })
+    await updateMyReaction(friend.id, {
+      outingId: id,
+      favorite: false,
+      reviewVisibility: 'friends',
+    })
     const [row] = await db
       .select({ status: outingAttendees.attendanceStatus })
       .from(outingAttendees)

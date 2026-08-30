@@ -14,7 +14,10 @@ beforeEach(resetDatabase)
  * nor group one person's public things together. A name is the obvious leak; a
  * stable account id is the subtle one, because it addresses the public profile.
  */
-function assertAnonymous(payload: unknown, owner: { id: string; name: string; handle: string; email: string }) {
+function assertAnonymous(
+  payload: unknown,
+  owner: { id: string; name: string; handle: string; email: string },
+) {
   const serialized = JSON.stringify(payload)
   expect(serialized).not.toContain(owner.name)
   expect(serialized).not.toContain(owner.handle)
@@ -33,7 +36,10 @@ describe('a public list, seen by a stranger', () => {
     const owner = await makeUser()
     const a = await createListForOwner(owner.id, { title: 'One', visibility: 'public' })
     const b = await createListForOwner(owner.id, { title: 'Two', visibility: 'public' })
-    const [first, second] = await Promise.all([listForViewer(null, a.id), listForViewer(null, b.id)])
+    const [first, second] = await Promise.all([
+      listForViewer(null, a.id),
+      listForViewer(null, b.id),
+    ])
     expect(first.userId).toBeNull()
     expect(second.userId).toBeNull()
   })
@@ -57,7 +63,11 @@ describe('a public profile', () => {
     })
     const show = await makeShow()
     await saveEntryForOwner(owner.id, {
-      showId: show.id, status: 'seen', favorite: true, visibility: 'public', review: 'A view.',
+      showId: show.id,
+      status: 'seen',
+      favorite: true,
+      visibility: 'public',
+      review: 'A view.',
     })
     assertAnonymous(await publicProfileById(owner.id), owner)
   })
@@ -75,8 +85,13 @@ describe('a venue page', () => {
     const show = await makeShow()
     const venue = await findOrCreateVenue(owner.id, 'Lena Horne Theatre', 'New York')
     await createOutingForUser(owner.id, {
-      showId: show.id, venue: 'Lena Horne Theatre', city: 'New York',
-      datePrecision: 'year', occurredYear: 2026, attendeeIds: [], favorite: false,
+      showId: show.id,
+      venue: 'Lena Horne Theatre',
+      city: 'New York',
+      datePrecision: 'year',
+      occurredYear: 2026,
+      attendeeIds: [],
+      favorite: false,
     })
     const asStranger = await venueWithHistory(null, venue.id)
     expect(asStranger.yourNights).toHaveLength(0)

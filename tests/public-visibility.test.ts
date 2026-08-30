@@ -82,10 +82,15 @@ describe('public profiles', () => {
     const forFriends = await makeShow({ title: 'Friends favorite' })
     const secret = await makeShow({ title: 'Private favorite' })
     for (const [show, visibility] of [
-      [open, 'public'], [forFriends, 'friends'], [secret, 'private'],
+      [open, 'public'],
+      [forFriends, 'friends'],
+      [secret, 'private'],
     ] as const) {
       await saveEntryForOwner(owner.id, {
-        showId: show.id, status: 'seen', favorite: true, visibility,
+        showId: show.id,
+        status: 'seen',
+        favorite: true,
+        visibility,
       })
     }
     const result = await publicProfileById(owner.id)
@@ -105,8 +110,12 @@ describe('public profiles', () => {
     const owner = await publicProfile()
     const show = await makeShow({ title: 'Hadestown' })
     await saveEntryForOwner(owner.id, {
-      showId: show.id, status: 'seen', favorite: true, visibility: 'public',
-      rating: 10, review: 'One of those perfect nights.',
+      showId: show.id,
+      status: 'seen',
+      favorite: true,
+      visibility: 'public',
+      rating: 10,
+      review: 'One of those perfect nights.',
     })
     const [favorite] = (await publicProfileById(owner.id)).favorites
     expect(favorite?.review).toBe('One of those perfect nights.')
@@ -117,7 +126,10 @@ describe('public profiles', () => {
     const owner = await publicProfile()
     const secret = await makeShow({ title: 'Private one' })
     await saveEntryForOwner(owner.id, {
-      showId: secret.id, status: 'seen', favorite: false, visibility: 'private',
+      showId: secret.id,
+      status: 'seen',
+      favorite: false,
+      visibility: 'private',
     })
     const result = await publicProfileById(owner.id)
     expect(result.stats.seen).toBe(1)

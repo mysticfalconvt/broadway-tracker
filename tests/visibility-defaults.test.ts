@@ -189,7 +189,12 @@ describe('changing who can see something you made', () => {
       attendeeIds: [],
       favorite: false,
     })
-    await updateOutingFacts(owner.id, { outingId: id, datePrecision: 'year', occurredYear: 2026, visibility: 'friends' })
+    await updateOutingFacts(owner.id, {
+      outingId: id,
+      datePrecision: 'year',
+      occurredYear: 2026,
+      visibility: 'friends',
+    })
     const [row] = await db.select().from(outings).where(eq(outings.id, id))
     expect(row?.visibility).toBe('friends')
   })

@@ -45,7 +45,10 @@ describe('logging a performance', () => {
     const show = await makeShow()
     const { saveEntryForOwner } = await import('../src/server/library-functions')
     await saveEntryForOwner(owner.id, {
-      showId: show.id, status: 'want_to_see', favorite: true, visibility: 'friends',
+      showId: show.id,
+      status: 'want_to_see',
+      favorite: true,
+      visibility: 'friends',
     })
     await createOutingForUser(owner.id, log(show.id, { favorite: false }))
     const [entry] = await libraryForOwner(owner.id)
@@ -88,7 +91,10 @@ describe('fuzzy dates', () => {
     const { id } = await createOutingForUser(
       owner.id,
       log(show.id, {
-        datePrecision: 'month', occurredOn: undefined, occurredMonth: 5, occurredYear: 2026,
+        datePrecision: 'month',
+        occurredOn: undefined,
+        occurredMonth: 5,
+        occurredYear: 2026,
       }),
     )
     const outing = await outingForAttendee(owner.id, id)
@@ -116,7 +122,9 @@ describe('fuzzy dates', () => {
     const { id } = await createOutingForUser(
       owner.id,
       log(show.id, {
-        datePrecision: 'approximate', occurredOn: undefined, approximateDate: 'Around 2005',
+        datePrecision: 'approximate',
+        occurredOn: undefined,
+        approximateDate: 'Around 2005',
       }),
     )
     const outing = await outingForAttendee(owner.id, id)

@@ -78,7 +78,9 @@ describe('the fields a precision does not render never reach the server', () => 
   })
 
   it('sends no exact date when a month was chosen', () => {
-    expect(payloadFor('month', { occurredMonth: '5', occurredYear: '2026' }).occurredOn).toBeUndefined()
+    expect(
+      payloadFor('month', { occurredMonth: '5', occurredYear: '2026' }).occurredOn,
+    ).toBeUndefined()
   })
 })
 

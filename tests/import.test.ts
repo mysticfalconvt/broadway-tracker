@@ -358,8 +358,19 @@ describe('importing a cast', () => {
             city: 'New York',
             openedOn: '2026-04-20',
             cast: [
-              { name: 'Alex Brightman', role: 'Josh Skinner', kind: 'performer' as const, isPrincipal: true, startedOn: '2026-04-20' },
-              { name: 'Ana Gasteyer', role: 'Mildred Layton', kind: 'performer' as const, isPrincipal: true },
+              {
+                name: 'Alex Brightman',
+                role: 'Josh Skinner',
+                kind: 'performer' as const,
+                isPrincipal: true,
+                startedOn: '2026-04-20',
+              },
+              {
+                name: 'Ana Gasteyer',
+                role: 'Mildred Layton',
+                kind: 'performer' as const,
+                isPrincipal: true,
+              },
               { name: 'Cinco Paul', role: 'Book, music, and lyrics', kind: 'creative' as const },
             ],
           },
