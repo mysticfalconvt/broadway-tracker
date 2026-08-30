@@ -41,6 +41,7 @@ import { Route as ProtectedAdminIndexRouteImport } from './routes/_protected/adm
 import { Route as ProtectedAdminCatalogRouteImport } from './routes/_protected/admin/catalog'
 import { Route as ProtectedAdminImportRouteImport } from './routes/_protected/admin/import'
 import { Route as ProtectedAdminLocalRouteImport } from './routes/_protected/admin/local'
+import { Route as ProtectedAdminMembersRouteImport } from './routes/_protected/admin/members'
 import { Route as ProtectedAdminPeopleRouteImport } from './routes/_protected/admin/people'
 import { Route as ProtectedAdminPhotosRouteImport } from './routes/_protected/admin/photos'
 import { Route as ProtectedAdminProductionsRouteImport } from './routes/_protected/admin/productions'
@@ -213,6 +214,11 @@ const ProtectedAdminLocalRoute = ProtectedAdminLocalRouteImport.update({
   path: '/admin/local',
   getParentRoute: () => ProtectedRoute,
 } as any)
+const ProtectedAdminMembersRoute = ProtectedAdminMembersRouteImport.update({
+  id: '/admin/members',
+  path: '/admin/members',
+  getParentRoute: () => ProtectedRoute,
+} as any)
 const ProtectedAdminPeopleRoute = ProtectedAdminPeopleRouteImport.update({
   id: '/admin/people',
   path: '/admin/people',
@@ -306,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/admin/catalog': typeof ProtectedAdminCatalogRoute
   '/admin/import': typeof ProtectedAdminImportRoute
   '/admin/local': typeof ProtectedAdminLocalRoute
+  '/admin/members': typeof ProtectedAdminMembersRoute
   '/admin/people': typeof ProtectedAdminPeopleRoute
   '/admin/photos': typeof ProtectedAdminPhotosRoute
   '/admin/productions': typeof ProtectedAdminProductionsRoute
@@ -351,6 +358,7 @@ export interface FileRoutesByTo {
   '/admin/catalog': typeof ProtectedAdminCatalogRoute
   '/admin/import': typeof ProtectedAdminImportRoute
   '/admin/local': typeof ProtectedAdminLocalRoute
+  '/admin/members': typeof ProtectedAdminMembersRoute
   '/admin/people': typeof ProtectedAdminPeopleRoute
   '/admin/photos': typeof ProtectedAdminPhotosRoute
   '/admin/productions': typeof ProtectedAdminProductionsRoute
@@ -398,6 +406,7 @@ export interface FileRoutesById {
   '/_protected/admin/catalog': typeof ProtectedAdminCatalogRoute
   '/_protected/admin/import': typeof ProtectedAdminImportRoute
   '/_protected/admin/local': typeof ProtectedAdminLocalRoute
+  '/_protected/admin/members': typeof ProtectedAdminMembersRoute
   '/_protected/admin/people': typeof ProtectedAdminPeopleRoute
   '/_protected/admin/photos': typeof ProtectedAdminPhotosRoute
   '/_protected/admin/productions': typeof ProtectedAdminProductionsRoute
@@ -445,6 +454,7 @@ export interface FileRouteTypes {
     | '/admin/catalog'
     | '/admin/import'
     | '/admin/local'
+    | '/admin/members'
     | '/admin/people'
     | '/admin/photos'
     | '/admin/productions'
@@ -490,6 +500,7 @@ export interface FileRouteTypes {
     | '/admin/catalog'
     | '/admin/import'
     | '/admin/local'
+    | '/admin/members'
     | '/admin/people'
     | '/admin/photos'
     | '/admin/productions'
@@ -536,6 +547,7 @@ export interface FileRouteTypes {
     | '/_protected/admin/catalog'
     | '/_protected/admin/import'
     | '/_protected/admin/local'
+    | '/_protected/admin/members'
     | '/_protected/admin/people'
     | '/_protected/admin/photos'
     | '/_protected/admin/productions'
@@ -799,6 +811,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedAdminLocalRouteImport
       parentRoute: typeof ProtectedRoute
     }
+    '/_protected/admin/members': {
+      id: '/_protected/admin/members'
+      path: '/admin/members'
+      fullPath: '/admin/members'
+      preLoaderRoute: typeof ProtectedAdminMembersRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/_protected/admin/people': {
       id: '/_protected/admin/people'
       path: '/admin/people'
@@ -901,6 +920,7 @@ interface ProtectedRouteChildren {
   ProtectedAdminCatalogRoute: typeof ProtectedAdminCatalogRoute
   ProtectedAdminImportRoute: typeof ProtectedAdminImportRoute
   ProtectedAdminLocalRoute: typeof ProtectedAdminLocalRoute
+  ProtectedAdminMembersRoute: typeof ProtectedAdminMembersRoute
   ProtectedAdminPeopleRoute: typeof ProtectedAdminPeopleRoute
   ProtectedAdminPhotosRoute: typeof ProtectedAdminPhotosRoute
   ProtectedAdminProductionsRoute: typeof ProtectedAdminProductionsRoute
@@ -928,6 +948,7 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedAdminCatalogRoute: ProtectedAdminCatalogRoute,
   ProtectedAdminImportRoute: ProtectedAdminImportRoute,
   ProtectedAdminLocalRoute: ProtectedAdminLocalRoute,
+  ProtectedAdminMembersRoute: ProtectedAdminMembersRoute,
   ProtectedAdminPeopleRoute: ProtectedAdminPeopleRoute,
   ProtectedAdminPhotosRoute: ProtectedAdminPhotosRoute,
   ProtectedAdminProductionsRoute: ProtectedAdminProductionsRoute,

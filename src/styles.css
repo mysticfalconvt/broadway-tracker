@@ -2977,3 +2977,37 @@ a.recent-entry:hover h3,
   gap: 1rem;
   margin-top: 1.25rem;
 }
+
+/* Who is actually using this. */
+.member-list {
+  display: grid;
+  gap: 0.6rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.member-list li {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) 2fr;
+  gap: 0.75rem 1.5rem;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.member-who strong {
+  display: block;
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1.05rem;
+}
+.member-who span,
+.member-facts span {
+  display: block;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+@media (max-width: 42rem) {
+  .member-list li {
+    grid-template-columns: 1fr;
+  }
+}

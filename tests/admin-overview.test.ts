@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   adminOverview,
   duplicateSuspicions,
+  membersForAdmin,
   publishedShowForAdmin,
 } from '../src/server/admin-functions'
 import { showImages } from '../src/server/db/schema'
@@ -131,5 +132,57 @@ describe('provenance', () => {
     expect(row.submittedByUserId).toBe(member.id)
     expect(row.catalogStatus).toBe('pending')
     expect(row.reviewedByUserId).toBeNull()
+  })
+})
+
+describe('who is using this', () => {
+  it('counts what each member has actually done', async () => {
+    const admin = await makeAdmin()
+    const member = await makeUser({ profileVisibility: 'public' })
+    const show = await makeShow({ title: 'Hadestown', slug: 'hadestown' })
+    const { createOutingForUser } = await import('../src/server/outing-functions')
+    await createOutingForUser(member.id, {
+      showId: show.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-05-18',
+      attendeeIds: [],
+      favorite: false,
+    })
+    const rows = await membersForAdmin(actor(admin))
+    const theirs = rows.find((row) => row.id === member.id)
+    expect(theirs?.nights).toBe(1)
+    // Logging a night marks the show seen, so that counts too.
+    expect(theirs?.shows).toBe(1)
+    expect(theirs?.pieces).toBe(0)
+  })
+
+  it('counts each member separately rather than the whole table', async () => {
+    const admin = await makeAdmin()
+    const busy = await makeUser()
+    const quiet = await makeUser()
+    const show = await makeShow({ title: 'Six', slug: 'six' })
+    const { createOutingForUser } = await import('../src/server/outing-functions')
+    await createOutingForUser(busy.id, {
+      showId: show.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-05-18',
+      attendeeIds: [],
+      favorite: false,
+    })
+    const rows = await membersForAdmin(actor(admin))
+    expect(rows.find((r) => r.id === busy.id)?.nights).toBe(1)
+    expect(rows.find((r) => r.id === quiet.id)?.nights).toBe(0)
+  })
+
+  it('lists everybody, administrators included', async () => {
+    const admin = await makeAdmin()
+    await makeUser()
+    await makeUser()
+    expect(await membersForAdmin(actor(admin))).toHaveLength(3)
+  })
+
+  it('refuses a member', async () => {
+    const member = await makeUser()
+    await expect(membersForAdmin(actor(member))).rejects.toThrow('Forbidden')
   })
 })

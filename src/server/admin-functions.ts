@@ -1,6 +1,6 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
-import { and, asc, eq, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
 import { normalizeVenueName } from '../lib/place'
@@ -9,7 +9,18 @@ import { auth } from './auth'
 import { pendingRequestCountFor } from './friend-functions'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { getDb } from './db/client'
-import { outingAttendees, reports, showImages, shows, user, venues } from './db/schema'
+import {
+  friendships,
+  libraryEntries,
+  lists,
+  outingAttendees,
+  posts,
+  reports,
+  showImages,
+  shows,
+  user,
+  venues,
+} from './db/schema'
 
 async function requireSession() {
   const session = await auth.api.getSession({ headers: getRequestHeaders() })
@@ -143,6 +154,45 @@ export const getAdminOverview = createServerFn({ method: 'GET' }).handler(async 
 
 export const getDuplicateSuspicions = createServerFn({ method: 'GET' }).handler(async () =>
   duplicateSuspicions((await requireSession()).user as Actor),
+)
+
+/**
+ * Everybody, with enough about each to answer "who is actually using this".
+ *
+ * An administrator can already read the database, so nothing here is a new
+ * disclosure — but it is still somebody's shelf and somebody's address, so it
+ * is counts and settings rather than the contents of anybody's journal.
+ */
+export const membersForAdmin = createServerOnlyFn(async (actor: Actor) => {
+  assertAdmin(actor)
+  return getDb()
+    .select({
+      id: user.id,
+      name: user.name,
+      handle: user.handle,
+      email: user.email,
+      role: user.role,
+      emailVerified: user.emailVerified,
+      profileVisibility: user.profileVisibility,
+      digestCadence: user.digestCadence,
+      createdAt: user.createdAt,
+      lastActiveAt: user.lastActiveAt,
+      lastDigestAt: user.lastDigestAt,
+      // The table names are interpolated and the columns written out: a bare
+      // column reference renders unqualified and correlates against itself.
+      nights: sql<number>`(select count(*)::int from ${outingAttendees} where ${outingAttendees}."user_id" = ${user}."id")`,
+      shows: sql<number>`(select count(*)::int from ${libraryEntries} where ${libraryEntries}."user_id" = ${user}."id" and ${libraryEntries}."status" = 'seen')`,
+      lists: sql<number>`(select count(*)::int from ${lists} where ${lists}."user_id" = ${user}."id")`,
+      pieces: sql<number>`(select count(*)::int from ${posts} where ${posts}."author_user_id" = ${user}."id")`,
+      photographs: sql<number>`(select count(*)::int from ${showImages} where ${showImages}."uploaded_by_user_id" = ${user}."id")`,
+      friends: sql<number>`(select count(*)::int from ${friendships} where ${friendships}."status" = 'accepted' and (${friendships}."user_one_id" = ${user}."id" or ${friendships}."user_two_id" = ${user}."id"))`,
+    })
+    .from(user)
+    .orderBy(desc(user.createdAt))
+})
+
+export const getMembersForAdmin = createServerFn({ method: 'GET' }).handler(async () =>
+  membersForAdmin((await requireSession()).user as Actor),
 )
 
 /** What the navigation badges show. */
