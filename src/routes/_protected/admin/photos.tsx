@@ -29,10 +29,7 @@ function PhotoReview() {
       <header className="settings-header">
         <p className="eyebrow">Administration</p>
         <h1>Photographs awaiting review.</h1>
-        <p>
-          These were offered publicly. Until approved they are visible only to the person who
-          uploaded them and their approved friends.
-        </p>
+        <p>Offered publicly. Visible to the uploader and their friends until approved.</p>
       </header>
 
       {error ? (

@@ -1,6 +1,7 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 
 import { ShowArtwork } from '../../../components/ShowArtwork'
+import { VenueMap } from '../../../components/VenueMap'
 import { formatFuzzyDate } from '../../../lib/fuzzy-date'
 import { getFriendProfile } from '../../../server/profile-functions'
 
@@ -30,7 +31,7 @@ function FriendProfile() {
       </main>
     )
   }
-  const { user, stats, favorites, seenShows, outings, lists } = profile
+  const { user, stats, favorites, seenShows, outings, places, lists } = profile
   return (
     <main className="profile-page page-wrap">
       <header className="settings-header">
@@ -80,6 +81,17 @@ function FriendProfile() {
           <p className="profile-empty">No favorites have been shared.</p>
         )}
       </section>
+      {places.length ? (
+        <section className="profile-favorites">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Where they go</p>
+              <h2>Their theatres.</h2>
+            </div>
+          </div>
+          <VenueMap venues={places} />
+        </section>
+      ) : null}
       <section className="profile-favorites">
         <div className="section-heading">
           <div>
@@ -94,11 +106,7 @@ function FriendProfile() {
             ))}
           </ul>
         ) : (
-          <p className="profile-empty">
-            {stats.outings
-              ? 'Their nights out are kept private.'
-              : 'They have not logged a night out yet.'}
-          </p>
+          <p className="profile-empty">Nothing shared yet.</p>
         )}
       </section>
       <section className="profile-favorites">
@@ -130,11 +138,7 @@ function FriendProfile() {
             ))}
           </div>
         ) : (
-          <p className="profile-empty">
-            {stats.seen
-              ? 'Their history is kept private.'
-              : 'They have not recorded a night out yet.'}
-          </p>
+          <p className="profile-empty">Nothing shared yet.</p>
         )}
       </section>
       <section className="profile-favorites">

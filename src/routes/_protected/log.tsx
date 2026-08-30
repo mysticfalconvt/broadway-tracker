@@ -145,10 +145,7 @@ function LogOuting() {
       <header className="settings-header">
         <p className="eyebrow">New memory</p>
         <h1>Log a performance.</h1>
-        <p>
-          Broadway, a tour, your child’s school — all of it counts. Keep the shared facts simple;
-          your reaction is always your own.
-        </p>
+        <p>Broadway, a tour, your child’s school — all of it counts.</p>
       </header>
       <form className="settings-form" onSubmit={submit}>
         <label>
@@ -187,10 +184,7 @@ function LogOuting() {
                   type="radio"
                 />
                 A professional production
-                <span>
-                  Broadway, a tour, a regional company. It joins the shared catalog once an
-                  administrator has looked at it — you can log tonight straight away.
-                </span>
+                <span>Broadway, a tour, a regional company.</span>
               </label>
               <label>
                 <input
@@ -200,11 +194,7 @@ function LogOuting() {
                   type="radio"
                 />
                 A school or community production
-                <span>
-                  A company’s own revue, a school’s devised piece. It stays out of everyone else’s
-                  search, and anyone from the same place who logs the same hall and year lands on
-                  this record.
-                </span>
+                <span>A company’s own revue, a school’s devised piece.</span>
               </label>
             </fieldset>
             <label>
@@ -384,9 +374,7 @@ function LogOuting() {
                     placeholder="First National Tour"
                     value={newProductionName}
                   />
-                  <span>
-                    A staging, not a place — the same tour in two cities is one production.
-                  </span>
+                  <span>A staging, not a place.</span>
                 </label>
                 <label>
                   Kind
@@ -442,10 +430,6 @@ function LogOuting() {
               </>
             ) : (
               <>
-                <p className="settings-note">
-                  Name the theatre below and the year you saw it. Anyone else from the same place
-                  who logs that year lands on this same record.
-                </p>
                 <label>
                   Where was it?
                   <input
@@ -461,7 +445,6 @@ function LogOuting() {
                     placeholder="Springfield"
                     value={city}
                   />
-                  <span>Two schools share a name more often than you would think.</span>
                 </label>
                 <label>
                   Which year?

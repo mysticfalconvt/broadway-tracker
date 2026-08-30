@@ -6,6 +6,7 @@ import {
   type Coordinates,
   geocodeVenue,
   placedVenues,
+  placesVisitedBy,
   queriesFor,
   unplacedVenues,
 } from '../src/server/geocoding'
@@ -128,5 +129,67 @@ describe('which venues are on the map', () => {
     }
     expect(await unplacedVenues()).toHaveLength(0)
     expect(await placedVenues()).toHaveLength(0)
+  })
+})
+
+describe('whose map is whose', () => {
+  async function twoNights() {
+    const member = await makeUser({ profileVisibility: 'public' })
+    const { makeShow } = await import('./helpers')
+    const { createOutingForUser } = await import('../src/server/outing-functions')
+    const show = await makeShow({ title: 'Hadestown', slug: 'hadestown' })
+    await createOutingForUser(member.id, {
+      showId: show.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-05-18',
+      venue: 'Walter Kerr Theatre',
+      city: 'New York',
+      attendeeIds: [],
+      favorite: false,
+    })
+    await createOutingForUser(member.id, {
+      showId: show.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-06-01',
+      venue: 'Booth Theatre',
+      city: 'New York',
+      attendeeIds: [],
+      favorite: false,
+      visibility: 'private',
+    })
+    return { member }
+  }
+
+  it('shows somebody everywhere they have been, private nights included', async () => {
+    const { member } = await twoNights()
+    const mine = await placesVisitedBy(member.id)
+    expect(mine.map((p) => p.name).sort()).toEqual(['Booth Theatre', 'Walter Kerr Theatre'])
+  })
+
+  it('shows a friend only the nights that were shared', async () => {
+    const { member } = await twoNights()
+    const theirs = await placesVisitedBy(member.id, { includePrivate: false })
+    expect(theirs.map((p) => p.name)).toEqual(['Walter Kerr Theatre'])
+  })
+
+  it('counts how often somebody went back', async () => {
+    const member = await makeUser({ profileVisibility: 'public' })
+    const { makeShow } = await import('./helpers')
+    const { createOutingForUser } = await import('../src/server/outing-functions')
+    const show = await makeShow({ title: 'Six', slug: 'six' })
+    for (const date of ['2026-01-02', '2026-02-02', '2026-03-02']) {
+      await createOutingForUser(member.id, {
+        showId: show.id,
+        datePrecision: 'exact',
+        occurredOn: date,
+        venue: 'Booth Theatre',
+        city: 'New York',
+        attendeeIds: [],
+        favorite: false,
+      })
+    }
+    const places = await placesVisitedBy(member.id)
+    expect(places).toHaveLength(1)
+    expect(places[0]?.nights).toBe(3)
   })
 })

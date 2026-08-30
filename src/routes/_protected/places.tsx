@@ -21,8 +21,7 @@ function Places() {
           {places.length
             ? `${nights} ${nights === 1 ? 'night' : 'nights'} across ${places.length} ${
                 places.length === 1 ? 'place' : 'places'
-              }. Only yours — a map of where somebody has been says more than the same list in
-              words, so this is never shown to anybody else.`
+              }.`
             : 'This fills in as you log where you saw things.'}
         </p>
       </header>
@@ -33,7 +32,6 @@ function Places() {
         <section>
           <div className="section-heading">
             <div>
-              <p className="eyebrow">The places themselves</p>
               <h2>Where you keep going back.</h2>
             </div>
           </div>

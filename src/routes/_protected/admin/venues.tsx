@@ -60,10 +60,7 @@ function VenueAdmin() {
       <header className="settings-header">
         <p className="eyebrow">Administration</p>
         <h1>Venues.</h1>
-        <p>
-          The same theatre entered different ways is folded together automatically. What is left
-          here is the variation that needed a person.
-        </p>
+        <p>What deduplication could not settle on its own.</p>
       </header>
 
       {error ? (

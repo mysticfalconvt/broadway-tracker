@@ -45,10 +45,7 @@ function OutingDetail() {
       <main className="page-wrap empty-state">
         <p className="eyebrow">Not your memory</p>
         <h1>{problem}</h1>
-        <p>
-          A night is visible to the people who were there, and to the friends its owner shared it
-          with. If you were there, ask whoever logged it to add you.
-        </p>
+        <p>If you were there, ask whoever logged it to add you.</p>
         <Link className="button button-primary" to="/library">
           Back to your theatre
         </Link>

@@ -41,10 +41,7 @@ function PublishedShows() {
       <header className="settings-header">
         <p className="eyebrow">Catalog administration</p>
         <h1>Published shows.</h1>
-        <p>
-          Corrections to a live record are made here. The review queue is only for submissions that
-          have not been decided yet.
-        </p>
+        <p>Corrections to live records. The review queue is for undecided submissions.</p>
       </header>
 
       {error ? (

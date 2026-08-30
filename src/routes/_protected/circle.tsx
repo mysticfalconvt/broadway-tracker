@@ -17,10 +17,7 @@ function Circle() {
       <header className="settings-header">
         <p className="eyebrow">Your circle</p>
         <h1>Where your friends have been.</h1>
-        <p>
-          Nights out, newest first. Only what people chose to share, and only from friends whose
-          profile is open to you.
-        </p>
+        <p>Nights out, newest first.</p>
       </header>
 
       {activity.length ? (
@@ -52,7 +49,7 @@ function Circle() {
         </ul>
       ) : (
         <p className="profile-empty">
-          Nothing yet. This fills up as the people you share with log their nights out.{' '}
+          Nothing yet.{' '}
           <Link className="text-action" to="/friends">
             Find your friends
           </Link>

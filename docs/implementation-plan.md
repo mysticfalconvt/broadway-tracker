@@ -396,7 +396,8 @@ to plot them. Nothing stores coordinates.
 - [x] Show a venue's location on its page.
 - [x] Build a personal map of everywhere the reader has seen a performance. *(`/places`, linked
       from the profile. Assembled from the reader's own attendance and never anybody else's.)*
-- [ ] Consider a friends view: where the people you share with have seen theatre.
+- [x] A friends view: where the people you share with have seen theatre. *(On their profile, drawn
+      only from nights they shared — a private night is on their own map and nobody else's.)*
 - [x] Fall back gracefully: a venue that cannot be geocoded must not break the map or the page.
       *(A lookup never blocks a save, a failed request does not count against the venue, and a
       venue nobody can find is asked about three times and then left alone.)*

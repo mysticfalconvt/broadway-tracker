@@ -1,5 +1,5 @@
 import { createServerOnlyFn } from '@tanstack/react-start'
-import { and, eq, isNotNull, isNull, lt, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull, isNull, lt, sql } from 'drizzle-orm'
 
 import { getDb } from './db/client'
 import { venues } from './db/schema'
@@ -151,32 +151,34 @@ export const geocodeVenueInBackground = createServerOnlyFn((venueId: string) => 
 })
 
 /**
- * Everywhere one person has actually been, with how often.
+ * Everywhere one person has been, with how often.
  *
- * Their own attendance only. A map of where somebody has been, with dates, says
- * far more about them than the same facts listed as text — it shows a home
- * city, a routine, a pattern — so this is never assembled for anybody but the
- * reader themselves.
+ * A map carries more than the same facts as a list — a home city, a routine —
+ * so a friend's map is built only from nights they actually shared. Their own
+ * map shows everything, including nights they kept to themselves.
  */
-export const placesVisitedBy = createServerOnlyFn(async (viewerId: string) => {
-  const { outingAttendees, outings } = await import('./db/schema')
-  return getDb()
-    .select({
-      id: venues.id,
-      name: venues.name,
-      city: venues.city,
-      country: venues.country,
-      latitude: venues.latitude,
-      longitude: venues.longitude,
-      nights: sql<number>`count(distinct ${outings.id})::int`,
-    })
-    .from(outingAttendees)
-    .innerJoin(outings, eq(outingAttendees.outingId, outings.id))
-    .innerJoin(venues, eq(outings.venueId, venues.id))
-    .where(eq(outingAttendees.userId, viewerId))
-    .groupBy(venues.id)
-    .orderBy(sql`count(distinct ${outings.id}) desc`)
-})
+export const placesVisitedBy = createServerOnlyFn(
+  async (personId: string, { includePrivate = true } = {}) => {
+    const { outingAttendees, outings } = await import('./db/schema')
+    const shared = includePrivate ? undefined : inArray(outings.visibility, ['friends', 'public'])
+    return getDb()
+      .select({
+        id: venues.id,
+        name: venues.name,
+        city: venues.city,
+        country: venues.country,
+        latitude: venues.latitude,
+        longitude: venues.longitude,
+        nights: sql<number>`count(distinct ${outings.id})::int`,
+      })
+      .from(outingAttendees)
+      .innerJoin(outings, eq(outingAttendees.outingId, outings.id))
+      .innerJoin(venues, eq(outings.venueId, venues.id))
+      .where(and(eq(outingAttendees.userId, personId), shared))
+      .groupBy(venues.id)
+      .orderBy(sql`count(distinct ${outings.id}) desc`)
+  },
+)
 
 /** Venues still worth asking about, for the places page and any manual sweep. */
 export const unplacedVenues = createServerOnlyFn(async () =>

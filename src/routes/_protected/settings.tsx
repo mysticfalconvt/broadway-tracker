@@ -171,10 +171,7 @@ function Settings() {
         <fieldset>
           <legend>Who your theatre is for</legend>
           <p className="settings-note settings-sharing-lede">
-            This governs your shows, your nights out, your lists, and your reviews. Changing it
-            moves everything that was following it — anything you set differently on its own stays
-            where you put it. Photographs are the exception: a public one goes past an administrator
-            first, so those stay as they are.
+            Changing this moves everything that follows it. Anything set on its own stays put.
           </p>
           <label>
             <input
@@ -209,21 +206,17 @@ function Settings() {
             />
             <span>
               <strong>Public</strong>
-              Publish an anonymous page of whatever you mark public. It carries no name and no
-              handle — only the shows.
+              An anonymous page of whatever you mark public. No name, no handle.
             </span>
           </label>
         </fieldset>
         {impact && impact.total > 0 ? (
           <p className="settings-note">
-            You have {impact.total} {impact.total === 1 ? 'thing' : 'things'} following this
-            setting: {describeImpact(impact)}. Changing it above moves all of them.
+            {impact.total} {impact.total === 1 ? 'thing' : 'things'} follow this setting:{' '}
+            {describeImpact(impact)}.
           </p>
         ) : null}
-        <p className="settings-note">
-          Your photo is stored privately and is only ever shown to you and to approved friends.
-          Public pages stay anonymous and never display it.
-        </p>
+        <p className="settings-note">Your photo is only ever shown to approved friends.</p>
         {error ? (
           <p className="form-error" role="alert">
             {error}

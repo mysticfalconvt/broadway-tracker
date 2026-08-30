@@ -45,10 +45,7 @@ function SubmitShow() {
       <header className="settings-header">
         <p className="eyebrow">Grow the shared archive</p>
         <h1>Add a missing show.</h1>
-        <p>
-          Submissions are reviewed before they appear in the catalog, keeping the shared record
-          clear for everyone.
-        </p>
+        <p>Reviewed before it appears in the catalog.</p>
       </header>
       <form className="settings-form" onSubmit={submit}>
         <label>

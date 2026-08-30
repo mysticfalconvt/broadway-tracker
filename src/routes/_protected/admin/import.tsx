@@ -171,8 +171,7 @@ function ImportCatalog() {
             {preview.venueWarnings.length === 1 ? '' : 's'} to look at
           </h2>
           <p className="settings-note">
-            These do not match a venue already in the catalog, but they resemble one. Importing
-            as-is records them as separate theatres.
+            These resemble a venue already in the catalog. Importing as-is makes a second one.
           </p>
           <ul className="warning-list">
             {preview.venueWarnings.map((warning) => (

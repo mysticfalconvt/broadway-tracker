@@ -177,8 +177,8 @@ function VisitorHome() {
           <p className="eyebrow">Your theatre, remembered</p>
           <h1>A journal for the shows you’ve seen.</h1>
           <p className="home-intro">
-            Collect the shows that stayed with you, and keep the nights you shared with the people
-            you saw them with. Private by default — you choose what to share, and with whom.
+            Collect the shows that stayed with you, and the nights you shared with the people you
+            saw them with.
           </p>
         </div>
         <div className="hero-controls">

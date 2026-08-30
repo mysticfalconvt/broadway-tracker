@@ -46,10 +46,7 @@ function Feedback() {
       <header className="settings-header">
         <p className="eyebrow">Tell us</p>
         <h1>Something broken, or something missing?</h1>
-        <p>
-          This goes straight to whoever looks after Broadway Tracker. Small things are worth sending
-          — they are usually the quickest to fix.
-        </p>
+        <p>Small things are worth sending — they are usually the quickest to fix.</p>
       </header>
 
       {sent ? (

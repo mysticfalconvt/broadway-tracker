@@ -103,9 +103,8 @@ function PeopleAdmin() {
         <p className="eyebrow">Administration</p>
         <h1>People.</h1>
         <p>
-          Members add performers as they record who they saw, so the same person arrives spelled
-          more than one way. Names are only folded together when they match exactly — the rest is a
-          judgement, and it is made here.
+          Names are folded together only when they match exactly. The rest is a judgement, made
+          here.
         </p>
       </header>
 

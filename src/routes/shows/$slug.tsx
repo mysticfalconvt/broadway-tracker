@@ -65,7 +65,7 @@ function ShowDetail() {
             {session ? <LogAction showId={show.id} /> : null}
             <p>
               {scope === 'local'
-                ? 'A local record, kept by the people who were there. It is not in the shared catalog and does not appear in search.'
+                ? 'A local record, kept by the people who were there.'
                 : 'This shared catalog record is ready for your theatre history.'}
             </p>
             <LibraryButtons mine={mine} showId={show.id} serverSession={session} />
@@ -237,10 +237,7 @@ function LibraryButtons({
               ))}
             </select>
           </label>
-          <p className="settings-note">
-            Dates, venues, and who you were with belong to a performance — use “Log a performance”
-            above to record one.
-          </p>
+          <p className="settings-note">Dates, venues, and company belong to a performance.</p>
           <label className="favorite-toggle">
             <input name="favorite" type="checkbox" />
             <span>Favorite</span>
@@ -456,10 +453,7 @@ function Productions({
       ) : (
         // Most shows have no production recorded, and a section that simply
         // vanished left the page looking like it had lost something.
-        <p className="profile-empty">
-          Nobody has recorded where this has been staged yet. Logging a night at a theatre is what
-          fills this in.
-        </p>
+        <p className="profile-empty">Nothing recorded yet.</p>
       )}
     </section>
   )
@@ -620,7 +614,7 @@ function CorrectLocalRecord({
             <label>
               Town or city
               <input defaultValue={city} name="city" />
-              <span>A hall is its name within its town, so both matter.</span>
+              <span>A hall is its name within its town.</span>
             </label>
             <label>
               What was it? <span>Optional</span>

@@ -42,11 +42,7 @@ function LocalShowAdmin() {
       <header className="settings-header">
         <p className="eyebrow">Administration</p>
         <h1>Local records.</h1>
-        <p>
-          Work that exists nowhere but one town — a company’s own revue, a school’s devised piece.
-          These were never submitted and are not waiting on you. They are listed only so that
-          something of wider interest can be lifted into the shared catalog.
-        </p>
+        <p>Not waiting on you. Lift anything of wider interest into the catalog.</p>
       </header>
 
       {error ? (

@@ -268,9 +268,13 @@ export const friendProfileForViewer = createServerOnlyFn(
           .groupBy(lists.id)
           .orderBy(asc(lists.title)),
       ])
+    const { placesVisitedBy } = await import('./geocoding')
     return {
       user: profile,
       stats: { seen: seen[0]?.count ?? 0, outings: outingsCount[0]?.count ?? 0 },
+      // Only the nights they shared. A map is more revealing than the same
+      // list, so it is drawn from what they chose to show, not from everything.
+      places: await placesVisitedBy(profile.id, { includePrivate: false }),
       // The reader's own photographs, even on somebody else's page: a cover is
       // a personal lens on the catalog, not a fact about the friend.
       favorites: await applyViewerCovers(viewerId, favorites),

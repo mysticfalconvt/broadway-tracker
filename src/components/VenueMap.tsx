@@ -86,9 +86,7 @@ export function VenueMap({ venues, height = '24rem' }: { venues: MappedVenue[]; 
   if (placed.length === 0) {
     return (
       <p className="profile-empty">
-        {venues.length
-          ? 'None of these places have been found on a map yet. They fill in as you use them.'
-          : 'Nowhere to show yet.'}
+        {venues.length ? 'Not found on a map yet.' : 'Nowhere to show yet.'}
       </p>
     )
   }
