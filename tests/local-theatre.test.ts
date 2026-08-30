@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import {
+  editLocalShow,
+  editLocalStagingYear,
   findOrCreateLocalProduction,
   findOrCreateLocalShow,
   findOrCreateProduction,
   localProductionsAt,
+  localProductionsForShow,
   localShowBySlug,
   localShowsForAdmin,
+  mayEditLocalShow,
   pendingShowsForAdmin,
   promoteLocalShow,
   publishedProductionsForShow,
@@ -441,5 +445,224 @@ describe('promotion into the shared catalog', () => {
     expect(rows[0]?.stagings).toBe(1)
     expect(rows[0]?.nights).toBe(1)
     await expect(localShowsForAdmin(actor(member))).rejects.toThrow('Forbidden')
+  })
+})
+
+describe('correcting a local record', () => {
+  async function revue() {
+    const member = await makeUser()
+    const made = await findOrCreateLocalShow(
+      member.id,
+      'The Millbrok Revue',
+      'musical',
+      'Grange Hal',
+      'Millbrook',
+      2019,
+    )
+    return { member, ...made }
+  }
+
+  it('fixes a typo in the title without moving the URL', async () => {
+    const { member, show } = await revue()
+    const fixed = await editLocalShow(member.id, show.id, {
+      title: 'The Millbrook Revue',
+      type: 'musical',
+      venue: 'Grange Hal',
+      city: 'Millbrook',
+    })
+    expect(fixed.title).toBe('The Millbrook Revue')
+    // Somebody may already have been given the link.
+    expect(fixed.slug).toBe(show.slug)
+  })
+
+  it('re-keys on the corrected title, so the next person converges', async () => {
+    const { member, show } = await revue()
+    await editLocalShow(member.id, show.id, {
+      title: 'The Millbrook Revue',
+      type: 'musical',
+      venue: 'Grange Hal',
+      city: 'Millbrook',
+    })
+    const neighbour = await makeUser()
+    const again = await findOrCreateLocalShow(
+      neighbour.id,
+      'millbrook revue',
+      'musical',
+      'Grange Hal',
+      'Millbrook',
+      2019,
+    )
+    expect(again.created).toBe(false)
+    expect(again.show.id).toBe(show.id)
+  })
+
+  it('moves every staging when the hall’s name is corrected', async () => {
+    const { member, show } = await revue()
+    await findOrCreateLocalShow(
+      member.id,
+      'The Millbrok Revue',
+      'musical',
+      'Grange Hal',
+      'Millbrook',
+      2022,
+    )
+    await editLocalShow(member.id, show.id, {
+      title: 'The Millbrook Revue',
+      type: 'musical',
+      venue: 'Grange Hall',
+      city: 'Millbrook',
+    })
+    const stagings = await localProductionsForShow(show.id)
+    expect(stagings.map((row) => row.name).sort()).toEqual([
+      'Grange Hall, 2019',
+      'Grange Hall, 2022',
+    ])
+    // And the corrected hall is where the record is found from now on.
+    expect(await localProductionsAt(show.id, 'Grange Hall', 'Millbrook')).toHaveLength(2)
+    expect(await localProductionsAt(show.id, 'Grange Hal', 'Millbrook')).toHaveLength(0)
+  })
+
+  it('treats a hall in another town as another hall', async () => {
+    const { member, show } = await revue()
+    // A hall is its name within its town, so correcting the town rehouses the
+    // record. The form states both, so this is only ever asked for on purpose.
+    await editLocalShow(member.id, show.id, {
+      title: 'The Millbrok Revue',
+      type: 'musical',
+      venue: 'Grange Hal',
+      city: 'Portland',
+    })
+    expect(await localProductionsAt(show.id, 'Grange Hal', 'Portland')).toHaveLength(1)
+    expect(await localProductionsAt(show.id, 'Grange Hal', 'Millbrook')).toHaveLength(0)
+  })
+
+  it('refuses a correction that would duplicate a record already there', async () => {
+    const member = await makeUser()
+    const first = await findOrCreateLocalShow(
+      member.id,
+      'The Spring Revue',
+      'musical',
+      'Grange Hall',
+      'Millbrook',
+      2019,
+    )
+    const second = await findOrCreateLocalShow(
+      member.id,
+      'The Winter Concert',
+      'musical',
+      'Grange Hall',
+      'Millbrook',
+      2019,
+    )
+    await expect(
+      editLocalShow(member.id, second.show.id, {
+        title: 'The Spring Revue',
+        type: 'musical',
+        venue: 'Grange Hall',
+        city: 'Millbrook',
+      }),
+    ).rejects.toThrow('already recorded at that place')
+    // Neither record was touched.
+    expect((await localShowBySlug(first.show.slug))?.title).toBe('The Spring Revue')
+    expect((await localShowBySlug(second.show.slug))?.title).toBe('The Winter Concert')
+  })
+
+  it('lets somebody who was there correct it, and refuses a stranger', async () => {
+    const { member, show, productionId } = await revue()
+    const attendee = await makeUser()
+    const stranger = await makeUser()
+    await createOutingForUser(attendee.id, {
+      showId: show.id,
+      productionId,
+      datePrecision: 'year',
+      occurredYear: 2019,
+      attendeeIds: [],
+      favorite: false,
+    })
+
+    expect(await mayEditLocalShow(member.id, show.id)).toBe(true)
+    expect(await mayEditLocalShow(attendee.id, show.id)).toBe(true)
+    expect(await mayEditLocalShow(stranger.id, show.id)).toBe(false)
+    expect(await mayEditLocalShow(null, show.id)).toBe(false)
+
+    const fixed = await editLocalShow(attendee.id, show.id, {
+      title: 'The Millbrook Revue',
+      type: 'musical',
+      venue: 'Grange Hal',
+      city: 'Millbrook',
+    })
+    expect(fixed.title).toBe('The Millbrook Revue')
+    await expect(
+      editLocalShow(stranger.id, show.id, {
+        title: 'Something Else',
+        type: 'play',
+        venue: 'Grange Hal',
+      }),
+    ).rejects.toThrow('people who were there')
+  })
+
+  it('is not a way to edit the shared catalog', async () => {
+    const member = await makeUser()
+    const published = await makeShow({ title: 'Hadestown', slug: 'hadestown' })
+    expect(await mayEditLocalShow(member.id, published.id)).toBe(false)
+    await expect(
+      editLocalShow(member.id, published.id, {
+        title: 'Something Else',
+        type: 'play',
+        venue: 'Walter Kerr Theatre',
+      }),
+    ).rejects.toThrow('people who were there')
+  })
+
+  it('refuses a title or a place it cannot key on', async () => {
+    const { member, show } = await revue()
+    await expect(
+      editLocalShow(member.id, show.id, { title: '  ', type: 'musical', venue: 'Grange Hal' }),
+    ).rejects.toThrow('needs a title')
+    await expect(
+      editLocalShow(member.id, show.id, { title: 'The Revue', type: 'musical', venue: '  ' }),
+    ).rejects.toThrow('needs the place')
+  })
+
+  it('fixes the year of one staging without disturbing the other', async () => {
+    const { member, show, productionId } = await revue()
+    const later = await findOrCreateLocalShow(
+      member.id,
+      'The Millbrok Revue',
+      'musical',
+      'Grange Hal',
+      'Millbrook',
+      2022,
+    )
+    await editLocalStagingYear(member.id, productionId, 2018)
+    const stagings = await localProductionsForShow(show.id)
+    expect(stagings.map((row) => row.name).sort()).toEqual(['Grange Hal, 2018', 'Grange Hal, 2022'])
+    expect(later.productionId).not.toBe(productionId)
+  })
+
+  it('refuses a year that is already recorded at that place', async () => {
+    const { member, productionId } = await revue()
+    await findOrCreateLocalShow(
+      member.id,
+      'The Millbrok Revue',
+      'musical',
+      'Grange Hal',
+      'Millbrook',
+      2022,
+    )
+    await expect(editLocalStagingYear(member.id, productionId, 2022)).rejects.toThrow(
+      'already recorded there',
+    )
+  })
+
+  it('refuses a stranger the year, and refuses a year nobody could have seen', async () => {
+    const { member, productionId } = await revue()
+    const stranger = await makeUser()
+    await expect(editLocalStagingYear(stranger.id, productionId, 2018)).rejects.toThrow(
+      'people who were there',
+    )
+    await expect(editLocalStagingYear(member.id, productionId, 12018)).rejects.toThrow(
+      'needs the year',
+    )
   })
 })

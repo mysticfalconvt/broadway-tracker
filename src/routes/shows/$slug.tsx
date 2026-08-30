@@ -4,7 +4,12 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { authClient } from '../../lib/auth-client'
 import { ShowArtwork } from '../../components/ShowArtwork'
 import { getSession } from '../../server/auth-functions'
-import { getProductionsForShow, getShowBySlug } from '../../server/catalog-functions'
+import {
+  getProductionsForShow,
+  getShowBySlug,
+  saveLocalShow,
+  saveLocalStagingYear,
+} from '../../server/catalog-functions'
 import { getCastForShow } from '../../server/people-functions'
 import { saveLibraryEntry } from '../../server/library-functions'
 import { changePhotoVisibility, deleteShowPhoto, getShowPhotos } from '../../server/image-functions'
@@ -13,10 +18,11 @@ import { formatFuzzyDate } from '../../lib/fuzzy-date'
 
 export const Route = createFileRoute('/shows/$slug')({
   loader: async ({ params }) => {
-    const { show, scope } = await getShowBySlug({ data: { slug: params.slug } })
+    const { show, scope, mayEdit } = await getShowBySlug({ data: { slug: params.slug } })
     return {
       show,
       scope,
+      mayEdit,
       photos: show ? await getShowPhotos({ data: { showId: show.id } }) : [],
       productions: show ? await getProductionsForShow({ data: { showId: show.id, scope } }) : [],
       cast: show ? await getCastForShow({ data: { showId: show.id } }) : [],
@@ -29,7 +35,7 @@ export const Route = createFileRoute('/shows/$slug')({
 })
 
 function ShowDetail() {
-  const { show, scope, photos, productions, cast, session } = Route.useLoaderData()
+  const { show, scope, mayEdit, photos, productions, cast, session } = Route.useLoaderData()
 
   if (!show) {
     return (
@@ -77,6 +83,14 @@ function ShowDetail() {
           <YourHistory showId={show.id} serverSession={session} />
         </aside>
       </section>
+      {mayEdit ? (
+        <CorrectLocalRecord
+          city={productions[0]?.city ?? ''}
+          productions={productions}
+          show={show}
+          venue={productions[0]?.venue ?? ''}
+        />
+      ) : null}
       <Productions productions={productions} scope={scope} />
       <Cast cast={cast} />
       <PhotoGallery showId={show.id} photos={photos} />
@@ -453,6 +467,155 @@ function Cast({ cast }: { cast: Awaited<ReturnType<typeof getCastForShow>> }) {
           </ul>
         </div>
       ))}
+    </section>
+  )
+}
+
+/**
+ * Correcting a local record, for the people who were there.
+ *
+ * The hall is stated in full rather than left to be remembered, because a hall
+ * is its name within its town: saving with the town blank would quietly move
+ * the record to a different building.
+ */
+function CorrectLocalRecord({
+  show,
+  productions,
+  venue,
+  city,
+}: {
+  show: { id: string; title: string; type: string; synopsis: string | null }
+  productions: Awaited<ReturnType<typeof getProductionsForShow>>
+  venue: string
+  city: string
+}) {
+  const [open, setOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = new FormData(event.currentTarget)
+    setError(null)
+    setSaving(true)
+    try {
+      await saveLocalShow({
+        data: {
+          showId: show.id,
+          title: String(form.get('title')),
+          type: String(form.get('type')) as 'musical',
+          synopsis: String(form.get('synopsis') ?? '').trim() || undefined,
+          venue: String(form.get('venue')),
+          city: String(form.get('city') ?? '').trim() || undefined,
+        },
+      })
+      window.location.reload()
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'We could not save that.')
+      setSaving(false)
+    }
+  }
+
+  async function saveYear(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = new FormData(event.currentTarget)
+    setError(null)
+    try {
+      await saveLocalStagingYear({
+        data: { productionId: String(form.get('productionId')), year: Number(form.get('year')) },
+      })
+      window.location.reload()
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'We could not save that.')
+    }
+  }
+
+  return (
+    <section className="correct-local page-wrap">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Yours to correct</p>
+          <h2>Something not right?</h2>
+        </div>
+        <button className="text-action" onClick={() => setOpen((was) => !was)} type="button">
+          {open ? 'Cancel' : 'Correct this record'}
+        </button>
+      </div>
+      {!open ? (
+        <p className="profile-empty">
+          You were there, so you can fix this — the title, what kind of thing it was, or the year.
+        </p>
+      ) : null}
+
+      {error ? (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      {open ? (
+        <>
+          <form className="settings-form" onSubmit={save}>
+            <label>
+              What was it called?
+              <input defaultValue={show.title} name="title" required />
+            </label>
+            <label>
+              Kind
+              <select defaultValue={show.type} name="type">
+                <option value="musical">Musical</option>
+                <option value="play">Play</option>
+                <option value="other">Something else</option>
+              </select>
+            </label>
+            <label>
+              Where was it?
+              <input defaultValue={venue} name="venue" required />
+            </label>
+            <label>
+              Town or city
+              <input defaultValue={city} name="city" />
+              <span>A hall is its name within its town, so both matter.</span>
+            </label>
+            <label>
+              What was it? <span>Optional</span>
+              <textarea
+                defaultValue={show.synopsis ?? ''}
+                name="synopsis"
+                placeholder="Worth writing down while somebody still remembers."
+                rows={4}
+              />
+            </label>
+            <button className="button button-primary" disabled={saving} type="submit">
+              {saving ? 'Saving…' : 'Save the correction'}
+            </button>
+          </form>
+
+          {productions.length ? (
+            <div className="staging-years">
+              <p className="eyebrow">Years</p>
+              {productions.map((staging) => (
+                <form key={staging.id} onSubmit={saveYear}>
+                  <input name="productionId" type="hidden" value={staging.id} />
+                  <label>
+                    {staging.venue ?? 'This staging'}
+                    <input
+                      defaultValue={staging.name.split(', ').pop() ?? ''}
+                      max="2200"
+                      min="1800"
+                      name="year"
+                      type="number"
+                    />
+                  </label>
+                  <button className="button button-quiet" type="submit">
+                    Fix the year
+                  </button>
+                </form>
+              ))}
+            </div>
+          ) : null}
+        </>
+      ) : null}
     </section>
   )
 }

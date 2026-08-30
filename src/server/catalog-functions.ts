@@ -5,7 +5,16 @@ import { z } from 'zod'
 
 import { localTitleKey } from '../lib/show'
 import { getDb } from './db/client'
-import { libraryEntries, listItems, outings, productions, shows, user, venues } from './db/schema'
+import {
+  libraryEntries,
+  listItems,
+  outingAttendees,
+  outings,
+  productions,
+  shows,
+  user,
+  venues,
+} from './db/schema'
 
 type ShowType = 'musical' | 'play' | 'other'
 
@@ -141,17 +150,20 @@ export const getShowBySlug = createServerFn({ method: 'GET' })
   .validator(z.object({ slug: z.string().min(1).max(160) }))
   .handler(async ({ data }) => {
     const published = await publishedShowBySlug(data.slug)
-    if (published) return { show: published, scope: 'catalog' as const }
+    if (published) return { show: published, scope: 'catalog' as const, mayEdit: false }
 
     const { auth } = await import('./auth')
     const { getRequestHeaders } = await import('@tanstack/react-start/server')
     const session = await auth.api.getSession({ headers: getRequestHeaders() })
-    if (!session) return { show: null, scope: 'catalog' as const }
+    if (!session) return { show: null, scope: 'catalog' as const, mayEdit: false }
 
     const local = await localShowBySlug(data.slug)
-    return local
-      ? { show: local, scope: 'local' as const }
-      : { show: null, scope: 'catalog' as const }
+    if (!local) return { show: null, scope: 'catalog' as const, mayEdit: false }
+    return {
+      show: local,
+      scope: 'local' as const,
+      mayEdit: await mayEditLocalShow(session.user.id, local.id),
+    }
   })
 
 /** Stagings for the show page, whichever kind of record it turned out to be. */
@@ -779,6 +791,180 @@ export const localProductionsAt = createServerOnlyFn(
 )
 
 /**
+ * Whether this person may correct a local record.
+ *
+ * The people who were in the room own it. That is whoever first wrote it down
+ * and anyone who has logged a night at it — not every member, because another
+ * town's record is not theirs to rewrite, and not the author alone, because two
+ * families share one record by design and either may have made the typo.
+ */
+export const mayEditLocalShow = createServerOnlyFn(
+  async (userId: string | null, showId: string) => {
+    if (!userId) return false
+    const db = getDb()
+    const [show] = await db
+      .select({ status: shows.catalogStatus, author: shows.submittedByUserId })
+      .from(shows)
+      .where(eq(shows.id, showId))
+      .limit(1)
+    if (!show || show.status !== 'local') return false
+    if (show.author === userId) return true
+
+    const [attended] = await db
+      .select({ id: outings.id })
+      .from(outings)
+      .innerJoin(outingAttendees, eq(outingAttendees.outingId, outings.id))
+      .where(and(eq(outings.showId, showId), eq(outingAttendees.userId, userId)))
+      .limit(1)
+    return Boolean(attended)
+  },
+)
+
+/**
+ * The venue a local record is keyed on, read back out of the key itself.
+ *
+ * A show is keyed `title:venue` and a staging `show:venue:year`, so the venue
+ * sits second in both. Neither a normalised title nor a uuid can contain a
+ * colon, so the separators are unambiguous.
+ */
+function venueIdFromLocalKey(localKey: string | null) {
+  return localKey?.split(':')[1] || null
+}
+
+/**
+ * Corrects a local record: its title, what kind of thing it was, a description,
+ * and the hall it was staged in.
+ *
+ * All four can be wrong the moment they are typed, and three of them key the
+ * record — the title keys the show, the hall keys the show and every staging
+ * under it. So a correction recomputes those keys, and refuses when the result
+ * would collide with a record that already exists rather than silently making a
+ * second one or destroying the first. The URL never moves: it may already have
+ * been handed to somebody.
+ */
+export const editLocalShow = createServerOnlyFn(
+  async (
+    userId: string,
+    showId: string,
+    data: {
+      title: string
+      type: ShowType
+      synopsis?: string | null
+      venue: string
+      city?: string | null
+    },
+  ) => {
+    if (!(await mayEditLocalShow(userId, showId))) {
+      throw new Error('Only the people who were there can correct this record.')
+    }
+    const title = data.title.trim().replace(/\s+/g, ' ')
+    const titleKey = localTitleKey(title)
+    if (!title || !titleKey) throw new Error('A show needs a title.')
+    if (!data.venue.trim()) throw new Error('A local show needs the place it was staged.')
+
+    const venue = await (await import('./venue-functions')).findOrCreateVenue(
+      userId,
+      data.venue,
+      data.city ?? null,
+    )
+    const db = getDb()
+    const localKey = `${titleKey}:${venue.id}`
+
+    const [clash] = await db
+      .select({ id: shows.id, title: shows.title })
+      .from(shows)
+      .where(and(eq(shows.localKey, localKey), ne(shows.id, showId)))
+      .limit(1)
+    if (clash) {
+      throw new Error(
+        `“${clash.title}” is already recorded at that place — this would duplicate it.`,
+      )
+    }
+
+    return db.transaction(async (tx) => {
+      // Every staging moves with the hall, and each carries the hall in its own
+      // key, so a rehousing that would collide has to be caught too.
+      const stagings = await tx.select().from(productions).where(eq(productions.showId, showId))
+      for (const staging of stagings) {
+        const year = staging.localKey?.split(':')[2]
+        if (!year) continue
+        const stagingKey = `${showId}:${venue.id}:${year}`
+        const [stagingClash] = await tx
+          .select({ id: productions.id })
+          .from(productions)
+          .where(and(eq(productions.localKey, stagingKey), ne(productions.id, staging.id)))
+          .limit(1)
+        if (stagingClash) {
+          throw new Error(
+            `Two ${year} stagings would end up at that place. Correct them one at a time.`,
+          )
+        }
+        await tx
+          .update(productions)
+          .set({
+            localKey: stagingKey,
+            venueId: venue.id,
+            venue: venue.name,
+            city: venue.city,
+            name: `${venue.name}, ${year}`,
+            updatedAt: new Date(),
+          })
+          .where(eq(productions.id, staging.id))
+      }
+
+      const [updated] = await tx
+        .update(shows)
+        .set({
+          title,
+          type: data.type,
+          synopsis: data.synopsis?.trim() || null,
+          localKey,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(shows.id, showId), eq(shows.catalogStatus, 'local')))
+        .returning({ id: shows.id, title: shows.title, slug: shows.slug })
+      if (!updated) throw new Error('That local show does not exist.')
+      return updated
+    })
+  },
+)
+
+/** Corrects the year of one staging, which is the other half of its key. */
+export const editLocalStagingYear = createServerOnlyFn(
+  async (userId: string, productionId: string, year: number) => {
+    if (!Number.isInteger(year) || year < 1800 || year > 2200) {
+      throw new Error('A staging needs the year you saw it.')
+    }
+    const db = getDb()
+    const [staging] = await db
+      .select()
+      .from(productions)
+      .where(and(eq(productions.id, productionId), eq(productions.scope, 'local')))
+      .limit(1)
+    if (!staging) throw new Error('That staging does not exist.')
+    if (!(await mayEditLocalShow(userId, staging.showId))) {
+      throw new Error('Only the people who were there can correct this record.')
+    }
+    const venueId = venueIdFromLocalKey(staging.localKey)
+    if (!venueId) throw new Error('That staging cannot be corrected.')
+
+    const localKey = `${staging.showId}:${venueId}:${year}`
+    const [clash] = await db
+      .select({ id: productions.id })
+      .from(productions)
+      .where(and(eq(productions.localKey, localKey), ne(productions.id, productionId)))
+      .limit(1)
+    if (clash) throw new Error(`A ${year} staging is already recorded there.`)
+
+    const venueName = staging.venue ?? 'Unknown'
+    await db
+      .update(productions)
+      .set({ localKey, name: `${venueName}, ${year}`, updatedAt: new Date() })
+      .where(eq(productions.id, productionId))
+  },
+)
+
+/**
  * Lifts a local record into the shared catalog.
  *
  * Some local work turns out to be of general interest — a company's original
@@ -849,6 +1035,37 @@ export const addLocalShow = createServerFn({ method: 'POST' })
       data.city ?? null,
       data.year,
     )
+  })
+
+export const saveLocalShow = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      showId: z.string().uuid(),
+      title: z.string().trim().min(1).max(200),
+      type: z.enum(['musical', 'play', 'other']),
+      synopsis: z.string().trim().max(5_000).optional(),
+      venue: z.string().trim().min(1).max(200),
+      city: z.string().trim().max(120).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const session = await requireSession()
+    return editLocalShow(session.user.id, data.showId, {
+      title: data.title,
+      type: data.type,
+      synopsis: data.synopsis ?? null,
+      venue: data.venue,
+      city: data.city ?? null,
+    })
+  })
+
+export const saveLocalStagingYear = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({ productionId: z.string().uuid(), year: z.number().int().min(1800).max(2200) }),
+  )
+  .handler(async ({ data }) => {
+    const session = await requireSession()
+    return editLocalStagingYear(session.user.id, data.productionId, data.year)
   })
 
 export const getLocalShowsForAdmin = createServerFn({ method: 'GET' }).handler(async () =>

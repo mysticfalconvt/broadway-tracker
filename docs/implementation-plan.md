@@ -346,6 +346,11 @@ community theatre's original revue, or a specific high-school staging, is none o
       happen at that hall in that year.)*
 - [x] Review the logging copy, which currently assumes a professional production. *("Venue /
       Walter Kerr Theatre" told a parent logging a school gym that the field was not for them.*)
+- [x] Let the people who were there correct a local record — its title, kind, description, hall,
+      and a staging's year. *(A typo would otherwise split a town permanently: the title and hall
+      are the convergence key, so a correction re-keys the show and every staging under it, and is
+      refused when it would collide. The URL never moves.)* *("Venue /
+      Walter Kerr Theatre" told a parent logging a school gym that the field was not for them.*)
 
 **Decided: catalog data with a smaller audience** — but the tension dissolves once the *show* and
 the *staging* are separated.
