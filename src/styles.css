@@ -3163,3 +3163,93 @@ a.recent-entry:hover h3,
 .narrow-determined {
   border-left-color: #3f5a52;
 }
+
+/* Working out which night somebody means. */
+.ask-page {
+  max-width: 44rem;
+}
+.exchange {
+  margin-bottom: 1.75rem;
+}
+.exchange-question {
+  margin: 0 0 0.6rem;
+  color: var(--ink-muted);
+  font-size: 0.88rem;
+}
+.exchange-question::before {
+  content: "“";
+}
+.exchange-question::after {
+  content: "”";
+}
+.exchange-answer {
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.exchange-answer > p {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.55;
+}
+.exchange-working {
+  margin-top: 0.9rem;
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+}
+.exchange-working summary {
+  cursor: pointer;
+}
+.exchange-working ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.3rem;
+  word-break: break-word;
+}
+.exchange-saved {
+  margin: 0.9rem 0 0;
+  font-size: 0.92rem;
+}
+.proposal {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border-left: 3px solid #3f5a52;
+  border-radius: 0 8px 8px 0;
+  background: var(--canvas);
+}
+.proposal-what {
+  margin: 0;
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1.1rem;
+}
+.proposal-why {
+  margin: 0.4rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+}
+.proposal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.9rem;
+}
+.ask-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+.ask-form textarea {
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.ask-form button {
+  justify-self: start;
+}

@@ -16,6 +16,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SignUpRouteImport } from './routes/sign-up'
+import { Route as ProtectedAskRouteImport } from './routes/_protected/ask'
 import { Route as ProtectedBuildHistoryRouteImport } from './routes/_protected/build-history'
 import { Route as ProtectedCircleRouteImport } from './routes/_protected/circle'
 import { Route as ProtectedFeedbackRouteImport } from './routes/_protected/feedback'
@@ -88,6 +89,11 @@ const SignUpRoute = SignUpRouteImport.update({
   id: '/sign-up',
   path: '/sign-up',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ProtectedAskRoute = ProtectedAskRouteImport.update({
+  id: '/ask',
+  path: '/ask',
+  getParentRoute: () => ProtectedRoute,
 } as any)
 const ProtectedBuildHistoryRoute = ProtectedBuildHistoryRouteImport.update({
   id: '/build-history',
@@ -288,6 +294,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/ask': typeof ProtectedAskRoute
   '/build-history': typeof ProtectedBuildHistoryRoute
   '/circle': typeof ProtectedCircleRoute
   '/feedback': typeof ProtectedFeedbackRoute
@@ -334,6 +341,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/ask': typeof ProtectedAskRoute
   '/build-history': typeof ProtectedBuildHistoryRoute
   '/circle': typeof ProtectedCircleRoute
   '/feedback': typeof ProtectedFeedbackRoute
@@ -382,6 +390,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/_protected/ask': typeof ProtectedAskRoute
   '/_protected/build-history': typeof ProtectedBuildHistoryRoute
   '/_protected/circle': typeof ProtectedCircleRoute
   '/_protected/feedback': typeof ProtectedFeedbackRoute
@@ -430,6 +439,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/ask'
     | '/build-history'
     | '/circle'
     | '/feedback'
@@ -476,6 +486,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/ask'
     | '/build-history'
     | '/circle'
     | '/feedback'
@@ -523,6 +534,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/_protected/ask'
     | '/_protected/build-history'
     | '/_protected/circle'
     | '/_protected/feedback'
@@ -635,6 +647,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/sign-up'
       preLoaderRoute: typeof SignUpRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_protected/ask': {
+      id: '/_protected/ask'
+      path: '/ask'
+      fullPath: '/ask'
+      preLoaderRoute: typeof ProtectedAskRouteImport
+      parentRoute: typeof ProtectedRoute
     }
     '/_protected/build-history': {
       id: '/_protected/build-history'
@@ -906,6 +925,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface ProtectedRouteChildren {
+  ProtectedAskRoute: typeof ProtectedAskRoute
   ProtectedBuildHistoryRoute: typeof ProtectedBuildHistoryRoute
   ProtectedCircleRoute: typeof ProtectedCircleRoute
   ProtectedFeedbackRoute: typeof ProtectedFeedbackRoute
@@ -934,6 +954,7 @@ interface ProtectedRouteChildren {
 }
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
+  ProtectedAskRoute: ProtectedAskRoute,
   ProtectedBuildHistoryRoute: ProtectedBuildHistoryRoute,
   ProtectedCircleRoute: ProtectedCircleRoute,
   ProtectedFeedbackRoute: ProtectedFeedbackRoute,

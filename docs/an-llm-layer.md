@@ -229,7 +229,14 @@ Getting facts in comes first, because nothing downstream works without them.
    suite. Verified against gpt-oss-120b: given the schemas it took three turns —
    `find_show`, `productions_of`, `narrow_the_year` — and the answer came from
    the database.
-5. **The local text box**, LM Studio, decompose-and-propose.
+5. ~~**The local text box**~~ **Done, and not as designed.** `/ask`. The first
+   version let the model choose tools and loop; it varied run to run between a
+   good answer in three lookups, five lookups and no answer at all, and no
+   lookups at all — and once proposed the year the person had guessed *after*
+   the catalog had contradicted it. The loop was replaced by a fixed pipeline:
+   the model extracts fields from the sentence, the app runs the queries, and
+   the app writes the answer. Three seconds instead of thirty, and the same
+   question gives the same answer twice.
 6. **MCP**, only if the paste in step 2 has proved too slow in practice. It may
    not: a paste needs no key, no server, and no new way into the app.
 
@@ -243,9 +250,11 @@ and might never be needed.
   was on for a given Tuesday in a regional house is not. The honest answer for
   most local theatre may be that only the people who were there can say — which
   is what the correction flow is for.
-- Does gpt-oss-120b call tools reliably enough, or is a single structured
-  response — "here are the candidates, pick one" — the more honest shape for a
-  local model?
+- ~~Does gpt-oss-120b call tools reliably enough?~~ **Answered: no.** Given
+  schemas it picks the right tool and the right arguments, and one call at a
+  time it is good. Across a multi-step loop it wanders, over-searches, stops
+  without answering, and agrees with the person against the evidence. The
+  reliable shape is: model extracts, app decides, app answers.
 - Should the text box exist at all, or should this live entirely in the log
   form as *narrow this down for me*? A box invites conversation; a button
   invites one useful thing.
