@@ -194,8 +194,10 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
       'replacements — the order they are listed in is kept and is what lets the app work ' +
       'out which year somebody saw it. Only stage productions; never a film cast. The show ' +
       'lands as a submission awaiting review, not as catalog, and everything is marked as ' +
-      'found by research rather than confirmed by anybody. Use find_show first: this ' +
-      'refuses to make a second copy of something already here.',
+      'found by research rather than confirmed by anybody. Safe to call again after a ' +
+      'rejected payload: if the show is your own submission still awaiting review it is ' +
+      'completed rather than duplicated. A show already published is refused — add to that ' +
+      'one with add_production and add_casting.',
     writes: true,
     parameters: z.object({
       research: z
@@ -213,9 +215,11 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
   tool({
     name: 'add_production',
     description:
-      'Record a staging of a show that is already in the catalog — a tour, a revival, a ' +
-      'local production — with its theatre. Returns the production, whether it was created ' +
-      'or already existed.',
+      'Record a staging of a show — a tour, a revival, a local production — with its theatre ' +
+      'and the dates it ran. Safe to call again on one that exists: it matches the existing ' +
+      'record and fills in anything still blank, so a run left without dates can be ' +
+      'completed. It will not overwrite dates already on record. Run dates matter more than ' +
+      'anything else here: narrow_the_year has nothing to work with without them.',
     writes: true,
     parameters: z.object({
       showId: z.string().uuid(),
@@ -223,10 +227,41 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
       productionType: z.enum(['broadway', 'off_broadway', 'tour', 'regional', 'local', 'other']),
       venue: z.string().trim().max(200).optional(),
       city: z.string().trim().max(120).optional(),
+      openedOn: z.string().date().optional(),
+      closedOn: z.string().date().optional().describe('Omit if it is still running.'),
+      sourceNote: z.string().trim().max(500).optional().describe('A URL somebody could check.'),
     }),
-    run: async (actorId, { showId, name, productionType, venue, city }) => {
+    run: async (actorId, args) => {
       const { findOrCreateProduction } = await import('./catalog-functions')
-      return await findOrCreateProduction(actorId, showId, name, productionType, venue, city)
+      const made = await findOrCreateProduction(
+        actorId,
+        args.showId,
+        args.name,
+        args.productionType,
+        args.venue,
+        args.city,
+      )
+
+      if (args.openedOn || args.closedOn) {
+        const { getDb } = await import('./db/client')
+        const { productions } = await import('./db/schema')
+        const { eq } = await import('drizzle-orm')
+        const [current] = await getDb()
+          .select({ openedOn: productions.openedOn, closedOn: productions.closedOn })
+          .from(productions)
+          .where(eq(productions.id, made.id))
+
+        // Blanks only. A date already recorded was put there by somebody, and a
+        // second reading of a web page is not grounds to replace it.
+        const openedOn = current?.openedOn ?? args.openedOn ?? null
+        const closedOn = current?.closedOn ?? args.closedOn ?? null
+        await getDb()
+          .update(productions)
+          .set({ openedOn, closedOn, sourceNote: args.sourceNote ?? null })
+          .where(eq(productions.id, made.id))
+        return { ...made, openedOn, closedOn }
+      }
+      return made
     },
   }),
 

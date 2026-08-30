@@ -3,6 +3,7 @@ import { and, asc, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { currentSession, requireSession } from './session'
 
+import { decodeEntities } from '../lib/entities'
 import { normalizePersonName, tidyPersonName } from '../lib/person'
 import { findSuspectPairs } from '../lib/similarity'
 import { type Actor, assertAdmin } from './catalog-functions'
@@ -93,7 +94,9 @@ export const addCasting = createServerOnlyFn(
     if (!production) throw new Error('That production is not in the catalog.')
 
     const person = await findOrCreatePerson(userId, data.personName)
-    const role = data.role.trim().replace(/\s+/g, ' ')
+    // Decoded for the same reason names are: a role read off a web page
+    // arrives as "Johnny Bevan &amp; Others" and is otherwise stored that way.
+    const role = decodeEntities(data.role).trim().replace(/\s+/g, ' ')
 
     // The same person in the same role is one casting, however many people record it.
     const existing = await db
@@ -266,6 +269,66 @@ export const showsFeaturing = createServerOnlyFn(
     return rows
   },
 )
+
+/**
+ * Correcting a casting.
+ *
+ * Nothing could edit one until now: the API and the screens were both
+ * append-only, so a misspelled role could only be answered by adding a second,
+ * differently-wrong row beside the first. Records that can only grow are how a
+ * catalog becomes untrustworthy — the wrong ones never leave.
+ */
+export const updateCasting = createServerOnlyFn(
+  async (
+    actor: Actor,
+    id: string,
+    data: {
+      role: string
+      kind: 'performer' | 'creative'
+      isPrincipal: boolean
+      startedOn?: string | null
+      endedOn?: string | null
+      replacementOrder?: number | null
+    },
+  ) => {
+    assertAdmin(actor)
+    const role = decodeEntities(data.role).trim().replace(/\s+/g, ' ')
+    if (!role) throw new Error('A casting needs a role.')
+
+    const [updated] = await getDb()
+      .update(castings)
+      .set({
+        role,
+        kind: data.kind,
+        isPrincipal: data.isPrincipal,
+        startedOn: data.startedOn || null,
+        endedOn: data.endedOn || null,
+        replacementOrder: data.replacementOrder ?? null,
+        updatedAt: new Date(),
+      })
+      .where(eq(castings.id, id))
+      .returning()
+    if (!updated) throw new Error('That casting is not in the catalog.')
+    return updated
+  },
+)
+
+/**
+ * Removing one.
+ *
+ * A casting is a claim about who was on a stage, not somebody's own record of
+ * their night, so deleting a wrong one destroys nothing a member wrote. What a
+ * member said they saw lives in `seen_performers` and is untouched here.
+ */
+export const removeCasting = createServerOnlyFn(async (actor: Actor, id: string) => {
+  assertAdmin(actor)
+  const [removed] = await getDb()
+    .delete(castings)
+    .where(eq(castings.id, id))
+    .returning({ id: castings.id })
+  if (!removed) throw new Error('That casting is not in the catalog.')
+  return removed
+})
 
 /** Everyone in the catalog, with how much rests on each, for the merge screen. */
 export const peopleForAdmin = createServerOnlyFn(async (actor: Actor) => {
@@ -440,6 +503,27 @@ export const suggestPeople = createServerFn({ method: 'GET' })
     await requireSession()
     return searchPeople(data.query)
   })
+
+export const saveCasting = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      id: z.string().uuid(),
+      role: z.string().trim().min(1).max(160),
+      kind: z.enum(['performer', 'creative']),
+      isPrincipal: z.boolean(),
+      startedOn: z.string().date().nullish(),
+      endedOn: z.string().date().nullish(),
+      replacementOrder: z.number().int().min(1).max(200).nullish(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { id, ...rest } = data
+    return updateCasting((await requireSession()).user as Actor, id, rest)
+  })
+
+export const dropCasting = createServerFn({ method: 'POST' })
+  .validator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data }) => removeCasting((await requireSession()).user as Actor, data.id))
 
 export const recordCasting = createServerFn({ method: 'POST' })
   .validator(castingInput)

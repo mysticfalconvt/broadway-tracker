@@ -214,27 +214,63 @@ export const proposeShowResearch = createServerFn({ method: 'POST' })
  * confirmed by nobody. A wrong run date must never look like a checked fact.
  */
 export const acceptResearch = createServerOnlyFn(async (actorId: string, json: string) => {
-  const parsed = researched.safeParse(JSON.parse(json))
-  if (!parsed.success) throw new Error('That research did not come back in a usable shape.')
-  const first = parsed.data.shows[0]
-  if (!first) throw new Error('There was no show in that.')
+  let body: unknown
+  try {
+    body = JSON.parse(json)
+  } catch (error) {
+    throw new Error(`That was not JSON: ${(error as Error).message}`)
+  }
 
-  // Researching something already known would otherwise quietly make a second
-  // copy, and `/ask` would then ask which of two identical titles was meant.
-  const { searchCatalogFor } = await import('./catalog-functions')
+  const parsed = researched.safeParse(body)
+  if (!parsed.success) {
+    // The path, not just the verdict. "Did not come back in a usable shape"
+    // cost a caller three rounds of blind probing to discover it had written
+    // `cast` where the schema wanted `castings` — and the probing itself left a
+    // stub behind. One line of error text would have saved all of it.
+    const said = parsed.error.issues
+      .slice(0, 5)
+      .map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)
+      .join('; ')
+    throw new Error(`That research did not match the expected shape — ${said}`)
+  }
+  const first = parsed.data.shows[0]
+  if (!first) throw new Error('There was no show in that: `shows` was empty.')
+
+  const { searchCatalogFor, submitShowForUser, findOrCreateProduction } = await import(
+    './catalog-functions'
+  )
   const clash = (await searchCatalogFor(actorId, first.title)).find(
     (row) => row.title.toLowerCase() === first.title.toLowerCase(),
   )
-  if (clash) {
-    throw new Error(`${clash.title} is already here — there is nothing to add.`)
+
+  /**
+   * A second attempt fills in the first one rather than being turned away.
+   *
+   * Refusing outright was right about the danger — two identical titles in the
+   * catalog is worse than nothing — and wrong about the remedy. Creating a show
+   * is a single call, so a caller that gets the payload shape wrong is left
+   * holding a stub with no productions and no run dates, and every later
+   * attempt to describe it was refused as a duplicate. `narrow_the_year`, the
+   * thing this whole layer exists to feed, then answers "nobody has recorded
+   * when this ran" forever.
+   *
+   * So: a submission the caller made themselves, still awaiting review, is
+   * theirs to complete. Anything already published is not — that is a catalog
+   * record, and correcting one is a review decision.
+   */
+  if (clash && clash.catalogStatus !== 'pending') {
+    throw new Error(
+      `${clash.title} is already in the catalog. Add to it with add_production and add_casting instead.`,
+    )
   }
 
-  const { submitShowForUser, findOrCreateProduction } = await import('./catalog-functions')
-  const submitted = await submitShowForUser(actorId, {
-    title: first.title,
-    type: first.type,
-    synopsis: first.synopsis ?? undefined,
-  })
+  const submitted = clash
+    ? { id: clash.id, title: clash.title }
+    : await submitShowForUser(actorId, {
+        title: first.title,
+        type: first.type,
+        synopsis: first.synopsis ?? undefined,
+      })
 
   const { getDb } = await import('./db/client')
   const { eq } = await import('drizzle-orm')
@@ -253,11 +289,18 @@ export const acceptResearch = createServerOnlyFn(async (actorId: string, json: s
       production.city ?? undefined,
     )
     productionsAdded += 1
+    // Fill blanks, never overwrite. A run already on record was put there by
+    // somebody or by an earlier pass, and a second opinion from a web page is
+    // not a reason to replace it.
+    const [existing] = await getDb()
+      .select({ openedOn: productions.openedOn, closedOn: productions.closedOn })
+      .from(productions)
+      .where(eq(productions.id, made.id))
     await getDb()
       .update(productions)
       .set({
-        openedOn: production.openedOn ?? null,
-        closedOn: production.closedOn ?? null,
+        openedOn: existing?.openedOn ?? production.openedOn ?? null,
+        closedOn: existing?.closedOn ?? production.closedOn ?? null,
         source: 'research',
         sourceNote: production.source ?? null,
       })
@@ -290,6 +333,8 @@ export const acceptResearch = createServerOnlyFn(async (actorId: string, json: s
   return {
     showId: submitted.id,
     title: submitted.title,
+    // Said plainly, so a caller retrying knows which of the two happened.
+    completedExisting: Boolean(clash),
     productions: productionsAdded,
     castings: castingsAdded,
   }

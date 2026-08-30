@@ -33,3 +33,24 @@ export function formNumber(form: FormData, name: string): number | undefined {
 export function formFlag(form: FormData, name: string): boolean {
   return form.get(name) === 'on' || form.get(name) === 'true'
 }
+
+/**
+ * Which submit button was pressed.
+ *
+ * A second trap of the same family, and a worse one because it fails silently
+ * in the safe direction. `new FormData(form)` does **not** include the button
+ * that submitted the form, however carefully that button carries a `name` and a
+ * `value` — the submitter is not a successful control until the browser builds
+ * the entry list, and constructing FormData yourself skips that. So
+ * `form.get('action')` is null, a guard that checks it returns early, and the
+ * button does nothing at all: no error, no request, no clue.
+ *
+ * That shipped here. Publish and Reject on the submission review screen were
+ * both dead for exactly this reason.
+ */
+export function pressed(event: { nativeEvent: Event }): string | null {
+  const submitter = (event.nativeEvent as SubmitEvent).submitter
+  if (!submitter) return null
+  const value = (submitter as HTMLButtonElement).value
+  return value === '' ? null : value
+}

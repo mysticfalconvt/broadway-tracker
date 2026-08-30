@@ -1,3 +1,4 @@
+import { decodeEntities } from './entities'
 /**
  * Normalisation for people's names, so the same performer entered by different
  * members collides instead of multiplying.
@@ -24,5 +25,7 @@ export function normalizePersonName(value: string): string {
 
 /** Tidies what gets stored for display, preserving the wording. */
 export function tidyPersonName(value: string): string {
-  return value.trim().replace(/\s+/g, ' ')
+  // Decoded first: "Bevan &amp; Others" is one name with an ampersand in it,
+  // and collapsing whitespace around an entity that is still text does nothing.
+  return decodeEntities(value).trim().replace(/\s+/g, ' ')
 }

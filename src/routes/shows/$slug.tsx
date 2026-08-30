@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 
 import { authClient } from '../../lib/auth-client'
@@ -10,7 +10,7 @@ import {
   saveLocalShow,
   saveLocalStagingYear,
 } from '../../server/catalog-functions'
-import { getCastForShow } from '../../server/people-functions'
+import { dropCasting, getCastForShow, saveCasting } from '../../server/people-functions'
 import { getPostsAbout } from '../../server/post-functions'
 import { getMyShowState, saveLibraryEntry } from '../../server/library-functions'
 import { changePhotoVisibility, deleteShowPhoto, getShowPhotos } from '../../server/image-functions'
@@ -44,6 +44,7 @@ export const Route = createFileRoute('/shows/$slug')({
 function ShowDetail() {
   const { show, scope, mayEdit, photos, productions, cast, writing, mine, session } =
     Route.useLoaderData()
+  const router = useRouter()
 
   if (!show) {
     return (
@@ -121,7 +122,11 @@ function ShowDetail() {
         </section>
       ) : null}
       <Productions productions={productions} scope={scope} />
-      <Cast cast={cast} />
+      <Cast
+        cast={cast}
+        mayFix={session?.user?.role === 'admin'}
+        onDone={() => router.invalidate()}
+      />
       <PhotoGallery showId={show.id} photos={photos} />
     </main>
   )
@@ -497,8 +502,103 @@ function describeRun(production: { openedOn?: string | null; closedOn?: string |
   return ''
 }
 
+/**
+ * Correcting one line of a cast list.
+ *
+ * Here rather than on an admin screen because this is where a wrong role is
+ * noticed — reading the company of a show, not auditing a table. Until now the
+ * catalog was append-only from every direction, so the only answer to a
+ * misspelled role was a second row beside it saying something different.
+ */
+function FixCasting({
+  member,
+  onDone,
+}: {
+  member: Awaited<ReturnType<typeof getCastForShow>>[number]
+  onDone: () => Promise<void>
+}) {
+  const [open, setOpen] = useState(false)
+  const [role, setRole] = useState(member.role)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  if (!open) {
+    return (
+      <button className="cast-fix" onClick={() => setOpen(true)} type="button">
+        Fix
+      </button>
+    )
+  }
+
+  return (
+    <form
+      className="cast-fix-form"
+      onSubmit={async (event) => {
+        event.preventDefault()
+        setBusy(true)
+        setError(null)
+        try {
+          await saveCasting({
+            data: {
+              id: member.id,
+              role,
+              kind: member.kind as 'performer' | 'creative',
+              isPrincipal: member.isPrincipal,
+            },
+          })
+          setOpen(false)
+          await onDone()
+        } catch (caught) {
+          setError(caught instanceof Error ? caught.message : 'That did not save.')
+        }
+        setBusy(false)
+      }}
+    >
+      <label>
+        <span className="sr-only">Role</span>
+        <input onChange={(event) => setRole(event.target.value)} required value={role} />
+      </label>
+      <button className="button button-primary" disabled={busy} type="submit">
+        Save
+      </button>
+      <button className="text-action" onClick={() => setOpen(false)} type="button">
+        Cancel
+      </button>
+      <button
+        className="text-action text-action-warn"
+        onClick={async () => {
+          setBusy(true)
+          try {
+            await dropCasting({ data: { id: member.id } })
+            await onDone()
+          } catch (caught) {
+            setError(caught instanceof Error ? caught.message : 'That did not delete.')
+            setBusy(false)
+          }
+        }}
+        type="button"
+      >
+        Remove
+      </button>
+      {error ? (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </form>
+  )
+}
+
 /** Who has been in this show, grouped by the production they were in. */
-function Cast({ cast }: { cast: Awaited<ReturnType<typeof getCastForShow>> }) {
+function Cast({
+  cast,
+  mayFix,
+  onDone,
+}: {
+  cast: Awaited<ReturnType<typeof getCastForShow>>
+  mayFix: boolean
+  onDone: () => Promise<void>
+}) {
   if (!cast.length) return null
   const byProduction = new Map<string, typeof cast>()
   for (const member of cast) {
@@ -525,6 +625,7 @@ function Cast({ cast }: { cast: Awaited<ReturnType<typeof getCastForShow>> }) {
                   <strong>{member.name}</strong>
                   <span>{member.role}</span>
                 </Link>
+                {mayFix ? <FixCasting member={member} onDone={onDone} /> : null}
               </li>
             ))}
           </ul>

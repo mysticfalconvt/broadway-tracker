@@ -93,16 +93,20 @@ describe('taking in a researched show', () => {
     expect(director?.replacementOrder).toBeNull()
   })
 
-  it('refuses to make a second copy of something already here', async () => {
+  it('refuses to make a second copy of something already in the catalog', async () => {
     const member = await makeUser()
     await makeShow({ title: 'The Producers', slug: 'the-producers' })
-    await expect(acceptResearch(member.id, RESEARCH)).rejects.toThrow(/already here/i)
+    await expect(acceptResearch(member.id, RESEARCH)).rejects.toThrow(/already in the catalog/i)
+    expect(await db.select().from(shows)).toHaveLength(1)
   })
 
-  it('refuses research that came back in the wrong shape', async () => {
+  it('refuses research that came back in the wrong shape, and says where', async () => {
     const member = await makeUser()
-    await expect(acceptResearch(member.id, '{"shows":[]}')).rejects.toThrow(/usable shape/i)
-    await expect(acceptResearch(member.id, '{"nonsense":true}')).rejects.toThrow(/usable shape/i)
+    await expect(acceptResearch(member.id, '{"shows":[]}')).rejects.toThrow(/shows/)
+    await expect(acceptResearch(member.id, '{"nonsense":true}')).rejects.toThrow(/shows/)
+    await expect(acceptResearch(member.id, 'not json at all')).rejects.toThrow(/not JSON/i)
+    // Nothing is written by a payload that never validated.
+    expect(await db.select().from(shows)).toHaveLength(0)
   })
 })
 
@@ -132,5 +136,54 @@ describe('finding a show you submitted yourself', () => {
     expect(found.ok).toBe(true)
     const rows = (found.ok ? found.data : []) as { awaitingReview: boolean }[]
     expect(rows[0]?.awaitingReview).toBe(true)
+  })
+})
+
+describe('a second attempt at the same show', () => {
+  it('completes a stub rather than refusing it', async () => {
+    // The failure this fixes: a rejected payload leaves a bare show behind,
+    // every retry is turned away as a duplicate, and the run dates that
+    // narrow_the_year needs can never be filled in.
+    const member = await makeUser()
+    const stub = JSON.stringify({ shows: [{ title: 'The Producers', type: 'musical' }] })
+    const first = await acceptResearch(member.id, stub)
+    expect(first.productions).toBe(0)
+    expect(first.completedExisting).toBe(false)
+
+    const second = await acceptResearch(member.id, RESEARCH)
+    expect(second.completedExisting).toBe(true)
+    expect(second.showId).toBe(first.showId)
+    expect(second.productions).toBe(1)
+
+    // One show, not two.
+    expect(await db.select().from(shows)).toHaveLength(1)
+    const [production] = await db.select().from(productions)
+    expect(production?.openedOn).toBe('2001-04-19')
+  })
+
+  it('will not let research overwrite a run already on record', async () => {
+    const member = await makeUser()
+    await acceptResearch(member.id, RESEARCH)
+    const [before] = await db.select().from(productions)
+    await db
+      .update(productions)
+      .set({ openedOn: '1999-01-01' })
+      .where(eq(productions.id, before!.id))
+
+    await acceptResearch(member.id, RESEARCH)
+    const [after] = await db.select().from(productions)
+    expect(after?.openedOn).toBe('1999-01-01')
+  })
+
+  it('refuses to touch a show that is already published', async () => {
+    const member = await makeUser()
+    await makeShow({ title: 'The Producers', slug: 'the-producers' })
+    await expect(acceptResearch(member.id, RESEARCH)).rejects.toThrow(/already in the catalog/i)
+  })
+
+  it('says which field was wrong instead of just refusing', async () => {
+    const member = await makeUser()
+    const wrong = JSON.stringify({ shows: [{ title: 'X', type: 'musical', productions: 'nope' }] })
+    await expect(acceptResearch(member.id, wrong)).rejects.toThrow(/shows\.0\.productions/)
   })
 })

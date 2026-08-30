@@ -1,6 +1,8 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 
+import { pressed } from '../../../lib/form'
+
 import {
   getPendingShows,
   mergeShowIntoPublishedShow,
@@ -49,7 +51,10 @@ function ReviewCard({ show }: { show: Awaited<ReturnType<typeof getPendingShows>
   async function review(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
-    const action = form.get('action')
+    // Not `form.get('action')`: a FormData built by hand leaves the submitter
+    // out, so that read is always null and this guard silently swallowed every
+    // press of both buttons.
+    const action = pressed(event)
     if (action !== 'publish' && action !== 'reject') return
     setError(null)
     setIsPending(true)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { formFlag, formNumber, formRequired, formText } from '../src/lib/form'
+import { formFlag, formNumber, formRequired, formText, pressed } from '../src/lib/form'
 
 function make(entries: Record<string, string>) {
   const form = new FormData()
@@ -69,5 +69,26 @@ describe('formFlag', () => {
 
   it('is true when ticked', () => {
     expect(formFlag(make({ favorite: 'on' }), 'favorite')).toBe(true)
+  })
+})
+
+describe('which button was pressed', () => {
+  const submit = (submitter: unknown) => ({ nativeEvent: { submitter } as unknown as Event })
+
+  it('reads the value off the button, not out of the form', () => {
+    // The whole point: a FormData built by hand does not contain this, so
+    // anything that reads it from there gets null and does nothing.
+    expect(pressed(submit({ value: 'publish' }))).toBe('publish')
+    expect(pressed(submit({ value: 'reject' }))).toBe('reject')
+  })
+
+  it('is null when a form was submitted without a button', () => {
+    // Enter pressed in a text field. The caller must decide, not assume.
+    expect(pressed(submit(null))).toBeNull()
+    expect(pressed(submit(undefined))).toBeNull()
+  })
+
+  it('treats a button carrying no value as no answer', () => {
+    expect(pressed(submit({ value: '' }))).toBeNull()
   })
 })
