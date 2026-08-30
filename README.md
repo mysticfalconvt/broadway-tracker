@@ -104,3 +104,4 @@ is the failure that looks most like success. See
 | [`docs/catalog-import.md`](docs/catalog-import.md) | The bulk import format, written to hand to a language model |
 | [`docs/backups.md`](docs/backups.md) | What is protected, what is not, and how to prove a restore |
 | [`docs/writing-and-the-front-page.md`](docs/writing-and-the-front-page.md) | Why the home page is composed rather than a feed |
+| [`docs/an-llm-layer.md`](docs/an-llm-layer.md) | Ideas for asking the app in words, and what must not leave the house |
