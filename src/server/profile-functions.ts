@@ -85,6 +85,33 @@ export const homeForUser = createServerOnlyFn(async (userId: string) => {
   }
 })
 
+/**
+ * The front page, composed rather than fed.
+ *
+ * At this size a page built only from what is new would be empty most days, so
+ * it draws on what has already been recorded as well. Sections with nothing in
+ * them are not rendered, so a quiet week is a shorter page rather than a page
+ * announcing that nothing happened.
+ */
+export const frontPageFor = createServerOnlyFn(async (userId: string) => {
+  const { anniversariesFor, recentReviewsFor, sharedHistoryFor } = await import('./resurfacing')
+  const [home, anniversaries, alsoSeen, reviews, fromFriends] = await Promise.all([
+    homeForUser(userId),
+    anniversariesFor(userId),
+    sharedHistoryFor(userId),
+    recentReviewsFor(userId),
+    friendsActivityFor(userId, 4),
+  ])
+  return { ...home, anniversaries, alsoSeen, reviews, fromFriends }
+})
+
+export const getFrontPage = createServerFn({ method: 'GET' }).handler(async () => {
+  const session = await auth.api.getSession({ headers: getRequestHeaders() })
+  // Null rather than an error: a signed-out visitor gets the visitor page.
+  if (!session) return null
+  return { name: session.user.name, ...(await frontPageFor(session.user.id)) }
+})
+
 export const getHome = createServerFn({ method: 'GET' }).handler(async () => {
   const session = await auth.api.getSession({ headers: getRequestHeaders() })
   if (!session) return null

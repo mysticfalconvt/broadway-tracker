@@ -171,10 +171,15 @@ that nobody answers. The theatre-journal version of a response is not a like:
 
 ## Suggested order
 
-**First — resurface what exists.** On this day; shared history; friends'
-reviews on the front page. No new content types, no schema beyond a read. This
-is testable against the real database today, at two members, and it is what
-makes the front page non-empty at any size.
+**First — resurface what exists. Done.** On this day, who else has seen it,
+and reviews, composed onto the front page. No new content types and no schema
+change: every one of these is a read over data that was already there.
+
+Decided while building: **public means public.** A review or a shelf entry
+marked public reaches any member, friend or not; friends-only still reaches
+approved friends. Restricting resurfaced material to a reader's own circle
+would have made a small archive smaller, and the whole point is that what
+somebody chose to share openly can be found.
 
 **Second — posts.** Table, editor, drafts, attachment to a subject, visibility
 following the profile like everything else. Admin editorial and member pieces

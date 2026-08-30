@@ -5,12 +5,12 @@ import { MemoryCard } from '../components/MemoryCard'
 import { Rating } from '../components/Rating'
 import { ShowArtwork } from '../components/ShowArtwork'
 import { ShowStatus } from '../components/ShowStatus'
-import { formatFuzzyDateShort } from '../lib/fuzzy-date'
+import { formatFuzzyDate, formatFuzzyDateShort } from '../lib/fuzzy-date'
 import { greetingFor } from '../lib/time'
-import { getHome } from '../server/profile-functions'
+import { getFrontPage } from '../server/profile-functions'
 
 export const Route = createFileRoute('/')({
-  loader: () => getHome(),
+  loader: () => getFrontPage(),
   component: Home,
 })
 
@@ -19,7 +19,7 @@ function Home() {
   return home ? <SignedInHome home={home} /> : <VisitorHome />
 }
 
-function SignedInHome({ home }: { home: NonNullable<Awaited<ReturnType<typeof getHome>>> }) {
+function SignedInHome({ home }: { home: NonNullable<Awaited<ReturnType<typeof getFrontPage>>> }) {
   const { name, stats, wantToSee, recent } = home
   const greeting = useLocalGreeting()
   const isNew = stats.performances === 0 && stats.shows === 0
@@ -122,6 +122,89 @@ function SignedInHome({ home }: { home: NonNullable<Awaited<ReturnType<typeof ge
           )}
         </div>
       </section>
+
+      {/* Everything below is composed rather than fed: a section with nothing
+          in it does not render, so a quiet week is a shorter page. */}
+      {home.fromFriends.length ? (
+        <section className="page-wrap" aria-label="From your circle">
+          <SectionHeading eyebrow="From your circle" title="Lately" />
+          <ul className="friend-outings">
+            {home.fromFriends.map((night) => (
+              <li key={night.id}>
+                <Link className="friend-outing" params={{ id: night.id }} to="/outings/$id">
+                  <ShowArtwork
+                    coverImageKey={night.coverImageKey}
+                    title={night.showTitle}
+                    type={night.showType}
+                  />
+                  <div className="friend-outing-body">
+                    <h3>{night.showTitle}</h3>
+                    <p className="friend-outing-facts">
+                      {night.friendName} · {formatFuzzyDate(night)}
+                      {night.venue ? ` · ${night.venue}` : ''}
+                    </p>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {home.reviews.length ? (
+        <section className="page-wrap" aria-label="Reviews">
+          <SectionHeading eyebrow="Worth reading" title="What people thought" />
+          <ul className="home-reviews">
+            {home.reviews.map((review) => (
+              <li key={review.outingId}>
+                <blockquote>{review.review}</blockquote>
+                <p>
+                  {review.personName} on{' '}
+                  <Link params={{ slug: review.showSlug }} to="/shows/$slug">
+                    {review.showTitle}
+                  </Link>
+                  {review.rating ? ` · ${review.rating}/10` : ''}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {home.anniversaries.length ? (
+        <section className="page-wrap" aria-label="On this day">
+          <SectionHeading eyebrow="On this day" title="You were there" />
+          <ul className="home-anniversaries">
+            {home.anniversaries.map((night) => (
+              <li key={night.id}>
+                <Link params={{ id: night.id }} to="/outings/$id">
+                  <strong>{night.showTitle}</strong>
+                  <span>
+                    {night.yearsAgo} {night.yearsAgo === 1 ? 'year' : 'years'} ago
+                    {night.venue ? ` · ${night.venue}` : ''}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {home.alsoSeen.length ? (
+        <section className="page-wrap" aria-label="Also seen">
+          <SectionHeading eyebrow="You are not the only one" title="Also seen by" />
+          <ul className="home-anniversaries">
+            {home.alsoSeen.map((row) => (
+              <li key={`${row.showId}-${row.personId}`}>
+                <Link params={{ slug: row.showSlug }} to="/shows/$slug">
+                  <strong>{row.showTitle}</strong>
+                  <span>{row.personName}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="page-wrap wants-section" aria-labelledby="wants-heading">
         <SectionHeading eyebrow="Looking ahead" title="Want to see" />
