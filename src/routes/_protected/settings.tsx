@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useRef, useState, type FormEvent } from 'react'
+import { Avatar } from '../../components/Avatar'
 
 import { authClient } from '../../lib/auth-client'
 import { getSharingImpact, updateAccountSettings } from '../../server/auth-functions'
@@ -9,7 +10,7 @@ import { getSharingImpact, updateAccountSettings } from '../../server/auth-funct
  * from a browser. The preview reads back through the same authorizing proxy
  * that will serve the image everywhere else.
  */
-function AvatarField({ currentKey }: { currentKey?: string | null }) {
+function AvatarField({ currentKey, name }: { currentKey?: string | null; name: string }) {
   const [key, setKey] = useState(currentKey ?? null)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -39,13 +40,7 @@ function AvatarField({ currentKey }: { currentKey?: string | null }) {
     <div className="avatar-field">
       <span className="avatar-field-label">Profile photo</span>
       <div className="avatar-field-row">
-        {key ? (
-          <img className="avatar-preview" src={`/api/images/${key}`} alt="Your profile photo" />
-        ) : (
-          <span className="avatar-preview avatar-preview-empty" aria-hidden="true">
-            ◎
-          </span>
-        )}
+        <Avatar className="avatar-preview" imageKey={key} name={name} />
         <div>
           <label className="avatar-field-input">
             <span>{key ? 'Replace photo' : 'Choose a photo'}</span>
@@ -174,7 +169,7 @@ function Settings() {
           />
           <span>Used when friends look for you. Lowercase letters, numbers, and hyphens only.</span>
         </label>
-        <AvatarField currentKey={user.image} />
+        <AvatarField currentKey={user.image} name={user.name} />
         <fieldset>
           <legend>Letters</legend>
           <p className="settings-note settings-sharing-lede">

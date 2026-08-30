@@ -1,4 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
+import { Avatar } from '../../components/Avatar'
 
 import { authClient } from '../../lib/auth-client'
 
@@ -10,15 +11,6 @@ export const Route = createFileRoute('/_protected/profile')({
   component: Profile,
 })
 
-/** Initials stand in for a photo, rather than a broken image or a grey square. */
-function initialsFor(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  const first = parts[0]?.[0] ?? ''
-  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : ''
-  return `${first}${last}`.toUpperCase()
-}
-
 function Profile() {
   const { user, stats, favorites } = Route.useLoaderData()
   return (
@@ -28,18 +20,14 @@ function Profile() {
           {/* Avatars are private: served through the authorizing proxy, never a
               bucket URL, and never shown on the anonymous public pages. */}
           {user.image ? (
-            <img
+            <Avatar
               className="avatar-preview profile-avatar"
-              src={`/api/images/${user.image}`}
-              alt=""
+              imageKey={user.image}
+              name={user.name}
             />
           ) : (
-            <Link
-              className="avatar-preview profile-avatar profile-avatar-empty"
-              to="/settings"
-              aria-label="Add a profile photo"
-            >
-              {initialsFor(user.name)}
+            <Link aria-label="Add a profile photo" to="/settings">
+              <Avatar className="avatar-preview profile-avatar" name={user.name} />
             </Link>
           )}
           <div>

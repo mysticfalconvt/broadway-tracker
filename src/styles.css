@@ -3089,3 +3089,22 @@ a.recent-entry:hover h3,
 .viewing-as button:hover {
   background: rgba(253, 246, 240, 0.15);
 }
+
+/* Somebody's photograph, or their initials on a colour of their own. */
+.avatar {
+  display: block;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.avatar-initials {
+  display: grid;
+  place-items: center;
+  color: #f6efe6;
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  /* Scales with whatever box it is given rather than needing a size per use. */
+  font-size: min(2.2rem, 42cqmin);
+  container-type: size;
+}
