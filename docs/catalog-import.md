@@ -166,6 +166,42 @@ autocomplete before anyone has logged a show there.
 | `city` | no | |
 | `country` | no | |
 
+## Prompt for researching a show that is not here yet
+
+For handing to a model that can search the web. The unusual ask is the last
+one: almost every cast list online is the opening-night company, and what this
+app needs is **who was in the role and when**, because that is what decides
+whether somebody saw Nathan Lane or Tony Danza.
+
+> You have web access. Produce JSON in the format below for the following show,
+> researching it first.
+>
+> Include the original Broadway production with its theatre, city, opening date,
+> and closing date. For the principal roles, include **every performer who held
+> the role and the dates they held it** — not only the opening-night cast.
+> Replacements and limited engagements are the point of this exercise. Include
+> the director and other principal creatives with `kind: "creative"`.
+>
+> Add a `"source"` field to each production naming the URL you took the run and
+> cast dates from.
+>
+> **Omit any field you are not confident of rather than guessing.** Casting
+> dates are used to work out who somebody saw on a particular night, so a made-up
+> date does not produce a small error, it produces a false memory. A missing
+> field is fine; a plausible invented one is not. If you cannot find replacement
+> dates, say so in your reply and leave the cast to the opening company.
+>
+> Show: The Producers (Broadway)
+>
+> [paste the Shape section below]
+
+Paste the result at `/admin/import`. It checks everything before writing, warns
+about venues that resemble one already in the catalog, and never overwrites, so
+a bad answer costs nothing but a second look.
+
+Anything imported is recorded with `source: 'import'` rather than as something a
+member vouched for — see the provenance note in `docs/an-llm-layer.md`.
+
 ## Prompt to generate it
 
 > Using the format in `docs/catalog-import.md`, produce JSON for the following shows.
