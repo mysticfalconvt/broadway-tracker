@@ -136,6 +136,65 @@ machinery that already exists.
 Requiring an administrator to approve every cast lookup would be the safe
 answer and an unusable one; provenance is what buys the convenience honestly.
 
+## The chat, and why it is a chat
+
+The structured form only takes the questions it has fields for. Real memories
+do not arrive that way:
+
+> *A play at the Booth, with my sister, must have been just after her wedding so
+> 2015ish, and it had that bloke from Breaking Bad in it.*
+
+Venue, companion, a rough year anchored to an event the app has never heard of,
+and an actor identified by something he was in elsewhere. No form has those
+boxes, and the answer needs all four crossed against each other.
+
+### The flow
+
+1. **Read the sentence.** Locally, extract whatever is in it — a title, a
+   venue, a name, a year, a companion, a city — and mark what is uncertain.
+   Nothing personal has moved.
+2. **Turn each fragment into a query, not an answer.** "Booth" goes to
+   `suggestVenues`, "2015ish" to `narrowDate`, "my sister" to the friends list,
+   "bloke from Breaking Bad" to `searchPeople` and, failing that, outward as a
+   public question. **The model chooses which query to run. It never supplies
+   the fact.**
+3. **Cross the results.** Which shows played the Booth in 2015? Of those, which
+   had a cast member who is also in the answer to the Breaking Bad question? Is
+   there one left?
+4. **Ask the one question that resolves it.** Usually there are two candidates,
+   not none and not ten. "The Booth or the Belasco?" settles more than another
+   paragraph of guessing.
+5. **Propose, and let a person confirm.** A draft outing, with the reasoning
+   shown: *the Booth, October 2015, because that is the only thing playing there
+   that year with Bryan Cranston in it.*
+
+### What makes this worth doing at all
+
+Not the model. **The app can query your own history, and nothing else can.**
+
+- *"with my sister"* — the app knows who your friends are.
+- *"on that trip"* — it knows you logged two other shows that week in New York.
+- *"just after her wedding"* — it knows nothing, but it knows your outings
+  cluster in the spring of 2015.
+- *"the same night we ate at that place"* — nothing again, and it does not
+  matter, because the other three narrowed it to one.
+
+A web search cannot answer any of those, and a hosted model would have to be
+handed your journal to try. That is the case for a local model with tools over
+either a search box or a cloud API: the private context is the useful part, and
+it never has to leave.
+
+### Where the model must not be trusted
+
+Every fact in the final proposal should trace to a query result, not to the
+model's own knowledge. It has already been caught getting one wrong: asked to
+read a cast list, it put Tony Danza under Leo Bloom when the source plainly had
+him under Max. It is good at *"this sentence mentions a venue and a year"* and
+unreliable at *"and here is who was in it"*.
+
+So the division is: **the model reads and routes; the database answers.** When
+the database has no answer, the honest output is a question, not a guess.
+
 ## An API key is a new way in
 
 Whatever shape this takes, a key that lets an external client act as a member is
@@ -159,8 +218,11 @@ Getting facts in comes first, because nothing downstream works without them.
    screen already checks it, warns about near-duplicate venues, and refuses to
    overwrite. This is the whole of the web half, and it needs no key and no
    server — it is a paste, today.
-3. **`whenWasTheyIn`** — the inverse cast query. Useless before step 2 and
-   genuinely useful after it, including from the log form with no model at all.
+3. ~~**`whenWasTheyIn`**~~ **Done.** `narrowDate` takes a show, an optional
+   remembered year, and an optional remembered person, and says whether they
+   agree with the record. Where no casting dates exist it estimates from the
+   order replacements took the role, and says that it is doing so. On the log
+   form as *not sure when it was?*, with no model involved.
 4. **A tool layer** over those, taking an explicit actor, testable without a
    model in the loop.
 5. **The local text box**, LM Studio, decompose-and-propose.
