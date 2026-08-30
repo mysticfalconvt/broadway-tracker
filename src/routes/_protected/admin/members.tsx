@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
 
 import { getMembersForAdmin } from '../../../server/admin-functions'
+import { startViewingAs } from '../../../server/session'
 
 export const Route = createFileRoute('/_protected/admin/members')({
   beforeLoad: ({ context }) => {
@@ -83,6 +84,18 @@ function MemberAdmin() {
                 <span>{member.email}</span>
               </div>
               <div className="member-facts">
+                {member.role === 'admin' ? null : (
+                  <button
+                    className="button button-quiet"
+                    onClick={async () => {
+                      await startViewingAs({ data: { userId: member.id } })
+                      window.location.assign('/')
+                    }}
+                    type="button"
+                  >
+                    Look as {member.name.split(' ')[0]}
+                  </button>
+                )}
                 <span>{activity(member)}</span>
                 <span>
                   joined {day(member.createdAt)} · last here {day(member.lastActiveAt)}

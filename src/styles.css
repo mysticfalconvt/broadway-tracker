@@ -3060,3 +3060,32 @@ a.recent-entry:hover h3,
   font-size: 0.78rem;
   line-height: 1.4;
 }
+
+/* Looking through somebody else's eyes. Deliberately loud. */
+.viewing-as {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  background: #7a1f2b;
+  color: #fdf6f0;
+  font-size: 0.85rem;
+  text-align: center;
+}
+.viewing-as strong {
+  font-weight: 600;
+}
+.viewing-as button {
+  padding: 0.3rem 0.9rem;
+  border: 1px solid rgba(253, 246, 240, 0.5);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.viewing-as button:hover {
+  background: rgba(253, 246, 240, 0.15);
+}

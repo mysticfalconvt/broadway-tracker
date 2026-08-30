@@ -4,13 +4,18 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { authClient } from '../lib/auth-client'
 import { getNavBadges } from '../server/admin-functions'
 import { getSession } from '../server/auth-functions'
+import { getViewingAs, stopViewingAs } from '../server/session'
 
 import '../styles.css'
 
 export const Route = createRootRoute({
   // Resolved on the server so the first paint shows the correct navigation
   // rather than flashing the signed-out links at a signed-in reader.
-  loader: async () => ({ session: await getSession(), badges: await getNavBadges() }),
+  loader: async () => ({
+    session: await getSession(),
+    badges: await getNavBadges(),
+    viewingAs: await getViewingAs(),
+  }),
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
@@ -43,6 +48,7 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <ViewingAsBanner />
         <header className="site-header">
           <nav className="page-wrap site-nav" aria-label="Main navigation">
             <Link to="/" className="brand">
@@ -150,5 +156,33 @@ function NotFound() {
         Return home
       </Link>
     </main>
+  )
+}
+
+/**
+ * Impossible to forget you are looking through somebody else's eyes.
+ *
+ * Above everything, in a colour the app uses nowhere else, on every page — the
+ * ordinary failure here is not malice, it is an administrator wandering off and
+ * later wondering why the site looks wrong.
+ */
+function ViewingAsBanner() {
+  const { viewingAs } = Route.useLoaderData()
+  if (!viewingAs) return null
+  return (
+    <div className="viewing-as" role="status">
+      <span>
+        Looking at <strong>{viewingAs.name}</strong>’s account. Nothing can be changed from here.
+      </span>
+      <button
+        onClick={async () => {
+          await stopViewingAs()
+          window.location.assign('/admin/members')
+        }}
+        type="button"
+      >
+        Stop
+      </button>
+    </div>
   )
 }
