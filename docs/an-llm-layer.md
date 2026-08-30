@@ -147,21 +147,35 @@ everything a session can do is a session with no expiry and no sign-in.
 
 ## Where I would start
 
-1. **`whenWasTheyIn`** — the inverse cast query, plus a narrow-it-down endpoint.
-   No model, no key, no new dependency. It answers the original example and is
-   useful on its own from the log form.
-2. **A tool layer** over the functions above, taking an explicit actor, testable
-   without a model in the loop.
-3. **The local text box.** One screen, LM Studio, propose-and-confirm.
-4. **MCP for catalog work**, if the seam still feels worth it once the first
-   three exist. It may not: bulk import already handles the same job with a
-   paste, and a paste needs no key and no server.
+Getting facts in comes first, because nothing downstream works without them.
 
-The order matters because each step is useful alone, and because the last one is
-the only one that adds an authentication path.
+1. **Provenance and the sourced state.** A column on castings and productions
+   recording where a fact came from, and the app saying so. Small, and every
+   later step writes into it — retrofitting provenance after a few hundred
+   researched rows exist is much worse than having it first.
+2. **A research-to-import path**, using the format that already exists. An
+   external model with the web produces a `catalog-import` payload; the import
+   screen already checks it, warns about near-duplicate venues, and refuses to
+   overwrite. This is the whole of the web half, and it needs no key and no
+   server — it is a paste, today.
+3. **`whenWasTheyIn`** — the inverse cast query. Useless before step 2 and
+   genuinely useful after it, including from the log form with no model at all.
+4. **A tool layer** over those, taking an explicit actor, testable without a
+   model in the loop.
+5. **The local text box**, LM Studio, decompose-and-propose.
+6. **MCP**, only if the paste in step 2 has proved too slow in practice. It may
+   not: a paste needs no key, no server, and no new way into the app.
+
+The order is deliberate. Steps 1 and 2 are useful on their own and involve no
+model inside the app at all. The step that adds an authentication path is last,
+and might never be needed.
 
 ## Open questions
 
+- **Does the web actually know?** Broadway run dates are well documented; who
+  was on for a given Tuesday in a regional house is not. The honest answer for
+  most local theatre may be that only the people who were there can say — which
+  is what the correction flow is for.
 - Does gpt-oss-120b call tools reliably enough, or is a single structured
   response — "here are the candidates, pick one" — the more honest shape for a
   local model?
