@@ -8,6 +8,7 @@ import { findSuspectPairs } from '../lib/similarity'
 import { auth } from './auth'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { getDb } from './db/client'
+import { applyViewerCovers } from './image-functions'
 import {
   castings,
   outingAttendees,
@@ -190,6 +191,7 @@ export const personWithHistory = createServerOnlyFn(
         endedOn: castings.endedOn,
         productionId: productions.id,
         productionName: productions.name,
+        showId: shows.id,
         showTitle: shows.title,
         showSlug: shows.slug,
         showType: shows.type,
@@ -222,7 +224,11 @@ export const personWithHistory = createServerOnlyFn(
           .orderBy(desc(outings.occurredOn))
       : []
 
-    return { person: { id: person.id, name: person.name, note: person.note }, roles, yourNights }
+    return {
+      person: { id: person.id, name: person.name, note: person.note },
+      roles: await applyViewerCovers(viewerId, roles, (row) => row.showId),
+      yourNights,
+    }
   },
 )
 

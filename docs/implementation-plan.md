@@ -237,7 +237,9 @@ more columns on `shows`. A show then has one admin cover plus any number of cont
 
 - [x] Add `show_images` with per-image visibility and review status, defaulting to private.
 - [x] Let a signed-in user attach their own photo to a show. *(Server side; no UI yet.)*
-- [ ] Show a user their own photo as that show's cover wherever it appears for them.
+- [x] Show a user their own photo as that show's cover wherever it appears for them. *(Home, the
+      library, lists, a venue's page, an artist's page, discover, an outing, and a friend's
+      profile — a cover is a personal lens on the catalog, so it follows the reader everywhere.)*
 - [x] Build a gallery on the show detail page for contributed images.
 - [x] Decide the cover-selection rule and make it **deterministic**: the viewer's own photo, then the administered cover, then the most recent approved public contribution.
 - [x] Add a moderation path before a contributed image becomes public. *(Offered publicly reaches approved friends at once; everyone only after review.)*
@@ -293,7 +295,9 @@ have no equivalent path at all, and there is no single place to see what people 
 - [x] Email every administrator when a report arrives.
 - [x] Show open reports in the administration queue and in the navigation count.
 - [x] Keep resolved reports readable rather than hiding them, and allow reopening.
-- [ ] Let an administrator reply to a reporter from the queue.
+- [x] Let an administrator reply to a reporter from the queue. *(A `report_replies` thread, emailed
+      to the reporter, and shown to them on the feedback page — otherwise the reply exists only in
+      their inbox.)*
 
 ## 14. Bulk catalog entry
 

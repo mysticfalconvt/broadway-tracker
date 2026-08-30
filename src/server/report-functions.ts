@@ -1,13 +1,13 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
-import { desc, eq } from 'drizzle-orm'
+import { asc, desc, eq, inArray } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
 
 import { auth } from './auth'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { getDb } from './db/client'
-import { reports, user } from './db/schema'
+import { reportReplies, reports, user } from './db/schema'
 
 async function requireSession() {
   const session = await auth.api.getSession({ headers: getRequestHeaders() })
@@ -101,9 +101,127 @@ export const reportsForAdmin = createServerOnlyFn(
       .innerJoin(user, eq(reports.reportedByUserId, user.id))
       .leftJoin(resolver, eq(reports.resolvedByUserId, resolver.id))
       .orderBy(desc(reports.createdAt))
-    return include === 'all' ? query : query.where(eq(reports.status, 'open'))
+    const rows = await (include === 'all' ? query : query.where(eq(reports.status, 'open')))
+    const replies = await repliesForReports(rows.map((row) => row.id))
+    return rows.map((row) => ({
+      ...row,
+      replies: replies.filter((reply) => reply.reportId === row.id),
+    }))
   },
 )
+
+/**
+ * Answers a report, and tells the reporter.
+ *
+ * The queue was write-only from the member's side: somebody reported a bug and
+ * heard nothing back, which teaches them not to bother again. A reply reaches
+ * them the way the report reached the administrators — by email — and both
+ * sides can read the thread afterwards.
+ */
+export const replyToReport = createServerOnlyFn(
+  async (actor: Actor, reportId: string, message: string) => {
+    assertAdmin(actor)
+    const text = message.trim()
+    if (!text) throw new Error('A reply needs something in it.')
+
+    const db = getDb()
+    const [report] = await db
+      .select({
+        id: reports.id,
+        kind: reports.kind,
+        message: reports.message,
+        reporterId: reports.reportedByUserId,
+      })
+      .from(reports)
+      .where(eq(reports.id, reportId))
+      .limit(1)
+    if (!report) throw new Error('That report is not here.')
+
+    const [saved] = await db
+      .insert(reportReplies)
+      .values({ reportId: report.id, authorUserId: actor.id, message: text })
+      .returning({ id: reportReplies.id })
+    if (!saved) throw new Error('We could not save that reply.')
+
+    // The reply is recorded either way: a mail server having a bad day must not
+    // lose what an administrator wrote.
+    await notifyReporter(report, text).catch((error) => {
+      console.error('[reports] could not notify the reporter', error)
+    })
+    return saved
+  },
+)
+
+async function notifyReporter(
+  report: { id: string; kind: 'bug' | 'idea'; message: string; reporterId: string },
+  reply: string,
+) {
+  const [reporter] = await getDb()
+    .select({ email: user.email, name: user.name })
+    .from(user)
+    .where(eq(user.id, report.reporterId))
+    .limit(1)
+  if (!reporter) return
+
+  const { sendEmail } = await import('./email')
+  const base = process.env.BETTER_AUTH_URL ?? ''
+  const label = report.kind === 'bug' ? 'bug report' : 'suggestion'
+  await sendEmail({
+    to: reporter.email,
+    subject: `About your ${label}`,
+    text:
+      `Somebody has replied to the ${label} you sent.
+
+` +
+      `${reply}
+
+` +
+      `--
+What you wrote:
+${report.message}
+
+` +
+      `${base}/feedback`,
+  })
+}
+
+/** Every reply on a set of reports, for the queue and for the reporter. */
+export const repliesForReports = createServerOnlyFn(async (reportIds: string[]) => {
+  if (reportIds.length === 0) return []
+  return getDb()
+    .select({
+      id: reportReplies.id,
+      reportId: reportReplies.reportId,
+      message: reportReplies.message,
+      createdAt: reportReplies.createdAt,
+      authorName: user.name,
+    })
+    .from(reportReplies)
+    .leftJoin(user, eq(reportReplies.authorUserId, user.id))
+    .where(inArray(reportReplies.reportId, reportIds))
+    .orderBy(asc(reportReplies.createdAt))
+})
+
+/** A member's own reports, with whatever came back. */
+export const reportsForReporter = createServerOnlyFn(async (reporterId: string) => {
+  const mine = await getDb()
+    .select({
+      id: reports.id,
+      kind: reports.kind,
+      message: reports.message,
+      path: reports.path,
+      status: reports.status,
+      createdAt: reports.createdAt,
+    })
+    .from(reports)
+    .where(eq(reports.reportedByUserId, reporterId))
+    .orderBy(desc(reports.createdAt))
+  const replies = await repliesForReports(mine.map((row) => row.id))
+  return mine.map((row) => ({
+    ...row,
+    replies: replies.filter((reply) => reply.reportId === row.id),
+  }))
+})
 
 /** Kept for the counters, which only ever care about what is still outstanding. */
 export const openReportsForAdmin = createServerOnlyFn(async (actor: Actor) =>
@@ -136,6 +254,16 @@ export const getReports = createServerFn({ method: 'GET' })
   .handler(async ({ data }) =>
     reportsForAdmin((await requireSession()).user as Actor, data.include),
   )
+
+export const sendReportReply = createServerFn({ method: 'POST' })
+  .validator(z.object({ reportId: z.string().uuid(), message: z.string().trim().min(1).max(4000) }))
+  .handler(async ({ data }) =>
+    replyToReport((await requireSession()).user as Actor, data.reportId, data.message),
+  )
+
+export const getMyReports = createServerFn({ method: 'GET' }).handler(async () =>
+  reportsForReporter((await requireSession()).user.id),
+)
 
 export const markReportResolved = createServerFn({ method: 'POST' })
   .validator(z.object({ id: z.string().uuid(), resolved: z.boolean().default(true) }))

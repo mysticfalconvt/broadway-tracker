@@ -1,17 +1,19 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 
-import { submitReport } from '../../server/report-functions'
+import { getMyReports, submitReport } from '../../server/report-functions'
 
 export const Route = createFileRoute('/_protected/feedback')({
   validateSearch: (search: Record<string, unknown>) => ({
     from: typeof search.from === 'string' ? search.from : undefined,
   }),
+  loader: async () => ({ mine: await getMyReports() }),
   component: Feedback,
 })
 
 function Feedback() {
   const { from } = Route.useSearch()
+  const { mine } = Route.useLoaderData()
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
@@ -100,6 +102,50 @@ function Feedback() {
           </div>
         </form>
       )}
+      {mine.length ? (
+        <section className="past-reports">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">What you have sent</p>
+              <h2>Your reports.</h2>
+            </div>
+          </div>
+          <ul className="report-list">
+            {mine.map((report) => (
+              <li data-resolved={report.status === 'resolved'} key={report.id}>
+                <div className="report-head">
+                  <span className={`report-kind report-kind-${report.kind}`}>
+                    {report.kind === 'bug' ? 'Bug' : 'Idea'}
+                  </span>
+                  {report.status === 'resolved' ? (
+                    <span className="report-kind report-kind-resolved">Resolved</span>
+                  ) : null}
+                  <span className="provenance">
+                    {new Date(report.createdAt).toISOString().slice(0, 10)}
+                    {report.path ? ` · ${report.path}` : ''}
+                  </span>
+                </div>
+                <p className="report-message">{report.message}</p>
+                {report.replies.length ? (
+                  <ul className="report-replies">
+                    {report.replies.map((reply) => (
+                      <li key={reply.id}>
+                        <span className="provenance">
+                          {reply.authorName ?? 'An administrator'} ·{' '}
+                          {new Date(reply.createdAt).toISOString().slice(0, 10)}
+                        </span>
+                        <p>{reply.message}</p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="outing-empty">No reply yet.</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </main>
   )
 }

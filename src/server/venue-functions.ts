@@ -7,6 +7,7 @@ import { tidyPlace, venueKey } from '../lib/place'
 import { auth } from './auth'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { getDb } from './db/client'
+import { applyViewerCovers } from './image-functions'
 import { outingAttendees, outings, productions, shows, venues } from './db/schema'
 
 async function requireSession() {
@@ -202,6 +203,7 @@ export const venueWithHistory = createServerOnlyFn(
         productionType: productions.productionType,
         openedOn: productions.openedOn,
         closedOn: productions.closedOn,
+        showId: shows.id,
         showTitle: shows.title,
         showSlug: shows.slug,
         showType: shows.type,
@@ -242,7 +244,7 @@ export const venueWithHistory = createServerOnlyFn(
         city: venue.city,
         country: venue.country,
       },
-      staged,
+      staged: await applyViewerCovers(viewerId, staged, (row) => row.showId),
       yourNights,
     }
   },

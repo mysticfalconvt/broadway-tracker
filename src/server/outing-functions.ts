@@ -325,8 +325,16 @@ export const outingForViewer = createServerOnlyFn(async (viewerId: string, outin
       ? await likelyCastOn(outing.productionId, outing.occurredOn)
       : []
 
+  const { applyViewerCovers } = await import('./image-functions')
+  const [withCover] = await applyViewerCovers(
+    session.user.id,
+    [{ showId: outing.showId, coverImageKey: outing.showCoverImageKey }],
+    (row) => row.showId,
+  )
+
   return {
     ...outing,
+    showCoverImageKey: withCover?.coverImageKey ?? outing.showCoverImageKey,
     likelyCast,
     seenCast,
     // Somebody who was there, or a friend looking in. A visitor is shown the

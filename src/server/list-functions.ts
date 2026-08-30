@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { auth } from './auth'
 import { getDb } from './db/client'
+import { applyViewerCovers } from './image-functions'
 import { listItems, lists, shows, user } from './db/schema'
 import { areFriends } from './friend-functions'
 import { defaultVisibilityFor } from './visibility'
@@ -104,19 +105,23 @@ export const listForViewer = createServerOnlyFn(async (viewerId: string | null, 
         .where(eq(user.id, list.userId))
         .limit(1)
     : [null]
-  const items = await getDb()
-    .select({
-      showId: shows.id,
-      title: shows.title,
-      slug: shows.slug,
-      type: shows.type,
-      coverImageKey: shows.coverImageKey,
-      position: listItems.position,
-    })
-    .from(listItems)
-    .innerJoin(shows, eq(listItems.showId, shows.id))
-    .where(eq(listItems.listId, list.id))
-    .orderBy(asc(listItems.position))
+  const items = await applyViewerCovers(
+    viewerId,
+    await getDb()
+      .select({
+        showId: shows.id,
+        title: shows.title,
+        slug: shows.slug,
+        type: shows.type,
+        coverImageKey: shows.coverImageKey,
+        position: listItems.position,
+      })
+      .from(listItems)
+      .innerJoin(shows, eq(listItems.showId, shows.id))
+      .where(eq(listItems.listId, list.id))
+      .orderBy(asc(listItems.position)),
+    (row) => row.showId,
+  )
   // Deliberately narrowed rather than spread. The row carries `userId`, the same
   // opaque id that addresses a public profile -- sending it to a stranger would
   // let every public list by one person be grouped and tied back to them, which

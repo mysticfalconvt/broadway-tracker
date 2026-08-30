@@ -449,6 +449,27 @@ export const reports = pgTable(
 )
 
 /**
+ * What an administrator wrote back about a report.
+ *
+ * A table rather than a column on `reports`, because answering a bug is rarely
+ * one sentence: "looking at it", then "fixed, deploying tonight". The reporter
+ * gets each one by email, and both sides can read the thread.
+ */
+export const reportReplies = pgTable(
+  'report_replies',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    reportId: uuid('report_id')
+      .notNull()
+      .references(() => reports.id, { onDelete: 'cascade' }),
+    authorUserId: text('author_user_id').references(() => user.id, { onDelete: 'set null' }),
+    message: text('message').notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => [index('report_replies_report_idx').on(table.reportId)],
+)
+
+/**
  * Who an attendee says they actually saw on a particular night.
  *
  * The likely cast is worked out from casting dates, which cannot know that an

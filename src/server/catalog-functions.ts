@@ -133,7 +133,13 @@ export const publishedProductionsForShow = createServerOnlyFn(async (showId: str
 
 export const searchPublishedShows = createServerFn({ method: 'GET' })
   .validator(z.object({ query: z.string().trim().max(100) }))
-  .handler(async ({ data }) => searchCatalog(data.query))
+  .handler(async ({ data }) => {
+    const { auth } = await import('./auth')
+    const { getRequestHeaders } = await import('@tanstack/react-start/server')
+    const session = await auth.api.getSession({ headers: getRequestHeaders() })
+    const { applyViewerCovers } = await import('./image-functions')
+    return applyViewerCovers(session?.user.id ?? null, await searchCatalog(data.query))
+  })
 
 export const getPublishedShow = createServerFn({ method: 'GET' })
   .validator(z.object({ slug: z.string().min(1).max(160) }))

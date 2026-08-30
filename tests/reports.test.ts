@@ -5,7 +5,9 @@ import {
   fileReport,
   openReportsForAdmin,
   reopenReport,
+  replyToReport,
   reportsForAdmin,
+  reportsForReporter,
   resolveReport,
 } from '../src/server/report-functions'
 import { db, makeAdmin, makeUser, resetDatabase } from './helpers'
@@ -120,5 +122,70 @@ describe('the administration queue', () => {
     const { eq } = await import('drizzle-orm')
     await db.delete(user).where(eq(user.id, member.id))
     expect(await db.select().from(reports)).toHaveLength(0)
+  })
+})
+
+describe('replying to a report', () => {
+  async function aReport() {
+    const admin = await makeAdmin()
+    const reporter = await makeUser()
+    const { id } = await fileReport(reporter.id, {
+      kind: 'bug',
+      message: 'The date picker eats my year.',
+      path: '/log',
+    })
+    return { admin, reporter, id }
+  }
+
+  it('records the reply against the report', async () => {
+    const { admin, id } = await aReport()
+    await replyToReport(actor(admin), id, 'Fixed — deploying tonight.')
+    const [report] = await reportsForAdmin(actor(admin), 'all')
+    expect(report?.replies.map((r) => r.message)).toEqual(['Fixed — deploying tonight.'])
+    expect(report?.replies[0]?.authorName).toBe(admin.name)
+  })
+
+  it('keeps a conversation in the order it happened', async () => {
+    const { admin, id } = await aReport()
+    await replyToReport(actor(admin), id, 'Looking at it.')
+    await replyToReport(actor(admin), id, 'Fixed.')
+    const [report] = await reportsForAdmin(actor(admin), 'all')
+    expect(report?.replies.map((r) => r.message)).toEqual(['Looking at it.', 'Fixed.'])
+  })
+
+  it('shows the reporter their own report and what came back', async () => {
+    const { admin, reporter, id } = await aReport()
+    await replyToReport(actor(admin), id, 'Fixed — deploying tonight.')
+    const mine = await reportsForReporter(reporter.id)
+    expect(mine).toHaveLength(1)
+    expect(mine[0]?.replies.map((r) => r.message)).toEqual(['Fixed — deploying tonight.'])
+  })
+
+  it('never shows one member another member’s report', async () => {
+    const { admin, id } = await aReport()
+    const stranger = await makeUser()
+    await replyToReport(actor(admin), id, 'Fixed.')
+    expect(await reportsForReporter(stranger.id)).toHaveLength(0)
+  })
+
+  it('refuses a member, and refuses an empty reply', async () => {
+    const { admin, reporter, id } = await aReport()
+    await expect(replyToReport(actor(reporter), id, 'Sure.')).rejects.toThrow('Forbidden')
+    await expect(replyToReport(actor(admin), id, '   ')).rejects.toThrow('needs something in it')
+  })
+
+  it('refuses a report that is not there', async () => {
+    const admin = await makeAdmin()
+    await expect(
+      replyToReport(actor(admin), '00000000-0000-0000-0000-000000000000', 'Hello.'),
+    ).rejects.toThrow('not here')
+  })
+
+  it('keeps the reply even when the reporter cannot be emailed', async () => {
+    // Mail is suppressed in tests, so this exercises the path that must not
+    // roll back what an administrator wrote.
+    const { admin, reporter, id } = await aReport()
+    await replyToReport(actor(admin), id, 'Written down regardless.')
+    expect((await reportsForReporter(reporter.id))[0]?.replies).toHaveLength(1)
   })
 })

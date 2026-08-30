@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { auth } from './auth'
 import { getDb } from './db/client'
+import { applyViewerCovers } from './image-functions'
 import { areFriends } from './friend-functions'
 import {
   libraryEntries,
@@ -49,6 +50,7 @@ export const homeForUser = createServerOnlyFn(async (userId: string) => {
     db
       .select({
         id: outings.id,
+        showId: outings.showId,
         showTitle: shows.title,
         showType: shows.type,
         coverImageKey: shows.coverImageKey,
@@ -75,8 +77,10 @@ export const homeForUser = createServerOnlyFn(async (userId: string) => {
       shows: seen[0]?.count ?? 0,
       favorites: favoriteCount[0]?.count ?? 0,
     },
-    wantToSee,
-    recent,
+    // A show somebody has photographed themselves is that photograph to them,
+    // wherever it turns up.
+    wantToSee: await applyViewerCovers(userId, wantToSee),
+    recent: await applyViewerCovers(userId, recent, (row) => row.showId),
   }
 })
 
@@ -266,9 +270,11 @@ export const friendProfileForViewer = createServerOnlyFn(
     return {
       user: profile,
       stats: { seen: seen[0]?.count ?? 0, outings: outingsCount[0]?.count ?? 0 },
-      favorites,
-      seenShows,
-      outings: sharedOutings,
+      // The reader's own photographs, even on somebody else's page: a cover is
+      // a personal lens on the catalog, not a fact about the friend.
+      favorites: await applyViewerCovers(viewerId, favorites),
+      seenShows: await applyViewerCovers(viewerId, seenShows),
+      outings: await applyViewerCovers(viewerId, sharedOutings, (row) => row.showId),
       lists: sharedLists,
     }
   },

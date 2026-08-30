@@ -1,7 +1,7 @@
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 
-import { getReports, markReportResolved } from '../../../server/report-functions'
+import { getReports, markReportResolved, sendReportReply } from '../../../server/report-functions'
 
 export const Route = createFileRoute('/_protected/admin/reports')({
   beforeLoad: ({ context }) => {
@@ -81,13 +81,29 @@ function Reports() {
                 </span>
               </div>
               <p className="report-message">{report.message}</p>
-              <button
-                className="button button-quiet"
-                type="button"
-                onClick={() => void setResolved(report.id, report.status === 'open')}
-              >
-                {report.status === 'open' ? 'Mark resolved' : 'Reopen'}
-              </button>
+              {report.replies.length ? (
+                <ul className="report-replies">
+                  {report.replies.map((reply) => (
+                    <li key={reply.id}>
+                      <span className="provenance">
+                        {reply.authorName ?? 'An administrator'} ·{' '}
+                        {new Date(reply.createdAt).toISOString().slice(0, 10)}
+                      </span>
+                      <p>{reply.message}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="report-actions">
+                <ReplyForm reportId={report.id} />
+                <button
+                  className="button button-quiet"
+                  onClick={() => void setResolved(report.id, report.status === 'open')}
+                  type="button"
+                >
+                  {report.status === 'open' ? 'Mark resolved' : 'Reopen'}
+                </button>
+              </div>
             </li>
           ))}
         </ul>
@@ -99,5 +115,63 @@ function Reports() {
         </p>
       )}
     </main>
+  )
+}
+
+/**
+ * Writing back to whoever reported something.
+ *
+ * The queue used to be one-way: a member sent a bug and heard nothing, which
+ * teaches them not to bother a second time. The reply reaches them by email,
+ * the way their report reached the administrators.
+ */
+function ReplyForm({ reportId }: { reportId: string }) {
+  const [open, setOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function send(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = new FormData(event.currentTarget)
+    setBusy(true)
+    setError(null)
+    try {
+      await sendReportReply({
+        data: { reportId, message: String(form.get('message') ?? '') },
+      })
+      window.location.reload()
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'We could not send that.')
+      setBusy(false)
+    }
+  }
+
+  if (!open) {
+    return (
+      <button className="button button-quiet" onClick={() => setOpen(true)} type="button">
+        Reply
+      </button>
+    )
+  }
+  return (
+    <form className="report-reply-form" onSubmit={send}>
+      <label>
+        <span className="sr-only">Your reply</span>
+        <textarea name="message" placeholder="What you want them to know." required rows={3} />
+      </label>
+      {error ? (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <div className="report-actions">
+        <button className="button button-primary" disabled={busy} type="submit">
+          {busy ? 'Sending…' : 'Send it'}
+        </button>
+        <button className="text-action" onClick={() => setOpen(false)} type="button">
+          Cancel
+        </button>
+      </div>
+    </form>
   )
 }

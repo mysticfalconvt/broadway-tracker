@@ -328,9 +328,12 @@ export const decideShowPhoto = createServerFn({ method: 'POST' })
  * costs one extra round trip rather than one per row.
  */
 export const applyViewerCovers = createServerOnlyFn(
-  async <T extends { id: string; coverImageKey: string | null }>(
+  async <T extends { coverImageKey: string | null }>(
     viewerId: string | null,
     rows: T[],
+    // Rows are usually keyed by the show itself; a list of nights out is keyed
+    // by the night, and carries the show alongside.
+    showIdOf: (row: T) => string = (row) => (row as unknown as { id: string }).id,
   ): Promise<T[]> => {
     if (!viewerId || rows.length === 0) return rows
     const own = await getDb()
@@ -339,10 +342,7 @@ export const applyViewerCovers = createServerOnlyFn(
       .where(
         and(
           eq(showImages.uploadedByUserId, viewerId),
-          inArray(
-            showImages.showId,
-            rows.map((row) => row.id),
-          ),
+          inArray(showImages.showId, rows.map(showIdOf)),
         ),
       )
       .orderBy(desc(showImages.createdAt))
@@ -351,7 +351,10 @@ export const applyViewerCovers = createServerOnlyFn(
     const mine = new Map<string, string>()
     for (const row of own) if (!mine.has(row.showId)) mine.set(row.showId, row.objectKey)
     if (mine.size === 0) return rows
-    return rows.map((row) => ({ ...row, coverImageKey: mine.get(row.id) ?? row.coverImageKey }))
+    return rows.map((row) => ({
+      ...row,
+      coverImageKey: mine.get(showIdOf(row)) ?? row.coverImageKey,
+    }))
   },
 )
 
