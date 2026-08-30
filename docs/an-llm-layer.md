@@ -7,32 +7,38 @@ The prompt that started this:
 > *I went to see The Producers around 2003ish. Tony Danza was in it. Can you
 > narrow down when that was and log it for me.*
 
-## The example is mostly a query
+## The query half is easy. The catalog is the problem.
 
-`likelyCastOn(production, date)` already answers "who was on stage that night".
-The sentence above needs the same table read backwards — *given this person in
-this production, what dates could it have been* — and that is a `select`, not a
-reasoning problem:
+`likelyCastOn(production, date)` already answers "who was on stage that night",
+and the sentence above needs the same table read backwards — *given this person
+in this production, what dates could it have been*. That is a `select`.
+
+Which is a completely useless observation, because the data is not there:
 
 ```
-show:    The Producers
-person:  Tony Danza
-→ castings.startedOn … castings.endedOn for that pairing
-→ a window, or several if he came and went
+shows                       21
+productions                  8
+castings                    11
+shows with a dated casting   2
 ```
 
-Two consequences worth sitting with before choosing any model:
+*The Producers is not in the catalog at all.* Neither is Tony Danza. The query
+is trivial and answers nothing, because a query over an empty table is empty.
 
-**A useful chunk of this needs no LLM at all.** A "narrow this down" endpoint
-taking a show, an optional person, and a rough year, returning candidate
-windows, would answer the example. It is a day's work, it cannot hallucinate,
-and it is worth building whether or not anything else here happens.
+So web research is not an alternative to the in-app idea. **It is the thing
+that makes the in-app idea possible**, and everything below follows from that.
 
-**The app should sometimes disagree with the sentence.** If the castings say
-Danza played Bialystock in the winter of 2006, then "around 2003" is not vague,
-it is *wrong*, and the honest answer is to say so rather than quietly picking a
-date in the middle. That is the same instinct as fuzzy dates: never invent
+Two smaller points survive:
+
+**The app should sometimes disagree with the sentence.** Once the castings do
+say Danza played Bialystock in the winter of 2006, "around 2003" is not vague,
+it is *wrong*, and the honest answer says so rather than quietly picking a date
+in the middle of the decade. Same instinct as fuzzy dates: never invent
 precision somebody did not have.
+
+**Somebody still has to be right about the facts.** Moving the guessing from
+the member to a model does not remove it, it relocates it — see provenance,
+below.
 
 ## One capability, two front doors
 
@@ -57,34 +63,48 @@ Few tools, sharply shaped, is also what makes a local model workable. A
 120-billion-parameter model asked to pick between seven obvious functions is
 reliable; the same model asked to invent a plan across thirty is not.
 
-## The decision that actually matters: what leaves the house
+## Fill the catalog where it is actually used
 
-This is a private journal for one family. The interesting split is not local
-versus hosted for cost or quality — it is that **a hosted model means somebody's
-theatre history, and their friends' names, leave the building.**
+The obvious move is to pre-seed: research a few Broadway decades, import them,
+then everything works. That is a lot of effort spent on shows nobody in this
+family ever saw, and it is never finished.
 
-That suggests a hard line rather than a preference:
+The better trigger is the question itself. **Asking about The Producers is what
+causes the app to go and learn about The Producers.** The catalog then grows
+exactly where it is used, driven by real demand, and every question anybody asks
+leaves the archive better for everybody else. Fifteen people asking about the
+shows they actually attended will produce a small, dense, relevant catalog far
+faster than any seeding plan.
 
-- **Anything touching member data — local only.** The LM Studio box, no
-  exceptions, no fallback to a cloud model when it is slow. Logging a night,
-  reading a shelf, drafting an outing.
-- **Anything about public facts — anywhere, web research included.** When did
-  the tour play Boston, who was in the 2003 company, what is the Nederlander's
-  address. None of that is anybody's private business.
+## The decision that matters: what leaves the house
 
-The pleasant part is that this maps exactly onto the two front doors:
+This is a private journal for one family, so the split is not local versus
+hosted for cost or speed — it is that **a hosted model means somebody's theatre
+history, and their friends' names, leave the building.**
 
-**In-app, local, no web.** Logging and recall, against the catalog we have.
-Fast, private, offline-capable, and it never needs to browse because everything
-it reasons about is already in Postgres.
+My first sketch drew that line between the two front doors, which was too
+coarse. The line runs *through the middle of a single request*:
 
-**MCP, external, with the web.** Catalog work — filling in a show, a run, a cast
-list — done from a client that can research. This is where web access genuinely
-earns its keep, and where it is safe to use, because the subject matter is
-public record.
+> ~~I went to see~~ **The Producers, around 2003. Tony Danza was in it.**
+> ~~Log it for me.~~
 
+The bold half is public record — a question anybody could ask about a Broadway
+run. The struck-through half is somebody's private evening. So the request is
+decomposed rather than routed:
+
+1. **Locally**, extract what is being asked about. A show, a person, a rough
+   year. No web needed, nothing personal leaves.
+2. **Outward**, ask only the public question: *when was Tony Danza in The
+   Producers?* No name, no account, no journal — a question about theatre
+   history that reveals nothing about who is asking.
+3. **Into the catalog**, as sourced facts, available to everybody.
+4. **Locally again**, propose the outing against the newly-filled catalog. The
+   private half never left.
+
+The same decomposition is what makes an MCP server useful: pointed at catalog
+work, it is asking public questions about public record.
 `docs/catalog-import.md` was already written to be handed to a language model
-verbatim. An MCP server is that same seam with the copy-and-paste removed.
+verbatim; MCP is that seam with the copy-and-paste removed.
 
 ## Rules that would keep this honest
 
@@ -102,9 +122,19 @@ made to use it rather than route around it.
 March 2007, so it was probably then, not 2003." A citation of the app's own data
 is checkable; a confident sentence is not.
 
-**Nothing new in the catalog without review.** A model may propose a show, a
-production, or a casting. Publishing stays a person's decision, through the
-queue that already exists.
+**Researched facts are a third kind of thing.** The app already distinguishes
+*inferred* — who you probably saw, worked out from dates — from *recorded* —
+who you have said you saw. Something a model read on the web is neither: call
+it **sourced**, store where it came from, and show it as such.
+
+That is not decoration. A wrong run date from one lookup would otherwise become
+the basis of "who you probably saw" for every member, forever, and look exactly
+like a fact somebody checked. Sourced data can be reasoned from, is visibly
+unconfirmed, and can be corrected by anybody who was actually in the room —
+machinery that already exists.
+
+Requiring an administrator to approve every cast lookup would be the safe
+answer and an unusable one; provenance is what buys the convenience honestly.
 
 ## An API key is a new way in
 
