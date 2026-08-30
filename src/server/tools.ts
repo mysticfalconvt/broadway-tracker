@@ -307,6 +307,24 @@ export const toolDescriptions = createServerOnlyFn(({ allowWrites = false } = {}
 )
 
 /**
+ * The same list in MCP's shape.
+ *
+ * Two protocols, two names for one thing: OpenAI's tool-calling wants
+ * `{type, function: {parameters}}` and MCP wants a flat `{name, description,
+ * inputSchema}`. Handing an MCP client the OpenAI shape gets the whole list
+ * rejected — "expected object, received undefined" for every tool — so the
+ * conversion is spelled out here and tested, rather than done inline at the
+ * endpoint where it was got wrong once already.
+ */
+export const mcpToolDescriptions = createServerOnlyFn(({ allowWrites = false } = {}) =>
+  TOOLS.filter((definition) => allowWrites || !definition.writes).map((definition) => ({
+    name: definition.name,
+    description: definition.description,
+    inputSchema: z.toJSONSchema(definition.parameters) as Record<string, unknown>,
+  })),
+)
+
+/**
  * Runs one tool on somebody's behalf.
  *
  * Errors come back as values rather than thrown, because a model calling a tool

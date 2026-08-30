@@ -5,7 +5,7 @@ import { findOrCreateProduction } from '../src/server/catalog-functions'
 import { productions } from '../src/server/db/schema'
 import { createOutingForUser } from '../src/server/outing-functions'
 import { addCasting } from '../src/server/people-functions'
-import { TOOLS, runTool, toolDescriptions } from '../src/server/tools'
+import { TOOLS, mcpToolDescriptions, runTool, toolDescriptions } from '../src/server/tools'
 import { db, makeFriendship, makeShow, makeUser, resetDatabase } from './helpers'
 
 beforeEach(resetDatabase)
@@ -187,5 +187,28 @@ describe('what a tool is allowed to change', () => {
       const tool = TOOLS.find((one) => one.name === described.function.name)
       expect(tool?.writes).toBeFalsy()
     }
+  })
+})
+
+describe('the shape an MCP client is handed', () => {
+  it('names the schema inputSchema, which is what MCP validates', () => {
+    // Getting this wrong does not fail one tool, it fails the whole list: a
+    // client rejects every entry and the server connects with no tools at all.
+    for (const tool of mcpToolDescriptions({ allowWrites: true })) {
+      expect(tool.name).toMatch(/^[a-z_]+$/)
+      expect(tool.description.length).toBeGreaterThan(40)
+      expect(tool.inputSchema).toBeTypeOf('object')
+      expect(tool.inputSchema).toHaveProperty('type', 'object')
+      // No stray OpenAI-shaped keys: those are what a client ignores while
+      // complaining that the one it wanted is undefined.
+      expect(tool).not.toHaveProperty('parameters')
+      expect(tool).not.toHaveProperty('function')
+    }
+  })
+
+  it('holds the same writing gate as everything else', () => {
+    const reading = mcpToolDescriptions().map((one) => one.name)
+    expect(reading).not.toContain('log_night')
+    expect(mcpToolDescriptions({ allowWrites: true }).map((one) => one.name)).toContain('log_night')
   })
 })

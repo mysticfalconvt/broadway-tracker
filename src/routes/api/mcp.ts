@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { actorForToken } from '../../server/api-keys'
-import { runTool, toolDescriptions } from '../../server/tools'
+import { mcpToolDescriptions, runTool } from '../../server/tools'
 
 /**
  * The app, as a tool a member's own agent can use.
@@ -77,7 +77,7 @@ export const Route = createFileRoute('/api/mcp')({
             return ok(id, {})
 
           case 'tools/list':
-            return ok(id, { tools: toolDescriptions({ allowWrites: true }).map((t) => t.function) })
+            return ok(id, { tools: mcpToolDescriptions({ allowWrites: true }) })
 
           case 'tools/call': {
             const params = (body.params ?? {}) as { name?: string; arguments?: unknown }
