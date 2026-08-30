@@ -1,6 +1,7 @@
 import {
   boolean,
   date,
+  doublePrecision,
   index,
   integer,
   pgTable,
@@ -134,6 +135,26 @@ export const venues = pgTable(
     city: text('city'),
     country: text('country'),
     matchKey: text('match_key').notNull().unique(),
+    /**
+     * Where the building is, looked up once and kept.
+     *
+     * Null means "not known yet", which is the ordinary state of a venue nobody
+     * has needed on a map. A theatre does not move, so this is filled in the
+     * first time it is wanted and never asked for again — which is also what
+     * the geocoder's own terms require of anyone using it.
+     */
+    latitude: doublePrecision('latitude'),
+    longitude: doublePrecision('longitude'),
+    geocodedAt: timestamp('geocoded_at'),
+    /**
+     * How many times a lookup has been tried and come back with nothing.
+     *
+     * Some venues are simply not findable — a school hall, a name with a typo,
+     * a room in somebody's house. Without this, every page view would ask the
+     * geocoder about them again forever, which is exactly the hammering its
+     * rate limit exists to prevent.
+     */
+    geocodeAttempts: smallint('geocode_attempts').notNull().default(0),
     createdByUserId: text('created_by_user_id').references(() => user.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),

@@ -123,7 +123,10 @@ function NavLinks() {
           </span>
         ) : null}
       </Link>
-      <Link to="/build-history">Build history</Link>
+      {/* Only while it is the most useful thing on offer. Once there is a
+          history, building one is not a thing you return to, and it lives on
+          the profile instead. */}
+      {badges.hasHistory ? null : <Link to="/build-history">Build history</Link>}
       {badges.isAdmin ? (
         <Link to="/admin" className="nav-with-badge">
           Admin

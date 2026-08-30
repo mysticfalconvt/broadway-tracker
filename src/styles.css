@@ -2790,3 +2790,70 @@ a.recent-entry:hover h3,
 .recent-production-list form {
   grid-column: 1 / -1;
 }
+
+/* A map of theatres. */
+.venue-map-frame {
+  margin-top: 1.5rem;
+}
+.venue-map {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.venue-map-note {
+  margin: 0.6rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+/* Leaflet's own controls, brought into the page's palette. */
+.venue-map .leaflet-control-attribution {
+  background: var(--surface);
+  color: var(--ink-muted);
+  font-size: 0.7rem;
+}
+.venue-map .leaflet-control-attribution a {
+  color: var(--ink-muted);
+}
+
+/* Where you have been, listed under the map. */
+.places-list {
+  display: grid;
+  gap: 0.6rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.places-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.places-list a {
+  color: inherit;
+  text-decoration: none;
+}
+.places-list strong {
+  display: block;
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1.05rem;
+}
+.places-list span {
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+}
+
+/* A production's venue leads to the venue. */
+.production-list-public a {
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+.production-list-public a:hover {
+  color: var(--ink);
+}

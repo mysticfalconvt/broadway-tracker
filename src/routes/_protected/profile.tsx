@@ -49,6 +49,14 @@ function Profile() {
           </div>
         </div>
         <div className="profile-account">
+          <Link className="text-action" to="/places">
+            Everywhere you have been
+          </Link>
+          <span className="profile-account-divider" aria-hidden="true" />
+          <Link className="text-action" to="/build-history">
+            Add shows you saw years ago
+          </Link>
+          <span className="profile-account-divider" aria-hidden="true" />
           <Link className="text-action" to="/settings">
             Edit profile settings
           </Link>

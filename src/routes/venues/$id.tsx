@@ -1,6 +1,7 @@
 import { Link, createFileRoute, notFound } from '@tanstack/react-router'
 
 import { ShowArtwork } from '../../components/ShowArtwork'
+import { VenueMap } from '../../components/VenueMap'
 import { formatFuzzyDate } from '../../lib/fuzzy-date'
 import { getVenue } from '../../server/venue-functions'
 
@@ -37,6 +38,12 @@ function Venue() {
         <h1>{venue.name}</h1>
         <p>{[venue.city, venue.country].filter(Boolean).join(', ') || 'Location not recorded'}</p>
       </header>
+
+      {/* A single building, so a close view. Absent coordinates are not an
+          error state: the page reads the same without the map. */}
+      {venue.latitude !== null && venue.longitude !== null ? (
+        <VenueMap height="18rem" venues={[venue]} />
+      ) : null}
 
       <section>
         <div className="section-heading">

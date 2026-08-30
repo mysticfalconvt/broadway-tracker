@@ -117,6 +117,50 @@ describe('the badge the navigation actually receives', () => {
 
   it('gives a signed-out visitor nothing', async () => {
     const badges = await navBadgesFor(null)
-    expect(badges).toEqual({ isAdmin: false, waiting: 0, friendRequests: 0 })
+    expect(badges).toEqual({ isAdmin: false, waiting: 0, friendRequests: 0, hasHistory: false })
+  })
+})
+
+describe('whether the navigation still offers to build a history', () => {
+  it('offers it to somebody who has logged nothing', async () => {
+    const newcomer = await makeUser()
+    expect((await navBadgesFor(newcomer)).hasHistory).toBe(false)
+  })
+
+  it('stops offering it once a night is on record', async () => {
+    const member = await makeUser()
+    const show = await makeShow({ title: 'Hadestown', slug: 'hadestown' })
+    const { createOutingForUser } = await import('../src/server/outing-functions')
+    await createOutingForUser(member.id, {
+      showId: show.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-05-18',
+      attendeeIds: [],
+      favorite: false,
+    })
+    expect((await navBadgesFor(member)).hasHistory).toBe(true)
+  })
+
+  it('counts a night somebody else logged you into', async () => {
+    // Being added to a friend's outing is having a history, even if you have
+    // never used the form yourself.
+    const member = await makeUser()
+    const friend = await makeUser()
+    const { makeFriendship } = await import('./helpers')
+    await makeFriendship(member.id, friend.id, 'accepted')
+    const show = await makeShow({ title: 'Six', slug: 'six' })
+    const { createOutingForUser } = await import('../src/server/outing-functions')
+    await createOutingForUser(friend.id, {
+      showId: show.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-05-18',
+      attendeeIds: [member.id],
+      favorite: false,
+    })
+    expect((await navBadgesFor(member)).hasHistory).toBe(true)
+  })
+
+  it('is not read for a signed-out visitor, whose navigation has no such link', async () => {
+    expect((await navBadgesFor(null)).hasHistory).toBe(false)
   })
 })

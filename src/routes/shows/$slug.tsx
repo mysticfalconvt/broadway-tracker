@@ -425,7 +425,6 @@ function Productions({
   productions: Awaited<ReturnType<typeof getProductionsForShow>>
   scope: 'catalog' | 'local'
 }) {
-  if (!productions.length) return null
   return (
     <section className="productions-section page-wrap">
       <div className="section-heading">
@@ -434,17 +433,34 @@ function Productions({
           <h2>Where it has been staged.</h2>
         </div>
       </div>
-      <ul className="production-list-public">
-        {productions.map((production) => (
-          <li key={production.id}>
-            <div>
-              <strong>{production.name}</strong>
-              <span>{[production.venue, production.city].filter(Boolean).join(' · ')}</span>
-            </div>
-            <span className="production-run">{describeRun(production)}</span>
-          </li>
-        ))}
-      </ul>
+      {productions.length ? (
+        <ul className="production-list-public">
+          {productions.map((production) => (
+            <li key={production.id}>
+              <div>
+                <strong>{production.name}</strong>
+                {/* The venue is a real page now, with a map and everything else
+                    staged there, so the row that names it should lead to it. */}
+                {production.venueId && production.venue ? (
+                  <Link params={{ id: production.venueId }} to="/venues/$id">
+                    {[production.venue, production.city].filter(Boolean).join(', ')}
+                  </Link>
+                ) : (
+                  <span>{[production.venue, production.city].filter(Boolean).join(' · ')}</span>
+                )}
+              </div>
+              <span className="production-run">{describeRun(production)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        // Most shows have no production recorded, and a section that simply
+        // vanished left the page looking like it had lost something.
+        <p className="profile-empty">
+          Nobody has recorded where this has been staged yet. Logging a night at a theatre is what
+          fills this in.
+        </p>
+      )}
     </section>
   )
 }

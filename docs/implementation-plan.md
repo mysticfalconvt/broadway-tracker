@@ -387,12 +387,19 @@ town is not.
 Venues already carry a name, city, and country, which is enough to place them roughly but not
 to plot them. Nothing stores coordinates.
 
-- [ ] Add coordinates to venues, populated by geocoding rather than by hand.
-- [ ] Choose a geocoding source and a tile provider, and record their terms.
-- [ ] Show a venue's location on its page.
-- [ ] Build a personal map of everywhere the reader has seen a performance.
+- [x] Add coordinates to venues, populated by geocoding rather than by hand. *(Lazily, when a
+      venue is actually used or viewed — never in a loop over the table.)*
+- [x] Choose a geocoding source and a tile provider, and record their terms. *(Nominatim and
+      OpenStreetMap tiles. Nominatim **requires** caching results, which is what storing a
+      coordinate on the venue does; one request a second; a User-Agent naming the app, which is
+      why lookups are server-side; attribution shown on every map.)*
+- [x] Show a venue's location on its page.
+- [x] Build a personal map of everywhere the reader has seen a performance. *(`/places`, linked
+      from the profile. Assembled from the reader's own attendance and never anybody else's.)*
 - [ ] Consider a friends view: where the people you share with have seen theatre.
-- [ ] Fall back gracefully: a venue that cannot be geocoded must not break the map or the page.
+- [x] Fall back gracefully: a venue that cannot be geocoded must not break the map or the page.
+      *(A lookup never blocks a save, a failed request does not count against the venue, and a
+      venue nobody can find is asked about three times and then left alone.)*
 - [x] Decided: no public map. A personal map, and possibly a friends one; never on the
       anonymous public profile.
 

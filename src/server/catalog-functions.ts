@@ -89,6 +89,7 @@ export const localProductionsForShow = createServerOnlyFn(async (showId: string)
       id: productions.id,
       name: productions.name,
       productionType: productions.productionType,
+      venueId: productions.venueId,
       venue: sql<string | null>`coalesce(${venues.name}, ${productions.venue})`,
       city: sql<string | null>`coalesce(${venues.city}, ${productions.city})`,
       country: productions.country,
@@ -107,6 +108,7 @@ export const publishedProductionsForShow = createServerOnlyFn(async (showId: str
       id: productions.id,
       name: productions.name,
       productionType: productions.productionType,
+      venueId: productions.venueId,
       // The canonical venue where one is linked, falling back to whatever was
       // typed, so a production recorded before venues existed still reads.
       venue: sql<string | null>`coalesce(${venues.name}, ${productions.venue})`,

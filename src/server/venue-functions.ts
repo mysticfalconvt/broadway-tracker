@@ -22,6 +22,19 @@ async function requireSession() {
  * becoming two rows, and the insert races safely: a concurrent creator wins and
  * we read their row back.
  */
+/**
+ * Asks where a venue is, without the caller waiting on the answer.
+ *
+ * Suppressed under test: a suite must not depend on a third party being up, and
+ * a geocoder's terms are not something to spend on a test run.
+ */
+function placeVenueSoon(venueId: string) {
+  if (process.env.VITEST === 'true' || process.env.NODE_ENV === 'test') return
+  void import('./geocoding').then(({ geocodeVenueInBackground }) => {
+    geocodeVenueInBackground(venueId)
+  })
+}
+
 export const findOrCreateVenue = createServerOnlyFn(
   async (
     createdByUserId: string | null,
@@ -36,7 +49,13 @@ export const findOrCreateVenue = createServerOnlyFn(
     const db = getDb()
 
     const [existing] = await db.select().from(venues).where(eq(venues.matchKey, key)).limit(1)
-    if (existing) return existing
+    if (existing) {
+      // Somebody has used this theatre again. If it was never placed — because
+      // it predates coordinates, or an earlier lookup failed — this is the
+      // moment to try, at the pace of a person rather than a loop.
+      if (existing.latitude === null) placeVenueSoon(existing.id)
+      return existing
+    }
 
     const [created] = await db
       .insert(venues)
@@ -49,7 +68,10 @@ export const findOrCreateVenue = createServerOnlyFn(
       })
       .onConflictDoNothing({ target: venues.matchKey })
       .returning()
-    if (created) return created
+    if (created) {
+      placeVenueSoon(created.id)
+      return created
+    }
 
     const [raced] = await db.select().from(venues).where(eq(venues.matchKey, key)).limit(1)
     if (!raced) throw new Error('Unable to record that venue.')
@@ -195,6 +217,9 @@ export const venueWithHistory = createServerOnlyFn(
     const db = getDb()
     const [venue] = await db.select().from(venues).where(eq(venues.id, venueId)).limit(1)
     if (!venue) throw new Error('That venue is not in the catalog.')
+    // Somebody is looking at it, which is as good a moment as any to find out
+    // where it is, if nobody has yet.
+    if (venue.latitude === null) placeVenueSoon(venue.id)
 
     const staged = await db
       .select({
@@ -243,6 +268,8 @@ export const venueWithHistory = createServerOnlyFn(
         name: venue.name,
         city: venue.city,
         country: venue.country,
+        latitude: venue.latitude,
+        longitude: venue.longitude,
       },
       staged: await applyViewerCovers(viewerId, staged, (row) => row.showId),
       yourNights,

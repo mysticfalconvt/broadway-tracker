@@ -339,6 +339,14 @@ export const friendsActivityFor = createServerOnlyFn(async (viewerId: string, li
   return applyViewerCovers(viewerId, rows, (row) => row.showId)
 })
 
+/** The reader's own map. Never anybody else's — see `placesVisitedBy`. */
+export const getMyPlaces = createServerFn({ method: 'GET' }).handler(async () => {
+  const session = await auth.api.getSession({ headers: getRequestHeaders() })
+  if (!session) throw new Error('Unauthorized')
+  const { placesVisitedBy } = await import('./geocoding')
+  return placesVisitedBy(session.user.id)
+})
+
 export const getFriendsActivity = createServerFn({ method: 'GET' }).handler(async () => {
   const session = await auth.api.getSession({ headers: getRequestHeaders() })
   if (!session) throw new Error('Unauthorized')

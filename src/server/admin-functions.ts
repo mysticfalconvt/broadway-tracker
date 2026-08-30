@@ -9,7 +9,7 @@ import { auth } from './auth'
 import { pendingRequestCountFor } from './friend-functions'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { getDb } from './db/client'
-import { reports, showImages, shows, user, venues } from './db/schema'
+import { outingAttendees, reports, showImages, shows, user, venues } from './db/schema'
 
 async function requireSession() {
   const session = await auth.api.getSession({ headers: getRequestHeaders() })
@@ -152,6 +152,15 @@ export type NavBadges = {
   waiting: number
   /** Friend requests waiting on this person, administrator or not. */
   friendRequests: number
+  /**
+   * Whether this person has ever logged a night.
+   *
+   * Building a back catalogue is something you do once, at the beginning. Until
+   * then it is the most useful thing on offer and belongs in the navigation;
+   * afterwards it is clutter, and lives on the profile like everything else you
+   * might occasionally want.
+   */
+  hasHistory: boolean
 }
 
 /**
@@ -164,11 +173,20 @@ export type NavBadges = {
  */
 export const navBadgesFor = createServerOnlyFn(
   async (actor: { id: string; role?: string | null } | null): Promise<NavBadges> => {
-    if (!actor) return { isAdmin: false, waiting: 0, friendRequests: 0 }
+    // Honestly false: a signed-out visitor has no history. The navigation's
+    // signed-out branch never reads this, so it cannot become a prompt at
+    // somebody who has no account to build one in.
+    if (!actor) return { isAdmin: false, waiting: 0, friendRequests: 0, hasHistory: false }
 
     // A friend request is waiting on the person, not on their role.
     const friendRequests = await pendingRequestCountFor(actor.id)
-    if (actor.role !== 'admin') return { isAdmin: false, waiting: 0, friendRequests }
+    const [logged] = await getDb()
+      .select({ id: outingAttendees.outingId })
+      .from(outingAttendees)
+      .where(eq(outingAttendees.userId, actor.id))
+      .limit(1)
+    const hasHistory = Boolean(logged)
+    if (actor.role !== 'admin') return { isAdmin: false, waiting: 0, friendRequests, hasHistory }
 
     const db = getDb()
     const [pendingShows, pendingPhotos, openReports] = await Promise.all([
@@ -192,6 +210,7 @@ export const navBadgesFor = createServerOnlyFn(
         (pendingPhotos[0]?.count ?? 0) +
         (openReports[0]?.count ?? 0),
       friendRequests,
+      hasHistory,
     }
   },
 )

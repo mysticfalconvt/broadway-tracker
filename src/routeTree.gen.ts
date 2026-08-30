@@ -22,6 +22,7 @@ import { Route as ProtectedFeedbackRouteImport } from './routes/_protected/feedb
 import { Route as ProtectedFriendsRouteImport } from './routes/_protected/friends'
 import { Route as ProtectedLibraryRouteImport } from './routes/_protected/library'
 import { Route as ProtectedLogRouteImport } from './routes/_protected/log'
+import { Route as ProtectedPlacesRouteImport } from './routes/_protected/places'
 import { Route as ProtectedProfileRouteImport } from './routes/_protected/profile'
 import { Route as ProtectedSettingsRouteImport } from './routes/_protected/settings'
 import { Route as ProtectedSubmitShowRouteImport } from './routes/_protected/submit-show'
@@ -110,6 +111,11 @@ const ProtectedLibraryRoute = ProtectedLibraryRouteImport.update({
 const ProtectedLogRoute = ProtectedLogRouteImport.update({
   id: '/log',
   path: '/log',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedPlacesRoute = ProtectedPlacesRouteImport.update({
+  id: '/places',
+  path: '/places',
   getParentRoute: () => ProtectedRoute,
 } as any)
 const ProtectedProfileRoute = ProtectedProfileRouteImport.update({
@@ -252,6 +258,7 @@ export interface FileRoutesByFullPath {
   '/friends': typeof ProtectedFriendsRoute
   '/library': typeof ProtectedLibraryRoute
   '/log': typeof ProtectedLogRoute
+  '/places': typeof ProtectedPlacesRoute
   '/profile': typeof ProtectedProfileRoute
   '/settings': typeof ProtectedSettingsRoute
   '/submit-show': typeof ProtectedSubmitShowRoute
@@ -291,6 +298,7 @@ export interface FileRoutesByTo {
   '/friends': typeof ProtectedFriendsRoute
   '/library': typeof ProtectedLibraryRoute
   '/log': typeof ProtectedLogRoute
+  '/places': typeof ProtectedPlacesRoute
   '/profile': typeof ProtectedProfileRoute
   '/settings': typeof ProtectedSettingsRoute
   '/submit-show': typeof ProtectedSubmitShowRoute
@@ -332,6 +340,7 @@ export interface FileRoutesById {
   '/_protected/friends': typeof ProtectedFriendsRoute
   '/_protected/library': typeof ProtectedLibraryRoute
   '/_protected/log': typeof ProtectedLogRoute
+  '/_protected/places': typeof ProtectedPlacesRoute
   '/_protected/profile': typeof ProtectedProfileRoute
   '/_protected/settings': typeof ProtectedSettingsRoute
   '/_protected/submit-show': typeof ProtectedSubmitShowRoute
@@ -373,6 +382,7 @@ export interface FileRouteTypes {
     | '/friends'
     | '/library'
     | '/log'
+    | '/places'
     | '/profile'
     | '/settings'
     | '/submit-show'
@@ -412,6 +422,7 @@ export interface FileRouteTypes {
     | '/friends'
     | '/library'
     | '/log'
+    | '/places'
     | '/profile'
     | '/settings'
     | '/submit-show'
@@ -452,6 +463,7 @@ export interface FileRouteTypes {
     | '/_protected/friends'
     | '/_protected/library'
     | '/_protected/log'
+    | '/_protected/places'
     | '/_protected/profile'
     | '/_protected/settings'
     | '/_protected/submit-show'
@@ -589,6 +601,13 @@ declare module '@tanstack/react-router' {
       path: '/log'
       fullPath: '/log'
       preLoaderRoute: typeof ProtectedLogRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/places': {
+      id: '/_protected/places'
+      path: '/places'
+      fullPath: '/places'
+      preLoaderRoute: typeof ProtectedPlacesRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/_protected/profile': {
@@ -776,6 +795,7 @@ interface ProtectedRouteChildren {
   ProtectedFriendsRoute: typeof ProtectedFriendsRoute
   ProtectedLibraryRoute: typeof ProtectedLibraryRoute
   ProtectedLogRoute: typeof ProtectedLogRoute
+  ProtectedPlacesRoute: typeof ProtectedPlacesRoute
   ProtectedProfileRoute: typeof ProtectedProfileRoute
   ProtectedSettingsRoute: typeof ProtectedSettingsRoute
   ProtectedSubmitShowRoute: typeof ProtectedSubmitShowRoute
@@ -801,6 +821,7 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedFriendsRoute: ProtectedFriendsRoute,
   ProtectedLibraryRoute: ProtectedLibraryRoute,
   ProtectedLogRoute: ProtectedLogRoute,
+  ProtectedPlacesRoute: ProtectedPlacesRoute,
   ProtectedProfileRoute: ProtectedProfileRoute,
   ProtectedSettingsRoute: ProtectedSettingsRoute,
   ProtectedSubmitShowRoute: ProtectedSubmitShowRoute,
