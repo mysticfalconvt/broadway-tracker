@@ -308,14 +308,26 @@ export const outingForViewer = createServerOnlyFn(async (viewerId: string, outin
   // would be presenting a coin flip as a memory.
   const { likelyCastOn, seenPerformersFor } = await import('./people-functions')
 
-  // A recorded answer replaces the guess entirely. Once somebody has said who
-  // they saw, showing them an inference alongside it would be arguing with them
-  // about their own evening.
+  // A recorded answer replaces the guess **for the roles it speaks to**, not
+  // for the whole night.
+  //
+  // It used to replace all of it, on the reasoning that arguing with somebody
+  // about their own evening is rude. True — but the commonest thing anybody
+  // records is a single correction: an understudy went on. Dropping the rest of
+  // the inference then punished the one act the feature exists for, and left a
+  // twelve-person company showing one name.
   const seenCast = attendance ? await seenPerformersFor(session.user.id, data.id) : []
+  const spokenFor = new Set(
+    seenCast.filter((row) => row.role).map((row) => row.role!.toLowerCase()),
+  )
+  const alreadyNamed = new Set(seenCast.map((row) => row.personId))
   const likelyCast =
     // "Who you probably saw" is addressed to somebody who was in the room.
-    attendance && seenCast.length === 0 && outing.productionId && outing.datePrecision === 'exact'
-      ? await likelyCastOn(outing.productionId, outing.occurredOn)
+    attendance && outing.productionId && outing.datePrecision === 'exact'
+      ? (await likelyCastOn(outing.productionId, outing.occurredOn)).filter(
+          (member) =>
+            !spokenFor.has(member.role.toLowerCase()) && !alreadyNamed.has(member.personId),
+        )
       : []
 
   const { applyViewerCovers } = await import('./image-functions')

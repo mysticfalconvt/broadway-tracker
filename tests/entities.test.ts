@@ -2,9 +2,15 @@ import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { findOrCreateProduction } from '../src/server/catalog-functions'
-import { castings, people } from '../src/server/db/schema'
+import { castings, people, seenPerformers, shows } from '../src/server/db/schema'
 import { decodeEntities } from '../src/lib/entities'
-import { addCasting, removeCasting, updateCasting } from '../src/server/people-functions'
+import { createOutingForUser } from '../src/server/outing-functions'
+import {
+  addCasting,
+  recordSeenPerformer,
+  removeCasting,
+  updateCasting,
+} from '../src/server/people-functions'
 import { db, makeAdmin, makeShow, makeUser, resetDatabase } from './helpers'
 
 beforeEach(resetDatabase)
@@ -118,12 +124,17 @@ describe('correcting a casting', () => {
     expect(await db.select().from(castings)).toHaveLength(0)
   })
 
-  it('is not something an ordinary member can do', async () => {
-    const { member, casting } = await aCasting()
+  it('is not something a member who did not enter it can do', async () => {
+    const { casting } = await aCasting()
+    const bystander = await makeUser()
     await expect(
-      updateCasting(member, casting.id, { role: 'Anything', kind: 'performer', isPrincipal: true }),
-    ).rejects.toThrow()
-    await expect(removeCasting(member, casting.id)).rejects.toThrow()
+      updateCasting(bystander, casting.id, {
+        role: 'Anything',
+        kind: 'performer',
+        isPrincipal: true,
+      }),
+    ).rejects.toThrow(/somebody else/i)
+    await expect(removeCasting(bystander, casting.id)).rejects.toThrow(/somebody else/i)
     expect(await db.select().from(castings)).toHaveLength(1)
   })
 
@@ -132,5 +143,76 @@ describe('correcting a casting', () => {
     await expect(
       updateCasting(admin, casting.id, { role: '   ', kind: 'performer', isPrincipal: true }),
     ).rejects.toThrow(/needs a role/i)
+  })
+})
+
+describe('fixing what you entered yourself', () => {
+  async function entered() {
+    const mine = await makeUser()
+    const theirs = await makeUser()
+    const show = await makeShow()
+    const production = await findOrCreateProduction(mine.id, show.id, 'Broadway', 'broadway')
+    await addCasting(mine.id, {
+      productionId: production.id,
+      personName: 'Julia Knitel',
+      role: 'Ewen Montagu',
+      kind: 'performer',
+      isPrincipal: true,
+    })
+    const [row] = await db.select().from(castings)
+    return { mine, theirs, casting: row! }
+  }
+
+  it('lets the person who entered it correct it', async () => {
+    // An append-only API hands somebody a way to make a mess and no way to
+    // clear it up. Bulk entry is exactly where wrong rows come from.
+    const { mine, casting } = await entered()
+    await updateCasting(mine, casting.id, {
+      role: 'Ewen Montagu (cover)',
+      kind: 'performer',
+      isPrincipal: true,
+    })
+    const [after] = await db.select().from(castings).where(eq(castings.id, casting.id))
+    expect(after?.role).toBe('Ewen Montagu (cover)')
+
+    await removeCasting(mine, casting.id)
+    expect(await db.select().from(castings)).toHaveLength(0)
+  })
+
+  it('does not let a different member touch it', async () => {
+    const { theirs, casting } = await entered()
+    await expect(
+      updateCasting(theirs, casting.id, { role: 'X', kind: 'performer', isPrincipal: true }),
+    ).rejects.toThrow(/somebody else/i)
+    await expect(removeCasting(theirs, casting.id)).rejects.toThrow(/somebody else/i)
+    expect(await db.select().from(castings)).toHaveLength(1)
+  })
+
+  it('still lets an administrator correct anybody’s', async () => {
+    const { casting } = await entered()
+    const admin = await makeAdmin()
+    await updateCasting(admin, casting.id, {
+      role: 'Ewen Montagu',
+      kind: 'performer',
+      isPrincipal: true,
+    })
+    expect(await db.select().from(castings)).toHaveLength(1)
+  })
+
+  it('never reaches what somebody recorded about their own night', async () => {
+    // A casting is a claim about a stage. What a member says they saw is theirs.
+    const { mine, casting } = await entered()
+    const [show] = await db.select().from(shows)
+    const night = await createOutingForUser(mine.id, {
+      showId: show!.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-08-11',
+      attendeeIds: [],
+      favorite: false,
+    })
+    await recordSeenPerformer(mine.id, night.id, 'Gerianne Pérez', 'Ewen Montagu')
+
+    await removeCasting(mine, casting.id)
+    expect(await db.select().from(seenPerformers)).toHaveLength(1)
   })
 })

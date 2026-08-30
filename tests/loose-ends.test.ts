@@ -4,7 +4,8 @@ import { findOrCreateProduction } from '../src/server/catalog-functions'
 import { castings, outings, productions, seenPerformers } from '../src/server/db/schema'
 import { eq } from 'drizzle-orm'
 import { looseEndFor } from '../src/server/loose-ends'
-import { addCasting } from '../src/server/people-functions'
+import { createOutingForUser } from '../src/server/outing-functions'
+import { addCasting, recordSeenPerformer } from '../src/server/people-functions'
 import { db, makeLibraryEntry, makeShow, makeUser, resetDatabase } from './helpers'
 
 beforeEach(resetDatabase)
@@ -224,5 +225,52 @@ describe('how it is chosen', () => {
   it('says nothing at all when there is nothing worth asking', async () => {
     const member = await makeUser()
     expect(await looseEndFor(member.id, MONDAY)).toBeNull()
+  })
+})
+
+describe('an understudy going on', () => {
+  it('supersedes the guess for that role and leaves the rest standing', async () => {
+    // The case the whole feature exists for. Recording one cover used to drop
+    // the entire inferred company, so a twelve-person cast showed one name.
+    const { outingForViewer } = await import('../src/server/outing-functions')
+    const member = await makeUser()
+    const show = await makeShow()
+    const production = await findOrCreateProduction(member.id, show.id, 'Broadway', 'broadway')
+    for (const [name, role] of [
+      ['Julia Knitel', 'Ewen Montagu'],
+      ['Jak Malone', 'Hester Leggett'],
+      ['David Cumming', 'Charles Cholmondeley'],
+    ]) {
+      await addCasting(member.id, {
+        productionId: production.id,
+        personName: name!,
+        role: role!,
+        kind: 'performer',
+        isPrincipal: true,
+      })
+    }
+    const night = await createOutingForUser(member.id, {
+      showId: show.id,
+      productionId: production.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-08-11',
+      attendeeIds: [],
+      favorite: false,
+    })
+
+    const before = await outingForViewer(member.id, night.id)
+    expect(before.likelyCast).toHaveLength(3)
+    expect(before.seenCast).toHaveLength(0)
+
+    await recordSeenPerformer(member.id, night.id, 'Gerianne Pérez', 'Ewen Montagu')
+
+    const after = await outingForViewer(member.id, night.id)
+    expect(after.seenCast.map((one) => one.name)).toEqual(['Gerianne Pérez'])
+    // The other two are still inferred; only the role they spoke to is gone.
+    expect(after.likelyCast.map((one) => one.role).sort()).toEqual([
+      'Charles Cholmondeley',
+      'Hester Leggett',
+    ])
+    expect(after.likelyCast.map((one) => one.name)).not.toContain('Julia Knitel')
   })
 })

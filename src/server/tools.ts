@@ -297,6 +297,110 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
   }),
 
   tool({
+    name: 'who_was_probably_on',
+    description:
+      'For one of this person’s own nights: who the catalog works out was on stage, and who ' +
+      'they have already said they saw. Use before record_who_i_saw so a name is not ' +
+      'recorded twice, and to find out whether the app is about to tell them they saw the ' +
+      'wrong person.',
+    parameters: z.object({ outingId: z.string().uuid() }),
+    run: async (actorId, { outingId }) => {
+      const { getDb } = await import('./db/client')
+      const { outingAttendees, outings } = await import('./db/schema')
+      const { and, eq } = await import('drizzle-orm')
+      const { likelyCastOn, seenPerformersFor } = await import('./people-functions')
+
+      const [night] = await getDb()
+        .select({ productionId: outings.productionId, occurredOn: outings.occurredOn })
+        .from(outings)
+        .innerJoin(outingAttendees, eq(outingAttendees.outingId, outings.id))
+        .where(and(eq(outings.id, outingId), eq(outingAttendees.userId, actorId)))
+        .limit(1)
+      if (!night) throw new Error('That is not a night you were at.')
+
+      const recorded = await seenPerformersFor(actorId, outingId)
+      const spokenFor = new Set(recorded.filter((r) => r.role).map((r) => r.role!.toLowerCase()))
+      const likely = night.productionId
+        ? (await likelyCastOn(night.productionId, night.occurredOn)).filter(
+            (member) => !spokenFor.has(member.role.toLowerCase()),
+          )
+        : []
+      return { recorded, stillInferred: likely }
+    },
+  }),
+
+  tool({
+    name: 'record_who_i_saw',
+    description:
+      'Record that this person actually saw somebody in a role on one of their own nights — ' +
+      'an understudy or a cover going on, most usefully. This is the only way to correct the ' +
+      'app’s guess: casting dates cannot know a cover went on, so without it the app will ' +
+      'keep telling them they saw the billed performer. Give the role the person played, not ' +
+      'the one they usually play. The performer does not need to be in the cast list; they ' +
+      'are added if they are not.',
+    writes: true,
+    parameters: z.object({
+      outingId: z.string().uuid(),
+      personName: z.string().trim().min(1).max(160),
+      role: z
+        .string()
+        .trim()
+        .max(160)
+        .optional()
+        .describe('The part they went on for. Supply it: it is what supersedes the guess.'),
+    }),
+    run: async (actorId, { outingId, personName, role }) => {
+      const { recordSeenPerformer } = await import('./people-functions')
+      return await recordSeenPerformer(actorId, outingId, personName, role)
+    },
+  }),
+
+  tool({
+    name: 'update_casting',
+    description:
+      'Correct a casting you entered — its role, dates, or place in the run. Get the id from ' +
+      'cast_of. You may change one you entered yourself; an administrator may change any. ' +
+      'Prefer this to adding a second row: two rows disagreeing about the same person is ' +
+      'worse than one that was wrong and got fixed.',
+    writes: true,
+    parameters: z.object({
+      castingId: z.string().uuid(),
+      role: z.string().trim().min(1).max(160),
+      kind: z.enum(['performer', 'creative']).default('performer'),
+      isPrincipal: z.boolean().default(true),
+      startedOn: z.string().date().nullish(),
+      endedOn: z.string().date().nullish(),
+      replacementOrder: z.number().int().min(1).max(200).nullish(),
+    }),
+    run: async (actorId, { castingId, ...rest }) => {
+      const { updateCasting } = await import('./people-functions')
+      const { getDb } = await import('./db/client')
+      const { user } = await import('./db/schema')
+      const { eq } = await import('drizzle-orm')
+      const [actor] = await getDb().select().from(user).where(eq(user.id, actorId)).limit(1)
+      return await updateCasting(actor!, castingId, rest)
+    },
+  }),
+
+  tool({
+    name: 'remove_casting',
+    description:
+      'Delete a casting you entered, when it is simply wrong rather than incomplete. Removes ' +
+      'a claim about who was on a stage; it never touches what anybody recorded about their ' +
+      'own night.',
+    writes: true,
+    parameters: z.object({ castingId: z.string().uuid() }),
+    run: async (actorId, { castingId }) => {
+      const { removeCasting } = await import('./people-functions')
+      const { getDb } = await import('./db/client')
+      const { user } = await import('./db/schema')
+      const { eq } = await import('drizzle-orm')
+      const [actor] = await getDb().select().from(user).where(eq(user.id, actorId)).limit(1)
+      return await removeCasting(actor!, castingId)
+    },
+  }),
+
+  tool({
     name: 'log_night',
     description:
       'Record a night this person went to the theatre. Say how sure the date is: `exact` ' +

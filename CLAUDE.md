@@ -148,3 +148,16 @@ before changing it:
 - **Only the SHA-256 of a token is stored.** Plain SHA-256 rather than a
   password hash is deliberate: 160 bits from a CSPRNG has no dictionary to run.
 - Tokens are shown once. Nothing can recover one afterwards.
+- **A caller may correct what it entered.** `castings.createdByUserId` is the
+  test, with admins able to correct any. An append-only API hands somebody a way
+  to make a mess and no way to clear it up, and bulk entry is where the mess
+  comes from. Deleting a casting withdraws a claim about a stage; it never
+  touches `seen_performers`, which is a member's own word about their own night.
+
+## Covers and understudies
+
+`likelyCastOn` infers from casting dates, which cannot know an understudy went
+on. `seen_performers` is the override, and it is **per role**, not per night:
+recording one cover supersedes that role and leaves the rest of the inference
+standing. It used to replace the whole night's guess, which punished the single
+commonest correction by reducing a twelve-person company to one name.

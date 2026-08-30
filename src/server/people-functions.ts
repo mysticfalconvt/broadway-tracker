@@ -271,6 +271,32 @@ export const showsFeaturing = createServerOnlyFn(
 )
 
 /**
+ * Who may correct a casting: whoever entered it, or an administrator.
+ *
+ * Not admin-only, and the reason matters. The people most likely to enter a
+ * wrong role are the ones entering roles in bulk — a member pointing their own
+ * agent at the catalog — and they are also the only ones who will notice. An
+ * append-only API hands somebody a way to make a mess and no way to clear it
+ * up, so the wrong rows simply stay.
+ *
+ * A casting is a claim about who stood on a stage, not somebody's record of
+ * their own evening: what a member said they saw lives in `seen_performers` and
+ * is never touched from here. So the worst case is a claim withdrawn by the
+ * person who made it, which is the outcome we want anyway.
+ */
+const mayCorrectCasting = async (actor: Actor, id: string) => {
+  const [row] = await getDb()
+    .select({ createdByUserId: castings.createdByUserId })
+    .from(castings)
+    .where(eq(castings.id, id))
+    .limit(1)
+  if (!row) throw new Error('That casting is not in the catalog.')
+  if (actor.role !== 'admin' && row.createdByUserId !== actor.id) {
+    throw new Error('That casting was entered by somebody else.')
+  }
+}
+
+/**
  * Correcting a casting.
  *
  * Nothing could edit one until now: the API and the screens were both
@@ -291,7 +317,7 @@ export const updateCasting = createServerOnlyFn(
       replacementOrder?: number | null
     },
   ) => {
-    assertAdmin(actor)
+    await mayCorrectCasting(actor, id)
     const role = decodeEntities(data.role).trim().replace(/\s+/g, ' ')
     if (!role) throw new Error('A casting needs a role.')
 
@@ -321,7 +347,7 @@ export const updateCasting = createServerOnlyFn(
  * member said they saw lives in `seen_performers` and is untouched here.
  */
 export const removeCasting = createServerOnlyFn(async (actor: Actor, id: string) => {
-  assertAdmin(actor)
+  await mayCorrectCasting(actor, id)
   const [removed] = await getDb()
     .delete(castings)
     .where(eq(castings.id, id))
