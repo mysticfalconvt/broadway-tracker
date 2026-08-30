@@ -96,21 +96,85 @@ function AdminHome() {
         </section>
       ) : null}
 
-      <nav className="admin-links">
-        <Link to="/admin/catalog">Show submissions</Link>
-        <Link to="/admin/shows">Published shows</Link>
-        <Link to="/admin/photos">Photographs</Link>
-        <Link to="/admin/reports">Reports</Link>
-        <Link to="/admin/import">Add catalog data</Link>
-        <Link to="/admin/venues">Venues</Link>
-        <Link to="/admin/productions">Productions</Link>
-        <Link to="/admin/people">People</Link>
-        <Link to="/admin/local">Local records</Link>
-        <Link to="/admin/members">Members</Link>
-      </nav>
+      <section className="admin-sections">
+        {AREAS.map((area) => (
+          <div className="admin-group" key={area.title}>
+            <h2>{area.title}</h2>
+            <ul>
+              {area.places.map((place) => (
+                <li key={place.to}>
+                  <Link to={place.to}>
+                    <strong>{place.label}</strong>
+                    <span>{place.what}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </section>
     </main>
   )
 }
+
+/**
+ * Everywhere an administrator can go, grouped by what they came to do.
+ *
+ * This was a row of ten identical links, which reads as a list of words rather
+ * than a set of choices: nothing said what any of them was for, or which of
+ * them were the same kind of thing.
+ */
+const AREAS = [
+  {
+    title: 'The catalog',
+    places: [
+      {
+        to: '/admin/catalog',
+        label: 'Show submissions',
+        what: 'What members have asked to add, waiting on a decision',
+      },
+      {
+        to: '/admin/shows',
+        label: 'Published shows',
+        what: 'Correct a live record, or fold a duplicate into it',
+      },
+      {
+        to: '/admin/import',
+        label: 'Add catalog data',
+        what: 'Paste shows or venues in bulk',
+      },
+      {
+        to: '/admin/productions',
+        label: 'Productions',
+        what: 'Every staging recorded, newest first',
+      },
+    ],
+  },
+  {
+    title: 'Things that get entered twice',
+    places: [
+      { to: '/admin/venues', label: 'Venues', what: 'Fold one theatre into another' },
+      { to: '/admin/people', label: 'People', what: 'Fold a performer entered twice' },
+      {
+        to: '/admin/local',
+        label: 'Local records',
+        what: 'Work that exists in one town, and what deserves lifting',
+      },
+    ],
+  },
+  {
+    title: 'People',
+    places: [
+      { to: '/admin/members', label: 'Members', what: 'Who is here, and what they have logged' },
+      {
+        to: '/admin/photos',
+        label: 'Photographs',
+        what: 'Images offered publicly, awaiting a look',
+      },
+      { to: '/admin/reports', label: 'Reports', what: 'Bugs and ideas members have sent' },
+    ],
+  },
+] as const
 
 function QueueCard({
   label,
