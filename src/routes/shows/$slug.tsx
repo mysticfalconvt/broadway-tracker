@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { authClient } from '../../lib/auth-client'
 import { ShowArtwork } from '../../components/ShowArtwork'
 import { getSession } from '../../server/auth-functions'
-import { getPublishedProductions, getPublishedShow } from '../../server/catalog-functions'
+import { getProductionsForShow, getShowBySlug } from '../../server/catalog-functions'
 import { getCastForShow } from '../../server/people-functions'
 import { saveLibraryEntry } from '../../server/library-functions'
 import { changePhotoVisibility, deleteShowPhoto, getShowPhotos } from '../../server/image-functions'
@@ -13,11 +13,12 @@ import { formatFuzzyDate } from '../../lib/fuzzy-date'
 
 export const Route = createFileRoute('/shows/$slug')({
   loader: async ({ params }) => {
-    const show = await getPublishedShow({ data: { slug: params.slug } })
+    const { show, scope } = await getShowBySlug({ data: { slug: params.slug } })
     return {
       show,
+      scope,
       photos: show ? await getShowPhotos({ data: { showId: show.id } }) : [],
-      productions: show ? await getPublishedProductions({ data: { showId: show.id } }) : [],
+      productions: show ? await getProductionsForShow({ data: { showId: show.id, scope } }) : [],
       cast: show ? await getCastForShow({ data: { showId: show.id } }) : [],
       // Resolved on the server: the client session hook is empty during SSR, so
       // anything gated on it would only appear after hydration.
@@ -28,7 +29,7 @@ export const Route = createFileRoute('/shows/$slug')({
 })
 
 function ShowDetail() {
-  const { show, photos, productions, cast, session } = Route.useLoaderData()
+  const { show, scope, photos, productions, cast, session } = Route.useLoaderData()
 
   if (!show) {
     return (
@@ -51,7 +52,11 @@ function ShowDetail() {
             <p className="eyebrow">{show.type}</p>
             <h1>{show.title}</h1>
             {session ? <LogAction showId={show.id} /> : null}
-            <p>This shared catalog record is ready for your theatre history.</p>
+            <p>
+              {scope === 'local'
+                ? 'A local record, kept by the people who were there. It is not in the shared catalog and does not appear in search.'
+                : 'This shared catalog record is ready for your theatre history.'}
+            </p>
             <LibraryButtons showId={show.id} serverSession={session} />
           </div>
         </div>
@@ -60,14 +65,19 @@ function ShowDetail() {
         <div>
           <p className="eyebrow">About the show</p>
           <h2>The work itself.</h2>
-          <p>{show.synopsis || 'A catalog description has not been added yet.'}</p>
+          <p>
+            {show.synopsis ||
+              (scope === 'local'
+                ? 'Nobody has written down what this was yet.'
+                : 'A catalog description has not been added yet.')}
+          </p>
         </div>
         <aside>
           <p className="eyebrow">Your theatre</p>
           <YourHistory showId={show.id} serverSession={session} />
         </aside>
       </section>
-      <Productions productions={productions} />
+      <Productions productions={productions} scope={scope} />
       <Cast cast={cast} />
       <PhotoGallery showId={show.id} photos={photos} />
     </main>
@@ -367,15 +377,17 @@ function LogAction({ showId }: { showId: string }) {
  */
 function Productions({
   productions,
+  scope,
 }: {
-  productions: Awaited<ReturnType<typeof getPublishedProductions>>
+  productions: Awaited<ReturnType<typeof getProductionsForShow>>
+  scope: 'catalog' | 'local'
 }) {
   if (!productions.length) return null
   return (
     <section className="productions-section page-wrap">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Productions</p>
+          <p className="eyebrow">{scope === 'local' ? 'Stagings' : 'Productions'}</p>
           <h2>Where it has been staged.</h2>
         </div>
       </div>

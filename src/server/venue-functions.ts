@@ -1,6 +1,6 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
-import { and, asc, desc, eq, ilike, ne, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { tidyPlace, venueKey } from '../lib/place'
@@ -209,7 +209,9 @@ export const venueWithHistory = createServerOnlyFn(
       })
       .from(productions)
       .innerJoin(shows, eq(productions.showId, shows.id))
-      .where(and(eq(productions.venueId, venueId), eq(shows.catalogStatus, 'published')))
+      .where(
+        and(eq(productions.venueId, venueId), inArray(shows.catalogStatus, ['published', 'local'])),
+      )
       .orderBy(asc(productions.openedOn), asc(shows.title))
 
     const yourNights = viewerId

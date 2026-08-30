@@ -88,7 +88,7 @@ export const createOutingForUser = createServerOnlyFn(
     const [show] = await getDb()
       .select({ id: shows.id })
       .from(shows)
-      .where(and(eq(shows.id, data.showId), eq(shows.catalogStatus, 'published')))
+      .where(and(eq(shows.id, data.showId), inArray(shows.catalogStatus, ['published', 'local'])))
       .limit(1)
     if (!show) throw new Error('Choose a published show from the catalog.')
 

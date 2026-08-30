@@ -87,9 +87,24 @@ export const shows = pgTable(
     type: text('type', { enum: ['musical', 'play', 'other'] }).notNull(),
     synopsis: text('synopsis'),
     coverImageKey: text('cover_image_key'),
-    catalogStatus: text('catalog_status', { enum: ['pending', 'published', 'rejected'] })
+    /**
+     * `local` is a member's own record — a community theatre's original revue,
+     * a school's devised piece — that never enters the shared catalog and
+     * never sits in the review queue. Every other query filters on an explicit
+     * status, so a local show is invisible to them by default and each door it
+     * may pass through has to be opened deliberately.
+     */
+    catalogStatus: text('catalog_status', {
+      enum: ['pending', 'published', 'rejected', 'local'],
+    })
       .notNull()
       .default('pending'),
+    /**
+     * What two people from the same town agree about for a work that exists
+     * nowhere but there: its title, and the hall it was staged in. Only local
+     * shows carry one.
+     */
+    localKey: text('local_key').unique(),
     submittedByUserId: text('submitted_by_user_id').references(() => user.id, {
       onDelete: 'set null',
     }),

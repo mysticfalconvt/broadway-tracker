@@ -3,6 +3,7 @@ import { and, asc, eq, ilike, ne, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
 
+import { localTitleKey } from '../lib/show'
 import { getDb } from './db/client'
 import { libraryEntries, listItems, outings, productions, shows, user, venues } from './db/schema'
 
@@ -56,6 +57,41 @@ export const publishedShowBySlug = createServerOnlyFn(async (slug: string) => {
   return show ?? null
 })
 
+/**
+ * A show a member recorded for themselves, readable by anyone signed in.
+ *
+ * Kept apart from the published lookup rather than folded into it, because that
+ * one answers the public route: a local record carries a school's name and the
+ * fact that somebody was there, which is not for the open web.
+ */
+export const localShowBySlug = createServerOnlyFn(async (slug: string) => {
+  const [show] = await getDb()
+    .select(catalogShow)
+    .from(shows)
+    .where(and(eq(shows.slug, slug), eq(shows.catalogStatus, 'local')))
+    .limit(1)
+  return show ?? null
+})
+
+/** Every staging of a local show, which is the only way one is ever reached. */
+export const localProductionsForShow = createServerOnlyFn(async (showId: string) =>
+  getDb()
+    .select({
+      id: productions.id,
+      name: productions.name,
+      productionType: productions.productionType,
+      venue: sql<string | null>`coalesce(${venues.name}, ${productions.venue})`,
+      city: sql<string | null>`coalesce(${venues.city}, ${productions.city})`,
+      country: productions.country,
+      openedOn: productions.openedOn,
+      closedOn: productions.closedOn,
+    })
+    .from(productions)
+    .leftJoin(venues, eq(productions.venueId, venues.id))
+    .where(eq(productions.showId, showId))
+    .orderBy(asc(productions.name)),
+)
+
 export const publishedProductionsForShow = createServerOnlyFn(async (showId: string) =>
   getDb()
     .select({
@@ -93,6 +129,39 @@ export const searchPublishedShows = createServerFn({ method: 'GET' })
 export const getPublishedShow = createServerFn({ method: 'GET' })
   .validator(z.object({ slug: z.string().min(1).max(160) }))
   .handler(async ({ data }) => publishedShowBySlug(data.slug))
+
+/**
+ * The show behind a slug, for the show page.
+ *
+ * Published records answer to anybody. A local one answers only to somebody
+ * signed in, so the open web never sees a school's name attached to the fact
+ * that somebody was there.
+ */
+export const getShowBySlug = createServerFn({ method: 'GET' })
+  .validator(z.object({ slug: z.string().min(1).max(160) }))
+  .handler(async ({ data }) => {
+    const published = await publishedShowBySlug(data.slug)
+    if (published) return { show: published, scope: 'catalog' as const }
+
+    const { auth } = await import('./auth')
+    const { getRequestHeaders } = await import('@tanstack/react-start/server')
+    const session = await auth.api.getSession({ headers: getRequestHeaders() })
+    if (!session) return { show: null, scope: 'catalog' as const }
+
+    const local = await localShowBySlug(data.slug)
+    return local
+      ? { show: local, scope: 'local' as const }
+      : { show: null, scope: 'catalog' as const }
+  })
+
+/** Stagings for the show page, whichever kind of record it turned out to be. */
+export const getProductionsForShow = createServerFn({ method: 'GET' })
+  .validator(z.object({ showId: z.string().uuid(), scope: z.enum(['catalog', 'local']) }))
+  .handler(async ({ data }) =>
+    data.scope === 'local'
+      ? localProductionsForShow(data.showId)
+      : publishedProductionsForShow(data.showId),
+  )
 
 export const getPublishedProductions = createServerFn({ method: 'GET' })
   .validator(z.object({ showId: z.string().uuid() }))
@@ -134,7 +203,13 @@ async function insertWithUniqueSlug({
   type,
   synopsis,
   submittedByUserId,
-}: z.infer<typeof showInput> & { submittedByUserId: string }) {
+  catalogStatus = 'pending',
+  localKey = null,
+}: z.infer<typeof showInput> & {
+  submittedByUserId: string
+  catalogStatus?: 'pending' | 'local'
+  localKey?: string | null
+}) {
   const baseSlug = toSlug(title)
   for (let suffix = 1; suffix <= 100; suffix++) {
     const slug = suffix === 1 ? baseSlug : `${baseSlug}-${suffix}`
@@ -146,7 +221,8 @@ async function insertWithUniqueSlug({
         synopsis: synopsis || null,
         slug,
         submittedByUserId,
-        catalogStatus: 'pending',
+        catalogStatus,
+        localKey,
       })
       .onConflictDoNothing({ target: shows.slug })
       .returning({ id: shows.id, title: shows.title, slug: shows.slug })
@@ -548,13 +624,111 @@ export function normalizeProductionName(value: string) {
  * A run spanning New Year is recorded as two, which is wrong but rare, and less
  * wrong than folding two years' productions into one.
  */
+/**
+ * A work that exists nowhere but this town: a community theatre's own revue, a
+ * school's devised piece. Recorded without review, because an administrator
+ * approving a record only one family will ever read makes the shared catalog
+ * worse and the queue longer.
+ *
+ * The show and its staging are made together, because a local work has no
+ * meaning apart from where it was put on. Convergence follows the same rule as
+ * local stagings: the title and the hall, which two people from the same town
+ * agree about. It stays deliberately conservative — a second record an
+ * administrator can merge is a smaller error than folding two different works
+ * into one.
+ */
+export const findOrCreateLocalShow = createServerOnlyFn(
+  async (
+    userId: string,
+    title: string,
+    type: 'musical' | 'play' | 'other',
+    venueName: string,
+    city: string | null,
+    year: number,
+  ) => {
+    const cleanTitle = title.trim().replace(/\s+/g, ' ')
+    if (!cleanTitle) throw new Error('A show needs a title.')
+    if (!Number.isInteger(year) || year < 1800 || year > 2200) {
+      throw new Error('A local show needs the year you saw it.')
+    }
+
+    const venue = await (await import('./venue-functions')).findOrCreateVenue(
+      userId,
+      venueName,
+      city,
+    )
+    const localKey = `${localTitleKey(cleanTitle)}:${venue.id}`
+
+    const db = getDb()
+    const [existing] = await db
+      .select({ id: shows.id, slug: shows.slug, title: shows.title })
+      .from(shows)
+      .where(eq(shows.localKey, localKey))
+      .limit(1)
+
+    const show =
+      existing ??
+      (await insertWithUniqueSlug({
+        title: cleanTitle,
+        type,
+        submittedByUserId: userId,
+        catalogStatus: 'local',
+        localKey,
+      }))
+
+    // The staging is what a night actually attaches to, and it converges on the
+    // year the same way a school's production of a known work does.
+    const production = await findOrCreateLocalStaging(show.id, venue, year)
+    return { show, productionId: production.id, created: !existing }
+  },
+)
+
+type ResolvedVenue = { id: string; name: string; city: string | null }
+
+/** The staging itself, once the show and the hall are both settled. */
+async function findOrCreateLocalStaging(showId: string, venue: ResolvedVenue, year: number) {
+  const db = getDb()
+  const localKey = `${showId}:${venue.id}:${year}`
+
+  const [existing] = await db
+    .select({ id: productions.id })
+    .from(productions)
+    .where(eq(productions.localKey, localKey))
+    .limit(1)
+  if (existing) return { id: existing.id, created: false }
+
+  const [created] = await db
+    .insert(productions)
+    .values({
+      showId,
+      name: `${venue.name}, ${year}`,
+      productionType: 'local',
+      scope: 'local',
+      localKey,
+      venueId: venue.id,
+      venue: venue.name,
+      city: venue.city,
+    })
+    .onConflictDoNothing({ target: productions.localKey })
+    .returning({ id: productions.id })
+  if (created) return { id: created.id, created: true }
+
+  // Somebody else in town recorded it between the read and the write.
+  const [raced] = await db
+    .select({ id: productions.id })
+    .from(productions)
+    .where(eq(productions.localKey, localKey))
+    .limit(1)
+  if (!raced) throw new Error('Unable to record that staging.')
+  return { id: raced.id, created: false }
+}
+
 export const findOrCreateLocalProduction = createServerOnlyFn(
   async (userId: string, showId: string, venueName: string, city: string | null, year: number) => {
     if (!Number.isInteger(year) || year < 1800 || year > 2200) {
       throw new Error('A local staging needs the year you saw it.')
     }
-    const db = getDb()
-    const [show] = await db
+    const [show] = await getDb()
       .select({ id: shows.id })
       .from(shows)
       .where(and(eq(shows.id, showId), eq(shows.catalogStatus, 'published')))
@@ -566,39 +740,7 @@ export const findOrCreateLocalProduction = createServerOnlyFn(
       venueName,
       city,
     )
-    const localKey = `${showId}:${venue.id}:${year}`
-
-    const [existing] = await db
-      .select({ id: productions.id })
-      .from(productions)
-      .where(eq(productions.localKey, localKey))
-      .limit(1)
-    if (existing) return { id: existing.id, created: false }
-
-    const [created] = await db
-      .insert(productions)
-      .values({
-        showId,
-        name: `${venue.name}, ${year}`,
-        productionType: 'local',
-        scope: 'local',
-        localKey,
-        venueId: venue.id,
-        venue: venue.name,
-        city: venue.city,
-      })
-      .onConflictDoNothing({ target: productions.localKey })
-      .returning({ id: productions.id })
-    if (created) return { id: created.id, created: true }
-
-    // Somebody else in town recorded it between the read and the write.
-    const [raced] = await db
-      .select({ id: productions.id })
-      .from(productions)
-      .where(eq(productions.localKey, localKey))
-      .limit(1)
-    if (!raced) throw new Error('Unable to record that staging.')
-    return { id: raced.id, created: false }
+    return findOrCreateLocalStaging(showId, venue, year)
   },
 )
 
@@ -635,6 +777,89 @@ export const localProductionsAt = createServerOnlyFn(
       .orderBy(asc(productions.name))
   },
 )
+
+/**
+ * Lifts a local record into the shared catalog.
+ *
+ * Some local work turns out to be of general interest — a company's original
+ * musical that goes on to be staged elsewhere. Promotion drops the local key so
+ * the record deduplicates by title from then on, and leaves the staging alone:
+ * it really did happen at that hall in that year.
+ */
+export const promoteLocalShow = createServerOnlyFn(async (actor: Actor, showId: string) => {
+  assertAdmin(actor)
+  const db = getDb()
+  const [promoted] = await db
+    .update(shows)
+    .set({
+      catalogStatus: 'published',
+      localKey: null,
+      reviewedByUserId: actor.id,
+      reviewedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(shows.id, showId), eq(shows.catalogStatus, 'local')))
+    .returning({ id: shows.id, title: shows.title, slug: shows.slug })
+  if (!promoted) throw new Error('That is not a local show.')
+  return promoted
+})
+
+/** Local shows, for the administrator deciding whether any deserves promotion. */
+export const localShowsForAdmin = createServerOnlyFn(async (actor: Actor) => {
+  assertAdmin(actor)
+  return getDb()
+    .select({
+      id: shows.id,
+      title: shows.title,
+      slug: shows.slug,
+      type: shows.type,
+      createdAt: shows.createdAt,
+      // The hall it was staged in is the only thing that identifies it.
+      venue: sql<string | null>`(
+        select ${venues}."name" from ${productions}
+        join ${venues} on ${venues}."id" = ${productions}."venue_id"
+        where ${productions}."show_id" = ${shows}."id"
+        order by ${productions}."created_at" limit 1
+      )`,
+      stagings: sql<number>`(select count(*)::int from ${productions} where ${productions}."show_id" = ${shows}."id")`,
+      nights: sql<number>`(select count(*)::int from ${outings} where ${outings}."show_id" = ${shows}."id")`,
+    })
+    .from(shows)
+    .where(eq(shows.catalogStatus, 'local'))
+    .orderBy(asc(shows.title))
+})
+
+export const addLocalShow = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      title: z.string().trim().min(1).max(200),
+      type: z.enum(['musical', 'play', 'other']),
+      venue: z.string().trim().min(1).max(200),
+      city: z.string().trim().max(120).optional(),
+      year: z.number().int().min(1800).max(2200),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const session = await requireSession()
+    return findOrCreateLocalShow(
+      session.user.id,
+      data.title,
+      data.type,
+      data.venue,
+      data.city ?? null,
+      data.year,
+    )
+  })
+
+export const getLocalShowsForAdmin = createServerFn({ method: 'GET' }).handler(async () =>
+  localShowsForAdmin((await requireSession()).user as Actor),
+)
+
+export const publishLocalShow = createServerFn({ method: 'POST' })
+  .validator(z.object({ showId: z.string().uuid() }))
+  .handler(async ({ data }) =>
+    promoteLocalShow((await requireSession()).user as Actor, data.showId),
+  )
 
 export const addLocalProduction = createServerFn({ method: 'POST' })
   .validator(

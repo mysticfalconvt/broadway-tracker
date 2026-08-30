@@ -105,6 +105,7 @@ function AdminHome() {
         <Link to="/admin/venues">Venues</Link>
         <Link to="/admin/productions">Productions</Link>
         <Link to="/admin/people">People</Link>
+        <Link to="/admin/local">Local records</Link>
       </nav>
     </main>
   )

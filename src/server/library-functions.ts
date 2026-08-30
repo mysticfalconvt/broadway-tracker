@@ -1,6 +1,6 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { auth } from './auth'
@@ -60,7 +60,7 @@ export const saveEntryForOwner = createServerOnlyFn(
     const [show] = await getDb()
       .select({ id: shows.id })
       .from(shows)
-      .where(and(eq(shows.id, data.showId), eq(shows.catalogStatus, 'published')))
+      .where(and(eq(shows.id, data.showId), inArray(shows.catalogStatus, ['published', 'local'])))
       .limit(1)
     if (!show) throw new Error('Choose a published show from the catalog.')
 

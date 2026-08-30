@@ -329,16 +329,23 @@ community theatre's original revue, or a specific high-school staging, is none o
 - **The review queue does not scale to this.** Somebody backfilling a childhood of school
   productions would generate a queue of submissions nobody else benefits from.
 
-- [ ] Let a performance name a show that is not in the shared catalog, without a submission.
-- [ ] Decide where such a record lives: personal to the logger, or shared with their friends.
+- [x] Let a performance name a show that is not in the shared catalog, without a submission.
+      *(A local show and its staging are created together — a local work has no meaning apart
+      from the hall it was put on in.)*
+- [x] Decide where such a record lives. *(A `local` catalog status: readable by anyone signed in,
+      excluded from search and from the public show page, never in the review queue. Every other
+      query filters on an explicit status, so each door it passes through was opened deliberately.)*
 - [x] Let a member add a local or regional production of a catalog show without administrator review.
       *(`addProduction` was already open to members; the log form now offers two paths, because a
       school production and a national tour are found differently.)*
 - [x] Keep local stagings out of the list every member sees for a show. They surface at their
       venue instead, so a popular musical's dropdown is not buried under school productions.
-- [ ] Offer promotion: an administrator can lift a local record into the shared catalog if it
-      turns out to be of general interest.
-- [ ] Review the logging copy, which currently assumes a professional production.
+- [x] Offer promotion: an administrator can lift a local record into the shared catalog if it
+      turns out to be of general interest. *(`/admin/local`. Promotion frees the local key, so the
+      title deduplicates normally from then on, and leaves the staging alone — it really did
+      happen at that hall in that year.)*
+- [x] Review the logging copy, which currently assumes a professional production. *("Venue /
+      Walter Kerr Theatre" told a parent logging a school gym that the field was not for them.*)
 
 **Decided: catalog data with a smaller audience** — but the tension dissolves once the *show* and
 the *staging* are separated.
@@ -353,8 +360,9 @@ people from the same town do agree on the school and the year, so local stagings
 `show + venue + year`. Different nights of one run converge, and the 2019 and 2022 stagings stay
 apart.
 
-An *original* local work — a community theatre's own revue, with no catalog show behind it — is
-still open, and is the remaining half of this section.
+An *original* local work follows the same rule one level up: the title and the hall. "The
+Millbrook Revue" and "millbrook revue" at the same hall are one record; the same title in the next
+town is not.
 
 ## 16. Mapping
 

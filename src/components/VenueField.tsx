@@ -54,7 +54,7 @@ export function VenueField({
   const fields = (
     <>
       <label>
-        Venue
+        Where was it?
         <input
           name="venue"
           value={venue}
@@ -63,6 +63,7 @@ export function VenueField({
           placeholder="Walter Kerr Theatre"
           onChange={(event) => choose(event.target.value)}
         />
+        <span>A theatre, a school hall, a church basement — wherever it was.</span>
         <datalist id={listId}>
           {suggestions.map((option) => (
             <option key={option.id} value={option.name}>
@@ -72,7 +73,7 @@ export function VenueField({
         </datalist>
       </label>
       <label>
-        City
+        Town or city
         <input
           name="city"
           value={city}

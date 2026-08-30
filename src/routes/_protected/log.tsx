@@ -7,6 +7,7 @@ import { toLocalISODate } from '../../lib/time'
 
 import {
   addLocalProduction,
+  addLocalShow,
   addProduction,
   getLocalProductionsAt,
   getPublishedProductions,
@@ -38,6 +39,14 @@ function LogOuting() {
   // Adding a staging inline: a tour stop or a local company's run is usually
   // not in the catalog yet, and stopping to ask an administrator would end the
   // evening's logging right there.
+  // A community theatre's own revue is in no catalog and never will be. It is
+  // recorded with its staging in one go, because a local work has no meaning
+  // apart from the hall it was put on in.
+  const [addingShow, setAddingShow] = useState(false)
+  const [newShowTitle, setNewShowTitle] = useState('')
+  const [newShowType, setNewShowType] = useState('musical')
+  const [newShowYear, setNewShowYear] = useState('')
+  const [localShow, setLocalShow] = useState<{ id: string; title: string } | null>(null)
   const [addingProduction, setAddingProduction] = useState(false)
   // A school production and a national tour are recorded differently: one is
   // named, the other is found by where and when. Asking a parent to name their
@@ -132,7 +141,10 @@ function LogOuting() {
       <header className="settings-header">
         <p className="eyebrow">New memory</p>
         <h1>Log a performance.</h1>
-        <p>Keep the shared facts simple. Your reaction is always your own.</p>
+        <p>
+          Broadway, a tour, your child’s school — all of it counts. Keep the shared facts simple;
+          your reaction is always your own.
+        </p>
       </header>
       <form className="settings-form" onSubmit={submit}>
         <label>
@@ -149,8 +161,104 @@ function LogOuting() {
                 {show.title}
               </option>
             ))}
+            {localShow ? <option value={localShow.id}>{localShow.title}</option> : null}
           </select>
+          <button
+            className="text-action"
+            onClick={() => setAddingShow((open) => !open)}
+            type="button"
+          >
+            {addingShow ? 'Cancel' : 'Not in the catalog? A school or community production'}
+          </button>
         </label>
+        {addingShow ? (
+          <div className="new-production">
+            <p className="settings-note">
+              For a work that is not in the catalog and would not belong there — a company’s own
+              revue, a school’s devised piece. It stays out of everyone else’s search, and anyone
+              from the same place who logs the same hall and year lands on this record.
+            </p>
+            <label>
+              What was it called?
+              <input
+                onChange={(event) => setNewShowTitle(event.target.value)}
+                placeholder="The Millbrook Revue"
+                value={newShowTitle}
+              />
+            </label>
+            <label>
+              Kind
+              <select onChange={(event) => setNewShowType(event.target.value)} value={newShowType}>
+                <option value="musical">Musical</option>
+                <option value="play">Play</option>
+                <option value="other">Something else</option>
+              </select>
+            </label>
+            <label>
+              Where was it?
+              <input
+                onChange={(event) => setVenue(event.target.value)}
+                placeholder="Grange Hall"
+                value={venue}
+              />
+            </label>
+            <label>
+              Town or city <span>Optional</span>
+              <input
+                onChange={(event) => setCity(event.target.value)}
+                placeholder="Millbrook"
+                value={city}
+              />
+            </label>
+            <label>
+              Which year?
+              <input
+                max="2200"
+                min="1800"
+                onChange={(event) => setNewShowYear(event.target.value)}
+                placeholder="2019"
+                type="number"
+                value={newShowYear}
+              />
+            </label>
+            <button
+              className="button button-quiet"
+              disabled={!newShowTitle.trim() || !venue.trim() || !newShowYear.trim()}
+              onClick={async () => {
+                setProductionMessage(null)
+                try {
+                  const result = await addLocalShow({
+                    data: {
+                      title: newShowTitle,
+                      type: newShowType as 'musical',
+                      venue,
+                      city: city || undefined,
+                      year: Number(newShowYear),
+                    },
+                  })
+                  setLocalShow({ id: result.show.id, title: result.show.title })
+                  setShowId(result.show.id)
+                  setProductionId(result.productionId)
+                  setAddingShow(false)
+                  setNewShowTitle('')
+                  setNewShowYear('')
+                  setProductionMessage(
+                    result.created
+                      ? 'Added. It is yours and your friends’ — not the shared catalog.'
+                      : 'Somebody from there had already recorded it — you are both on it now.',
+                  )
+                } catch (caughtError) {
+                  setProductionMessage(
+                    caughtError instanceof Error ? caughtError.message : 'We could not add that.',
+                  )
+                }
+              }}
+              type="button"
+            >
+              Add it
+            </button>
+          </div>
+        ) : null}
         <label>
           Production <span>Optional</span>
           <select

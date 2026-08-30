@@ -26,7 +26,9 @@ export const canViewImage = createServerOnlyFn(
       const [row] = await db
         .select({ id: shows.id })
         .from(shows)
-        .where(and(eq(shows.coverImageKey, key), eq(shows.catalogStatus, 'published')))
+        .where(
+          and(eq(shows.coverImageKey, key), inArray(shows.catalogStatus, ['published', 'local'])),
+        )
         .limit(1)
       return Boolean(row)
     }
@@ -134,7 +136,7 @@ export const addShowPhoto = createServerOnlyFn(
     const [show] = await db
       .select({ id: shows.id })
       .from(shows)
-      .where(and(eq(shows.id, showId), eq(shows.catalogStatus, 'published')))
+      .where(and(eq(shows.id, showId), inArray(shows.catalogStatus, ['published', 'local'])))
       .limit(1)
     if (!show) throw new Error('Choose a published show from the catalog.')
 

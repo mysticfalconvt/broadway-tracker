@@ -2,12 +2,21 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import {
   findOrCreateLocalProduction,
+  findOrCreateLocalShow,
   findOrCreateProduction,
   localProductionsAt,
+  localShowBySlug,
+  localShowsForAdmin,
+  pendingShowsForAdmin,
+  promoteLocalShow,
   publishedProductionsForShow,
+  publishedShowBySlug,
+  searchCatalog,
 } from '../src/server/catalog-functions'
 import { createOutingForUser } from '../src/server/outing-functions'
-import { makeShow, makeUser, resetDatabase } from './helpers'
+import { makeAdmin, makeShow, makeUser, resetDatabase } from './helpers'
+
+const actor = (u: { id: string; role: string }) => ({ id: u.id, role: u.role }) as never
 
 beforeEach(resetDatabase)
 
@@ -190,5 +199,247 @@ describe('recording a local staging', () => {
       favorite: false,
     })
     expect(outing.id).toBeTruthy()
+  })
+})
+
+describe('a work that exists nowhere but this town', () => {
+  it('is recorded without a submission, and never reaches the review queue', async () => {
+    const member = await makeUser()
+    const { show, created } = await findOrCreateLocalShow(
+      member.id,
+      'The Millbrook Revue',
+      'musical',
+      'Grange Hall',
+      'Millbrook',
+      2019,
+    )
+    expect(created).toBe(true)
+
+    const admin = await makeAdmin()
+    const waiting = await pendingShowsForAdmin(actor(admin))
+    expect(waiting.map((row) => row.id)).not.toContain(show.id)
+  })
+
+  it('stays out of the shared catalog’s search', async () => {
+    const member = await makeUser()
+    await makeShow({ title: 'The Millbrook Revue Onstage', slug: 'millbrook-revue-onstage' })
+    await findOrCreateLocalShow(
+      member.id,
+      'The Millbrook Revue',
+      'musical',
+      'Grange Hall',
+      'Millbrook',
+      2019,
+    )
+    const found = await searchCatalog('Millbrook')
+    expect(found.map((row) => row.title)).toEqual(['The Millbrook Revue Onstage'])
+  })
+
+  it('is not readable from the public show page', async () => {
+    const member = await makeUser()
+    const { show } = await findOrCreateLocalShow(
+      member.id,
+      'The Millbrook Revue',
+      'musical',
+      'Grange Hall',
+      'Millbrook',
+      2019,
+    )
+    // The public route reads this one, and a local record names a school and
+    // says somebody was there.
+    expect(await publishedShowBySlug(show.slug)).toBeNull()
+    expect((await localShowBySlug(show.slug))?.id).toBe(show.id)
+  })
+
+  it('brings two families in the same town to one record', async () => {
+    const first = await makeUser()
+    const second = await makeUser()
+    const a = await findOrCreateLocalShow(
+      first.id,
+      'The Millbrook Revue',
+      'musical',
+      'Grange Hall',
+      'Millbrook',
+      2019,
+    )
+    // A different article, different casing, the same hall and year.
+    const b = await findOrCreateLocalShow(
+      second.id,
+      'millbrook revue',
+      'musical',
+      'grange hall',
+      'millbrook',
+      2019,
+    )
+    expect(b.created).toBe(false)
+    expect(b.show.id).toBe(a.show.id)
+    expect(b.productionId).toBe(a.productionId)
+  })
+
+  it('keeps one town’s revue apart from another town’s', async () => {
+    const member = await makeUser()
+    const ours = await findOrCreateLocalShow(
+      member.id,
+      'The Spring Revue',
+      'musical',
+      'Grange Hall',
+      'Millbrook',
+      2019,
+    )
+    const theirs = await findOrCreateLocalShow(
+      member.id,
+      'The Spring Revue',
+      'musical',
+      'Odd Fellows Hall',
+      'Portland',
+      2019,
+    )
+    expect(theirs.show.id).not.toBe(ours.show.id)
+    // Two records, two URLs.
+    expect(theirs.show.slug).not.toBe(ours.show.slug)
+  })
+
+  it('gives a later year its own staging under the one show', async () => {
+    const member = await makeUser()
+    const first = await findOrCreateLocalShow(
+      member.id,
+      'The Millbrook Revue',
+      'musical',
+      'Grange Hall',
+      'Millbrook',
+      2019,
+    )
+    const later = await findOrCreateLocalShow(
+      member.id,
+      'The Millbrook Revue',
+      'musical',
+      'Grange Hall',
+      'Millbrook',
+      2022,
+    )
+    expect(later.show.id).toBe(first.show.id)
+    expect(later.productionId).not.toBe(first.productionId)
+  })
+
+  it('can have a night logged against it like any other show', async () => {
+    const member = await makeUser()
+    const { show, productionId } = await findOrCreateLocalShow(
+      member.id,
+      'The Millbrook Revue',
+      'musical',
+      'Grange Hall',
+      'Millbrook',
+      2019,
+    )
+    const outing = await createOutingForUser(member.id, {
+      showId: show.id,
+      productionId,
+      datePrecision: 'year',
+      occurredYear: 2019,
+      attendeeIds: [],
+      favorite: false,
+    })
+    expect(outing.id).toBeTruthy()
+  })
+
+  it('refuses a title or a year it cannot key on', async () => {
+    const member = await makeUser()
+    await expect(
+      findOrCreateLocalShow(member.id, '   ', 'musical', 'Grange Hall', null, 2019),
+    ).rejects.toThrow('needs a title')
+    await expect(
+      findOrCreateLocalShow(member.id, 'The Revue', 'musical', 'Grange Hall', null, 12019),
+    ).rejects.toThrow('needs the year')
+  })
+})
+
+describe('promotion into the shared catalog', () => {
+  it('lifts a local show and lets it be found', async () => {
+    const member = await makeUser()
+    const admin = await makeAdmin()
+    const { show } = await findOrCreateLocalShow(
+      member.id,
+      'The Millbrook Revue',
+      'musical',
+      'Grange Hall',
+      'Millbrook',
+      2019,
+    )
+    expect(await searchCatalog('Millbrook')).toHaveLength(0)
+
+    await promoteLocalShow(actor(admin), show.id)
+
+    expect((await searchCatalog('Millbrook')).map((row) => row.title)).toEqual([
+      'The Millbrook Revue',
+    ])
+    expect((await publishedShowBySlug(show.slug))?.id).toBe(show.id)
+  })
+
+  it('frees the local key, so the title deduplicates normally from then on', async () => {
+    const member = await makeUser()
+    const admin = await makeAdmin()
+    const { show } = await findOrCreateLocalShow(
+      member.id,
+      'The Millbrook Revue',
+      'musical',
+      'Grange Hall',
+      'Millbrook',
+      2019,
+    )
+    await promoteLocalShow(actor(admin), show.id)
+    // The hall no longer holds the name, so a genuinely different local work of
+    // that title elsewhere is recordable.
+    const again = await findOrCreateLocalShow(
+      member.id,
+      'The Millbrook Revue',
+      'musical',
+      'Grange Hall',
+      'Millbrook',
+      2019,
+    )
+    expect(again.show.id).not.toBe(show.id)
+  })
+
+  it('refuses a member, and refuses anything that is not a local show', async () => {
+    const member = await makeUser()
+    const admin = await makeAdmin()
+    const { show } = await findOrCreateLocalShow(
+      member.id,
+      'The Millbrook Revue',
+      'musical',
+      'Grange Hall',
+      'Millbrook',
+      2019,
+    )
+    await expect(promoteLocalShow(actor(member), show.id)).rejects.toThrow('Forbidden')
+    const published = await makeShow({ title: 'Already Published', slug: 'already-published' })
+    await expect(promoteLocalShow(actor(admin), published.id)).rejects.toThrow('not a local show')
+  })
+
+  it('lists local shows for an administrator, with what rests on each', async () => {
+    const member = await makeUser()
+    const admin = await makeAdmin()
+    const { show, productionId } = await findOrCreateLocalShow(
+      member.id,
+      'The Millbrook Revue',
+      'musical',
+      'Grange Hall',
+      'Millbrook',
+      2019,
+    )
+    await createOutingForUser(member.id, {
+      showId: show.id,
+      productionId,
+      datePrecision: 'year',
+      occurredYear: 2019,
+      attendeeIds: [],
+      favorite: false,
+    })
+    const rows = await localShowsForAdmin(actor(admin))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.venue).toBe('Grange Hall')
+    expect(rows[0]?.stagings).toBe(1)
+    expect(rows[0]?.nights).toBe(1)
+    await expect(localShowsForAdmin(actor(member))).rejects.toThrow('Forbidden')
   })
 })
