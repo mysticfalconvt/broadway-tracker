@@ -251,6 +251,26 @@ function OutingDetail() {
             </section>
           ) : null}
 
+          {outing.otherNights.length ? (
+            <section className="outing-block">
+              <p className="eyebrow">
+                {outing.otherNights.length === 1
+                  ? 'The other time you saw it'
+                  : 'The other times you saw it'}
+              </p>
+              <ul className="other-nights">
+                {outing.otherNights.map((night) => (
+                  <li key={night.id}>
+                    <Link params={{ id: night.id }} to="/outings/$id">
+                      {formatFuzzyDate(night)}
+                      {night.venue ? ` · ${night.venue}` : ''}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
           {ownEntry?.privateNotes ? (
             <section className="outing-block private-note">
               <PrivacyBadge visibility="private" />

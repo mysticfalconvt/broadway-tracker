@@ -332,6 +332,11 @@ export const outingForViewer = createServerOnlyFn(async (viewerId: string, outin
     // Somebody who was there, or a friend looking in. A visitor is shown the
     // night but offered nothing to write on it.
     viewerRole: attendance ? ('attendee' as const) : ('visitor' as const),
+    // The reader's other nights of the same show. A second viewing is its own
+    // memory, and worth being able to step between.
+    otherNights: (await outingsForUserAndShow(session.user.id, outing.showId)).filter(
+      (night) => night.id !== data.id,
+    ),
     // Shared facts belong to whoever logged the night.
     canEditFacts: outing.createdByUserId === session.user.id,
     attendees: attendees.map((attendee) => {

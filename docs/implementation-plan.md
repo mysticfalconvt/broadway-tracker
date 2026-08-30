@@ -146,6 +146,8 @@
 - [x] Enforce a single canonical friendship row per user pair.
 - [x] Build a simple Friends page: requests, approved friends, and removal controls.
 - [x] Allow friends to view only `friends`-visible profiles, entries, reviews, and lists.
+- [x] Show a friend's nights, their shelf, and their lists on their profile, with the offer to
+      say you were there too. *(Joining adds you to that same outing rather than copying it.)*
 - [ ] Build a quiet, chronological friends activity view (optional after core sharing works).
 
 ### Public sharing and the home dashboard

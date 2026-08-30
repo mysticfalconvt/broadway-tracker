@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 
 import { authClient } from '../../lib/auth-client'
 import { ShowArtwork } from '../../components/ShowArtwork'
@@ -11,10 +11,10 @@ import {
   saveLocalStagingYear,
 } from '../../server/catalog-functions'
 import { getCastForShow } from '../../server/people-functions'
-import { saveLibraryEntry } from '../../server/library-functions'
+import { getMyShowState, saveLibraryEntry } from '../../server/library-functions'
 import { changePhotoVisibility, deleteShowPhoto, getShowPhotos } from '../../server/image-functions'
-import { getMyOutingsForShow } from '../../server/outing-functions'
 import { formatFuzzyDate } from '../../lib/fuzzy-date'
+import { formText } from '../../lib/form'
 
 export const Route = createFileRoute('/shows/$slug')({
   loader: async ({ params }) => {
@@ -26,6 +26,11 @@ export const Route = createFileRoute('/shows/$slug')({
       photos: show ? await getShowPhotos({ data: { showId: show.id } }) : [],
       productions: show ? await getProductionsForShow({ data: { showId: show.id, scope } }) : [],
       cast: show ? await getCastForShow({ data: { showId: show.id } }) : [],
+      // Where the reader already stands with this show, so the buttons are
+      // right on the first paint rather than corrected a moment later.
+      mine: show
+        ? await getMyShowState({ data: { showId: show.id } })
+        : { entry: null, outings: [] },
       // Resolved on the server: the client session hook is empty during SSR, so
       // anything gated on it would only appear after hydration.
       session: await getSession(),
@@ -35,7 +40,7 @@ export const Route = createFileRoute('/shows/$slug')({
 })
 
 function ShowDetail() {
-  const { show, scope, mayEdit, photos, productions, cast, session } = Route.useLoaderData()
+  const { show, scope, mayEdit, photos, productions, cast, mine, session } = Route.useLoaderData()
 
   if (!show) {
     return (
@@ -63,7 +68,7 @@ function ShowDetail() {
                 ? 'A local record, kept by the people who were there. It is not in the shared catalog and does not appear in search.'
                 : 'This shared catalog record is ready for your theatre history.'}
             </p>
-            <LibraryButtons showId={show.id} serverSession={session} />
+            <LibraryButtons mine={mine} showId={show.id} serverSession={session} />
           </div>
         </div>
       </section>
@@ -80,7 +85,7 @@ function ShowDetail() {
         </div>
         <aside>
           <p className="eyebrow">Your theatre</p>
-          <YourHistory showId={show.id} serverSession={session} />
+          <YourHistory mine={mine} serverSession={session} />
         </aside>
       </section>
       {mayEdit ? (
@@ -98,26 +103,31 @@ function ShowDetail() {
   )
 }
 
+/** "once", "twice", "three times" — a count nobody would say aloud as "2 times". */
+function countWord(n: number) {
+  if (n === 1) return 'once'
+  if (n === 2) return 'twice'
+  return `${n} times`
+}
+
+type ShowState = Awaited<ReturnType<typeof getMyShowState>>
+
 function YourHistory({
-  showId,
+  mine,
   serverSession,
 }: {
-  showId: string
+  mine: ShowState
   serverSession: Awaited<ReturnType<typeof getSession>>
 }) {
   const { data: clientSession } = authClient.useSession()
   const session = clientSession ?? serverSession
-  const [outings, setOutings] = useState<Awaited<ReturnType<typeof getMyOutingsForShow>>>([])
-  useEffect(() => {
-    if (session) void getMyOutingsForShow({ data: { showId } }).then(setOutings)
-  }, [session, showId])
   if (!session) return <p>Sign in to see your history with this show.</p>
-  if (!outings.length) return <p>You have not logged a performance of this show yet.</p>
+  if (!mine.outings.length) return <p>You have not logged a performance of this show yet.</p>
   return (
     <ul className="show-history">
-      {outings.map((outing) => (
+      {mine.outings.map((outing) => (
         <li key={outing.id}>
-          <Link to="/outings/$id" params={{ id: outing.id }}>
+          <Link params={{ id: outing.id }} to="/outings/$id">
             {formatFuzzyDate(outing)}
             {outing.venue ? ` · ${outing.venue}` : ''}
           </Link>
@@ -128,9 +138,11 @@ function YourHistory({
 }
 
 function LibraryButtons({
+  mine,
   showId,
   serverSession,
 }: {
+  mine: ShowState
   showId: string
   serverSession: Awaited<ReturnType<typeof getSession>>
 }) {
@@ -161,7 +173,8 @@ function LibraryButtons({
           favorite: form.get('favorite') === 'on',
           rating: Number(form.get('rating')) || undefined,
           review: String(form.get('review')).trim() || undefined,
-          visibility: form.get('visibility') === 'friends' ? 'friends' : 'private',
+          // Absent means "follow my profile", which the server fills in.
+          visibility: formText(form, 'visibility') as 'friends' | undefined,
         },
       })
       setMessage('Your show details are saved.')
@@ -178,14 +191,30 @@ function LibraryButtons({
       </Link>
     )
 
+  // Logging a night marks the show seen already, so offering to mark it again
+  // is asking for something the reader has plainly done. What they might want
+  // instead is to record another night of it.
+  const seen = mine.outings.length > 0 || mine.entry?.status === 'seen'
+  const wanted = mine.entry?.status === 'want_to_see'
+
   return (
     <div className="show-library-actions">
-      <button className="button button-primary" type="button" onClick={() => save('seen')}>
-        Mark as seen
-      </button>
-      <button className="button button-quiet" type="button" onClick={() => save('want_to_see')}>
-        Want to see
-      </button>
+      {seen ? (
+        <p className="show-seen-note">
+          {mine.outings.length
+            ? `You have seen this ${countWord(mine.outings.length)}.`
+            : 'You have marked this as seen.'}
+        </p>
+      ) : (
+        <button className="button button-primary" onClick={() => save('seen')} type="button">
+          Mark as seen
+        </button>
+      )}
+      {seen || wanted ? null : (
+        <button className="button button-quiet" onClick={() => save('want_to_see')} type="button">
+          Want to see
+        </button>
+      )}
       {message ? <span role="status">{message}</span> : null}
       <details className="show-library-details">
         <summary>More details</summary>

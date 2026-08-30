@@ -89,6 +89,44 @@ export const saveEntryForOwner = createServerOnlyFn(
   },
 )
 
+/**
+ * Where the reader already stands with one show: what they have marked, and
+ * every night of it they have logged.
+ *
+ * Answered in one call from the route loader rather than fetched after mount,
+ * because the buttons depend on it — offering "mark as seen" to somebody who
+ * logged this show last year, and then swapping it a moment later, is worse
+ * than waiting.
+ */
+export const showStateForViewer = createServerOnlyFn(
+  async (viewerId: string | null, showId: string) => {
+    if (!viewerId) return { entry: null, outings: [] }
+    const db = getDb()
+    const [entry] = await db
+      .select({
+        status: libraryEntries.status,
+        favorite: libraryEntries.favorite,
+        rating: libraryEntries.rating,
+        review: libraryEntries.review,
+        visibility: libraryEntries.visibility,
+      })
+      .from(libraryEntries)
+      .where(and(eq(libraryEntries.userId, viewerId), eq(libraryEntries.showId, showId)))
+      .limit(1)
+    const { outingsForUserAndShow } = await import('./outing-functions')
+    return { entry: entry ?? null, outings: await outingsForUserAndShow(viewerId, showId) }
+  },
+)
+
+export const getMyShowState = createServerFn({ method: 'GET' })
+  .validator(z.object({ showId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const { auth } = await import('./auth')
+    const { getRequestHeaders } = await import('@tanstack/react-start/server')
+    const session = await auth.api.getSession({ headers: getRequestHeaders() })
+    return showStateForViewer(session?.user.id ?? null, data.showId)
+  })
+
 export const getMyLibrary = createServerFn({ method: 'GET' }).handler(async () =>
   libraryForOwner((await requireSession()).user.id),
 )

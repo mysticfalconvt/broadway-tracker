@@ -2703,3 +2703,19 @@ a.recent-entry:hover h3,
   color: var(--ink);
   font-size: 1rem;
 }
+
+/* Standing where the reader already is with a show. */
+.show-seen-note {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+/* Stepping between two viewings of the same show. */
+.other-nights {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.92rem;
+}
