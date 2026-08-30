@@ -1535,12 +1535,6 @@ h3 {
   border: 1px solid var(--border);
   background: var(--surface-muted);
 }
-.avatar-preview-empty {
-  display: grid;
-  place-items: center;
-  color: var(--ink-muted);
-  font-size: 1.5rem;
-}
 .avatar-field-input {
   display: inline-grid;
   gap: 0.35rem;
@@ -1909,19 +1903,6 @@ a.recent-entry:hover h3,
   width: 5.5rem;
   height: 5.5rem;
   flex: 0 0 auto;
-}
-.profile-avatar-empty {
-  display: grid;
-  place-items: center;
-  color: var(--ink-muted);
-  font-family: Newsreader, ui-serif, Georgia, serif;
-  font-size: 1.6rem;
-  letter-spacing: 0.02em;
-  text-decoration: none;
-}
-.profile-avatar-empty:hover {
-  border-color: var(--ink-muted);
-  color: var(--ink);
 }
 @media (max-width: 760px) {
   .profile-identity {
