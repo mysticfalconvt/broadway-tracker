@@ -126,6 +126,64 @@ export const venues = pgTable(
   (table) => [index('venues_name_idx').on(table.name)],
 )
 
+/**
+ * A performer or creative. Deliberately thin: a name, and a note only where one
+ * is needed to tell two people apart.
+ *
+ * `matchKey` is the normalised name that deduplication runs on, so two members
+ * typing "Alex Brightman" and "alex brightman" land on the same person. Two
+ * genuinely different people who share a name collide here; that is rare enough
+ * to be worth the simplicity, and an administrator can separate them.
+ */
+export const people = pgTable(
+  'people',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    name: text('name').notNull(),
+    note: text('note'),
+    matchKey: text('match_key').notNull().unique(),
+    createdByUserId: text('created_by_user_id').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => [index('people_name_idx').on(table.name)],
+)
+
+/**
+ * Somebody in a production, and when.
+ *
+ * The dates are what make this useful: casts change constantly, so who was on
+ * stage depends on the night, not the production. An open `endedOn` means still
+ * in the role as far as anyone has recorded.
+ */
+export const castings = pgTable(
+  'castings',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    personId: uuid('person_id')
+      .notNull()
+      .references(() => people.id, { onDelete: 'cascade' }),
+    productionId: uuid('production_id')
+      .notNull()
+      .references(() => productions.id, { onDelete: 'cascade' }),
+    role: text('role').notNull(),
+    // Creative roles are held for the whole run; performers come and go.
+    kind: text('kind', { enum: ['performer', 'creative'] })
+      .notNull()
+      .default('performer'),
+    isPrincipal: boolean('is_principal').notNull().default(false),
+    startedOn: date('started_on'),
+    endedOn: date('ended_on'),
+    createdByUserId: text('created_by_user_id').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => [
+    index('castings_production_idx').on(table.productionId),
+    index('castings_person_idx').on(table.personId),
+  ],
+)
+
 export const productions = pgTable(
   'productions',
   {
@@ -353,6 +411,39 @@ export const reports = pgTable(
     createdAt: timestamp('created_at').notNull().defaultNow(),
   },
   (table) => [index('reports_status_idx').on(table.status)],
+)
+
+/**
+ * Who an attendee says they actually saw on a particular night.
+ *
+ * The likely cast is worked out from casting dates, which cannot know that an
+ * understudy went on. This table is the record that overrides that guess: once
+ * somebody has said who they saw, their word replaces the inference for them.
+ * It is per attendee, because two people at the same performance saw the same
+ * stage but only each of them can vouch for their own memory of it.
+ */
+export const seenPerformers = pgTable(
+  'seen_performers',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    outingId: uuid('outing_id')
+      .notNull()
+      .references(() => outings.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    personId: uuid('person_id')
+      .notNull()
+      .references(() => people.id, { onDelete: 'cascade' }),
+    // Kept alongside so a correction can say which part they went on for, even
+    // when that person holds no recorded casting in this production.
+    role: text('role'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('seen_performers_unique').on(table.outingId, table.userId, table.personId),
+    index('seen_performers_outing_idx').on(table.outingId, table.userId),
+  ],
 )
 
 export const friendships = pgTable(

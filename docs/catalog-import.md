@@ -37,7 +37,22 @@ this spec for Hadestown, Suffs, and Cabaret."*
           "city": "New York",
           "country": "USA",
           "openedOn": "2019-04-17",
-          "closedOn": null
+          "closedOn": null,
+          "cast": [
+            {
+              "name": "Reeve Carney",
+              "role": "Orpheus",
+              "kind": "performer",
+              "isPrincipal": true,
+              "startedOn": "2019-04-17",
+              "endedOn": null
+            },
+            {
+              "name": "Rachel Chavkin",
+              "role": "Director",
+              "kind": "creative"
+            }
+          ]
         }
       ]
     }
@@ -117,6 +132,29 @@ such as `NYC`, `Manhattan`, and `New York City`.
 | `openedOn` | no | `YYYY-MM-DD` or `null` |
 | `closedOn` | no | `YYYY-MM-DD` or `null`, `null` meaning still running |
 
+### Cast
+
+Attached to a production, because who was in it depends on the staging.
+
+| Field | Required | Notes |
+|---|---|---|
+| `name` | yes | As written; `Kelli O'Hara` and `Kelli OHara` match, `Alex` and `Alexander` do not |
+| `role` | yes | The part, or the job: `Orpheus`, `Director`, `Book and lyrics` |
+| `kind` | no | `performer` (default) or `creative` |
+| `isPrincipal` | no | Listed first. Defaults to true for performers |
+| `startedOn` | no | `YYYY-MM-DD`, when they took the role |
+| `endedOn` | no | `YYYY-MM-DD`, or `null` meaning still in it |
+
+**The dates are what make this useful.** With them, a performance on a given night can say who
+was probably on stage; without them, a person is simply listed as having been in the production.
+Supply them when you know them and omit them when you do not — a wrong window produces a
+confident, wrong answer on somebody's memory.
+
+Person matching is deliberately stricter than venue matching: only case, accents, and
+punctuation fold. A misspelled name therefore creates a second person rather than being absorbed
+into the first, which is why checking a paste reports names that resemble somebody already
+recorded.
+
 ### Venue
 
 Only needed for a venue with no production attached — a theatre you want in the
@@ -132,7 +170,9 @@ autocomplete before anyone has logged a show there.
 
 > Using the format in `docs/catalog-import.md`, produce JSON for the following shows.
 > Include the original Broadway production with venue, city, and opening date where you
-> are confident of them, and omit any field you are unsure about rather than guessing.
+> are confident of them, and the principal cast and creative team with the dates they held
+> each role. Omit any field you are unsure about rather than guessing — especially casting
+> dates, which are used to work out who somebody saw on a particular night.
 > Shows: …
 
 The last sentence matters. An invented venue or opening date is worse than a blank field

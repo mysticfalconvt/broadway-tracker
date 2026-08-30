@@ -343,3 +343,99 @@ describe('warning about venues that nearly match', () => {
     expect(preview.venueWarnings).toHaveLength(0)
   })
 })
+
+describe('importing a cast', () => {
+  const withCast = {
+    shows: [
+      {
+        title: 'Schmigadoon!',
+        type: 'musical' as const,
+        productions: [
+          {
+            name: 'Original Broadway',
+            productionType: 'broadway' as const,
+            venue: 'Nederlander Theatre',
+            city: 'New York',
+            openedOn: '2026-04-20',
+            cast: [
+              { name: 'Alex Brightman', role: 'Josh Skinner', kind: 'performer' as const, isPrincipal: true, startedOn: '2026-04-20' },
+              { name: 'Ana Gasteyer', role: 'Mildred Layton', kind: 'performer' as const, isPrincipal: true },
+              { name: 'Cinco Paul', role: 'Book, music, and lyrics', kind: 'creative' as const },
+            ],
+          },
+        ],
+      },
+    ],
+  }
+
+  it('records the people and their roles', async () => {
+    const { people, castings } = await import('../src/server/db/schema')
+    const admin = await makeAdmin()
+    const result = await importCatalog(actor(admin), withCast)
+    expect(result.castings).toBe(3)
+    expect(await db.select().from(people)).toHaveLength(3)
+    expect(await db.select().from(castings)).toHaveLength(3)
+  })
+
+  it('reuses a person already in the catalog rather than making a second', async () => {
+    const { people } = await import('../src/server/db/schema')
+    const { findOrCreatePerson } = await import('../src/server/people-functions')
+    const admin = await makeAdmin()
+    await findOrCreatePerson(admin.id, 'alex brightman')
+    await importCatalog(actor(admin), withCast)
+    const rows = await db.select().from(people)
+    expect(rows.filter((p) => p.name.toLowerCase().includes('brightman'))).toHaveLength(1)
+  })
+
+  it('counts the cast in a preview without writing anybody', async () => {
+    const { people } = await import('../src/server/db/schema')
+    const admin = await makeAdmin()
+    const preview = await previewImport(actor(admin), JSON.stringify(withCast))
+    expect(preview.castings).toBe(3)
+    expect(await db.select().from(people)).toHaveLength(0)
+  })
+
+  it('warns about a name that resembles somebody already recorded', async () => {
+    const { findOrCreatePerson } = await import('../src/server/people-functions')
+    const admin = await makeAdmin()
+    await findOrCreatePerson(admin.id, 'Alex Brightman')
+    const preview = await previewImport(
+      actor(admin),
+      JSON.stringify({
+        shows: [
+          {
+            title: 'Something',
+            type: 'musical',
+            productions: [
+              {
+                name: 'Broadway',
+                productionType: 'broadway',
+                cast: [{ name: 'Alex Brightmann', role: 'A part' }],
+              },
+            ],
+          },
+        ],
+      }),
+    )
+    expect(preview.peopleWarnings).toEqual([
+      { given: 'Alex Brightmann', resembles: 'Alex Brightman' },
+    ])
+  })
+
+  it('says nothing about a name that matches exactly', async () => {
+    const { findOrCreatePerson } = await import('../src/server/people-functions')
+    const admin = await makeAdmin()
+    await findOrCreatePerson(admin.id, 'Alex Brightman')
+    const preview = await previewImport(actor(admin), JSON.stringify(withCast))
+    expect(preview.peopleWarnings).toHaveLength(0)
+  })
+
+  it('still imports a show that carries no cast at all', async () => {
+    const admin = await makeAdmin()
+    const result = await importCatalog(actor(admin), {
+      shows: [{ title: 'No Cast Recorded', type: 'play' }],
+    })
+    expect(result.castings).toBe(0)
+    expect(result.shows[0]?.status).toBe('created')
+  })
+})

@@ -235,6 +235,7 @@ export const outingForAttendee = createServerOnlyFn(async (viewerId: string, out
       city: sql<string | null>`coalesce(${venues.city}, ${outings.city})`,
       country: outings.country,
       venueId: outings.venueId,
+      productionId: outings.productionId,
       sharedNotes: outings.sharedNotes,
       visibility: outings.visibility,
       createdByUserId: outings.createdByUserId,
@@ -274,8 +275,24 @@ export const outingForAttendee = createServerOnlyFn(async (viewerId: string, out
   // reader is actually an approved friend of theirs.
   const friendIds = await acceptedFriendIdsFor(session.user.id)
 
+  // Only an exact date can be matched against a casting window. A year is not
+  // enough to say who was on stage that night, and offering a guess from one
+  // would be presenting a coin flip as a memory.
+  const { likelyCastOn, seenPerformersFor } = await import('./people-functions')
+
+  // A recorded answer replaces the guess entirely. Once somebody has said who
+  // they saw, showing them an inference alongside it would be arguing with them
+  // about their own evening.
+  const seenCast = await seenPerformersFor(session.user.id, data.id)
+  const likelyCast =
+    seenCast.length === 0 && outing.productionId && outing.datePrecision === 'exact'
+      ? await likelyCastOn(outing.productionId, outing.occurredOn)
+      : []
+
   return {
     ...outing,
+    likelyCast,
+    seenCast,
     // Shared facts belong to whoever logged the night.
     canEditFacts: outing.createdByUserId === session.user.id,
     attendees: attendees.map((attendee) => {

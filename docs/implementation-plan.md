@@ -382,17 +382,18 @@ production.
 **Model:** a `people` table, and a `castings` join carrying the role and the dates that person
 held it. A performance then resolves its likely cast from the date it happened.
 
-- [ ] Add `people` (name, optional disambiguating note) with the same normalisation and merge
-      tools venues have — the same person will be entered many ways.
-- [ ] Keep entry open-ended: any name may be typed, and existing people are offered first, the
-      way venues already work. Nobody should be blocked because a performer is not on a list.
-- [ ] Add `castings`: person, production, role, `startedOn`, `endedOn`, and whether principal.
-- [ ] Show the cast on a production, ordered with principals first.
-- [ ] Build a person page listing their roles, and the nights the reader saw them.
-- [ ] Resolve *who you probably saw* from a performance's date against the casting dates, and
-      say plainly that it is inferred rather than recorded.
-- [ ] Let a member correct or confirm who they actually saw on their own outing.
-- [ ] Extend the catalog import format to carry cast, and warn on near-duplicate names.
+- [x] Add `people` (name, optional disambiguating note) with normalisation and an administrator
+      merge, the way venues work.
+- [x] Keep entry open-ended: any name may be typed, and existing people are offered first.
+- [x] Add `castings`: person, production, role, `startedOn`, `endedOn`, principal, and whether
+      the role is on stage or behind it.
+- [x] Show the cast on a production, ordered with principals first.
+- [x] Build a person page listing their roles, and the nights the reader saw them. *(`/artists/$id`;
+      `/people/$handle` was already taken by friend profiles.)*
+- [x] Resolve *who you probably saw* from a performance's date against the casting dates, and
+      say plainly that it is inferred rather than recorded. *(Exact dates only; performers only.)*
+- [x] Let a member correct or confirm who they actually saw on their own outing.
+- [x] Extend the catalog import format to carry cast, and warn on near-duplicate names.
 
 **Open question — inference versus record.** Matching a date against a casting window gives a
 good guess, not a fact: an understudy went on and nothing in the data will ever say so. The

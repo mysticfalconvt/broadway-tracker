@@ -5,6 +5,7 @@ import { authClient } from '../../lib/auth-client'
 import { ShowArtwork } from '../../components/ShowArtwork'
 import { getSession } from '../../server/auth-functions'
 import { getPublishedProductions, getPublishedShow } from '../../server/catalog-functions'
+import { getCastForShow } from '../../server/people-functions'
 import { saveLibraryEntry } from '../../server/library-functions'
 import { changePhotoVisibility, deleteShowPhoto, getShowPhotos } from '../../server/image-functions'
 import { getMyOutingsForShow } from '../../server/outing-functions'
@@ -17,6 +18,7 @@ export const Route = createFileRoute('/shows/$slug')({
       show,
       photos: show ? await getShowPhotos({ data: { showId: show.id } }) : [],
       productions: show ? await getPublishedProductions({ data: { showId: show.id } }) : [],
+      cast: show ? await getCastForShow({ data: { showId: show.id } }) : [],
       // Resolved on the server: the client session hook is empty during SSR, so
       // anything gated on it would only appear after hydration.
       session: await getSession(),
@@ -26,7 +28,7 @@ export const Route = createFileRoute('/shows/$slug')({
 })
 
 function ShowDetail() {
-  const { show, photos, productions, session } = Route.useLoaderData()
+  const { show, photos, productions, cast, session } = Route.useLoaderData()
 
   if (!show) {
     return (
@@ -66,6 +68,7 @@ function ShowDetail() {
         </aside>
       </section>
       <Productions productions={productions} />
+      <Cast cast={cast} />
       <PhotoGallery showId={show.id} photos={photos} />
     </main>
   )
@@ -403,4 +406,41 @@ function describeRun(production: { openedOn?: string | null; closedOn?: string |
   if (opened) return `Opened ${opened} · still running`
   if (closed) return `Closed ${closed}`
   return ''
+}
+
+/** Who has been in this show, grouped by the production they were in. */
+function Cast({ cast }: { cast: Awaited<ReturnType<typeof getCastForShow>> }) {
+  if (!cast.length) return null
+  const byProduction = new Map<string, typeof cast>()
+  for (const member of cast) {
+    byProduction.set(member.productionName, [
+      ...(byProduction.get(member.productionName) ?? []),
+      member,
+    ])
+  }
+  return (
+    <section className="cast-section page-wrap">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Company</p>
+          <h2>Who has been in it.</h2>
+        </div>
+      </div>
+      {[...byProduction].map(([productionName, members]) => (
+        <div key={productionName} className="cast-group">
+          <p className="eyebrow">{productionName}</p>
+          <ul className="cast-list">
+            {members.map((member) => (
+              <li key={member.id}>
+                <Link to="/artists/$id" params={{ id: member.personId }}>
+                  <strong>{member.name}</strong>
+                  <span>{member.role}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </section>
+  )
 }

@@ -6,7 +6,8 @@ import { z } from 'zod'
 import { auth } from './auth'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { getDb } from './db/client'
-import { productions, shows, venues } from './db/schema'
+import { people, productions, shows, venues } from './db/schema'
+import { normalizePersonName } from '../lib/person'
 import { normalizeVenueName, venueKey } from '../lib/place'
 import { similarity } from '../lib/similarity'
 import { findOrCreateVenue } from './venue-functions'
@@ -17,8 +18,18 @@ async function requireSession() {
   return session
 }
 
+const castSchema = z.object({
+  name: z.string().trim().min(1).max(160),
+  role: z.string().trim().min(1).max(160),
+  kind: z.enum(['performer', 'creative']).default('performer'),
+  isPrincipal: z.boolean().optional(),
+  startedOn: z.string().date().optional().nullable(),
+  endedOn: z.string().date().optional().nullable(),
+})
+
 const productionSchema = z.object({
   name: z.string().trim().min(1).max(200),
+  cast: z.array(castSchema).max(200).optional(),
   productionType: z.enum(['broadway', 'off_broadway', 'tour', 'regional', 'local', 'other']),
   venue: z.string().trim().max(200).optional().nullable(),
   city: z.string().trim().max(120).optional().nullable(),
@@ -113,6 +124,7 @@ export type ImportResult = {
   shows: { title: string; slug: string; status: 'created' | 'skipped'; reason?: string }[]
   productions: number
   venues: number
+  castings: number
 }
 
 /**
@@ -126,7 +138,7 @@ export type ImportResult = {
 export const importCatalog = createServerOnlyFn(async (actor: Actor, payload: ImportPayload) => {
   assertAdmin(actor)
   const db = getDb()
-  const result: ImportResult = { shows: [], productions: 0, venues: 0 }
+  const result: ImportResult = { shows: [], productions: 0, venues: 0, castings: 0 }
 
   for (const venue of payload.venues ?? []) {
     await findOrCreateVenue(actor.id, venue.name, venue.city, venue.country)
@@ -185,18 +197,40 @@ export const importCatalog = createServerOnlyFn(async (actor: Actor, payload: Im
         ? await findOrCreateVenue(actor.id, production.venue, production.city, production.country)
         : null
       if (venue) result.venues += 1
-      await db.insert(productions).values({
-        showId: created.id,
-        venueId: venue?.id ?? null,
-        name: production.name,
-        productionType: production.productionType,
-        venue: production.venue || null,
-        city: production.city || null,
-        country: production.country || null,
-        openedOn: production.openedOn || null,
-        closedOn: production.closedOn || null,
-      })
+      const [insertedProduction] = await db
+        .insert(productions)
+        .values({
+          showId: created.id,
+          venueId: venue?.id ?? null,
+          name: production.name,
+          productionType: production.productionType,
+          venue: production.venue || null,
+          city: production.city || null,
+          country: production.country || null,
+          openedOn: production.openedOn || null,
+          closedOn: production.closedOn || null,
+        })
+        .returning({ id: productions.id })
       result.productions += 1
+
+      // Cast is recorded through the same path a member uses, so people are
+      // deduplicated against everyone already in the catalog rather than a
+      // second Alex Brightman appearing for every show he is imported into.
+      if (insertedProduction && production.cast?.length) {
+        const { addCasting } = await import('./people-functions')
+        for (const member of production.cast) {
+          await addCasting(actor.id, {
+            productionId: insertedProduction.id,
+            personName: member.name,
+            role: member.role,
+            kind: member.kind,
+            isPrincipal: member.isPrincipal ?? member.kind === 'performer',
+            startedOn: member.startedOn ?? undefined,
+            endedOn: member.endedOn ?? undefined,
+          })
+          result.castings += 1
+        }
+      }
     }
     result.shows.push({ title: show.title, slug, status: 'created' })
   }
@@ -233,9 +267,54 @@ export const previewImport = createServerOnlyFn(async (actor: Actor, raw: string
     shows: seen,
     productions: (validated.data.shows ?? []).reduce((n, s) => n + (s.productions?.length ?? 0), 0),
     venues: (validated.data.venues ?? []).length,
+    castings: (validated.data.shows ?? []).reduce(
+      (n, show) => n + (show.productions ?? []).reduce((m, p) => m + (p.cast?.length ?? 0), 0),
+      0,
+    ),
     venueWarnings: await findVenueNearMisses(validated.data),
+    peopleWarnings: await findPersonNearMisses(validated.data),
   }
 })
+
+export type PersonWarning = { given: string; resembles: string }
+
+/**
+ * People in the paste who do not match anybody recorded but look like somebody.
+ *
+ * Person matching is deliberately strict -- only case, accents, and punctuation
+ * fold -- so a misspelling creates a second person rather than being absorbed
+ * into the first. That is the right default, and it is exactly why the near
+ * misses are worth showing before the write.
+ */
+async function findPersonNearMisses(payload: ImportPayload): Promise<PersonWarning[]> {
+  const proposed = (payload.shows ?? []).flatMap((show) =>
+    (show.productions ?? []).flatMap((production) =>
+      (production.cast ?? []).map((member) => member.name),
+    ),
+  )
+  if (proposed.length === 0) return []
+
+  const known = await getDb().select({ name: people.name, matchKey: people.matchKey }).from(people)
+  if (known.length === 0) return []
+  const knownKeys = new Set(known.map((p) => p.matchKey))
+
+  const warnings: PersonWarning[] = []
+  const seen = new Set<string>()
+  for (const name of proposed) {
+    const key = normalizePersonName(name)
+    if (knownKeys.has(key) || seen.has(key)) continue
+    let best: { name: string; score: number } | null = null
+    for (const candidate of known) {
+      const score = similarity(key, candidate.matchKey)
+      if (!best || score > best.score) best = { name: candidate.name, score }
+    }
+    if (best && best.score >= 0.86 && best.score < 1) {
+      seen.add(key)
+      warnings.push({ given: name, resembles: best.name })
+    }
+  }
+  return warnings
+}
 
 export type VenueWarning = {
   given: string

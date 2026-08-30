@@ -2421,3 +2421,77 @@ a.recent-entry:hover h3,
   color: var(--ink);
   font-size: 0.75rem;
 }
+
+/* Company listings, on a show and on a night. */
+.cast-section {
+  margin: 3rem auto 0;
+}
+.cast-group {
+  margin-top: 1.5rem;
+}
+.cast-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 0.6rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.cast-list a {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+}
+.cast-list strong {
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1.05rem;
+}
+.cast-list span {
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+}
+.person-page .venue-productions strong {
+  font-size: 1.15rem;
+}
+
+/* Correcting who went on. */
+.cast-correction {
+  margin-top: 1rem;
+  padding: 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--canvas);
+}
+.cast-correction label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+}
+.cast-correction input {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1rem;
+}
+.correction-remove {
+  display: grid;
+  gap: 0.4rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.correction-remove li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.85rem;
+}

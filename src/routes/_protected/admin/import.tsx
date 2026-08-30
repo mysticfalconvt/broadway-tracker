@@ -210,6 +210,29 @@ function ImportCatalog() {
         </section>
       ) : null}
 
+      {preview && preview.peopleWarnings.length ? (
+        <section className="import-report import-warnings">
+          <h2>
+            {preview.peopleWarnings.length} {preview.peopleWarnings.length === 1 ? 'name' : 'names'}{' '}
+            to look at
+          </h2>
+          <p className="settings-note">
+            Names are matched strictly, so a misspelling becomes a second person rather than joining
+            the first.
+          </p>
+          <ul className="warning-list">
+            {preview.peopleWarnings.map((warning) => (
+              <li key={warning.given}>
+                <div>
+                  <strong>{warning.given}</strong>
+                  <span className="warning-existing">Already recorded: {warning.resembles}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       {preview ? (
         <section className="import-report">
           <h2>This would add</h2>
@@ -225,7 +248,8 @@ function ImportCatalog() {
           </ul>
           <p className="settings-note">
             {preview.productions} production{preview.productions === 1 ? '' : 's'} ·{' '}
-            {preview.venues} standalone venue{preview.venues === 1 ? '' : 's'}
+            {preview.venues} standalone venue{preview.venues === 1 ? '' : 's'} · {preview.castings}{' '}
+            casting{preview.castings === 1 ? '' : 's'}
           </p>
         </section>
       ) : null}

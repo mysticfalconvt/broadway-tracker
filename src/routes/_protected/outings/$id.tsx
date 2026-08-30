@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useId, useState, type FormEvent } from 'react'
 
 import { PrivacyBadge } from '../../../components/PrivacyBadge'
 import { ShowArtwork } from '../../../components/ShowArtwork'
@@ -7,6 +7,12 @@ import { VenueField } from '../../../components/VenueField'
 import { Rating } from '../../../components/Rating'
 import { formFlag, formNumber, formText } from '../../../lib/form'
 import { getOuting, saveMyReaction, saveOutingFacts } from '../../../server/outing-functions'
+import {
+  acceptLikelyCast,
+  dropSeenPerformer,
+  saveSeenPerformer,
+  suggestPeople,
+} from '../../../server/people-functions'
 import { formatFuzzyDate } from '../../../lib/fuzzy-date'
 
 export const Route = createFileRoute('/_protected/outings/$id')({
@@ -26,7 +32,7 @@ export const Route = createFileRoute('/_protected/outings/$id')({
 function OutingDetail() {
   const { outing, problem } = Route.useLoaderData()
   const viewerId = Route.useRouteContext().user.id
-  const [editing, setEditing] = useState<'none' | 'mine' | 'facts'>('none')
+  const [editing, setEditing] = useState<'none' | 'mine' | 'facts' | 'cast'>('none')
   if (!outing) {
     return (
       <main className="page-wrap empty-state">
@@ -146,6 +152,82 @@ function OutingDetail() {
                   </li>
                 ))}
               </ul>
+            </section>
+          ) : null}
+
+          {outing.seenCast.length ? (
+            <section className="outing-block">
+              <div className="block-head">
+                <p className="eyebrow">Who you saw</p>
+                <button
+                  className="text-action"
+                  type="button"
+                  onClick={() => setEditing(editing === 'cast' ? 'none' : 'cast')}
+                >
+                  {editing === 'cast' ? 'Done' : 'Change'}
+                </button>
+              </div>
+              <ul className="cast-list">
+                {outing.seenCast.map((member) => (
+                  <li key={member.personId}>
+                    <Link to="/artists/$id" params={{ id: member.personId }}>
+                      <strong>{member.name}</strong>
+                      {member.role ? <span>{member.role}</span> : null}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              {editing === 'cast' ? <CastCorrection outing={outing} /> : null}
+            </section>
+          ) : null}
+
+          {outing.likelyCast.length ? (
+            <section className="outing-block">
+              <p className="eyebrow">Who you probably saw</p>
+              {/* Inference, not record. A casting window says somebody held the
+                  role across a span; an understudy going on leaves no trace, so
+                  this says "probably" and means it. */}
+              <p className="outing-hint">
+                Worked out from the date and who was in the cast then — an understudy may have gone
+                on instead.
+              </p>
+              <ul className="cast-list">
+                {outing.likelyCast.map((member) => (
+                  <li key={member.personId}>
+                    <Link to="/artists/$id" params={{ id: member.personId }}>
+                      <strong>{member.name}</strong>
+                      <span>{member.role}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <div className="settings-actions">
+                <button
+                  className="button button-quiet"
+                  type="button"
+                  onClick={async () => {
+                    if (!outing.productionId || !outing.occurredOn) return
+                    await acceptLikelyCast({
+                      data: {
+                        outingId: outing.id,
+                        productionId: outing.productionId,
+                        onDate: outing.occurredOn,
+                      },
+                    })
+                    window.location.reload()
+                  }}
+                >
+                  That’s who I saw
+                </button>
+                <button
+                  className="text-action"
+                  type="button"
+                  onClick={() => setEditing(editing === 'cast' ? 'none' : 'cast')}
+                >
+                  Somebody else went on
+                </button>
+              </div>
+              {editing === 'cast' ? <CastCorrection outing={outing} /> : null}
             </section>
           ) : null}
 
@@ -399,5 +481,114 @@ function SharedFactsForm({ outing }: { outing: Outing }) {
         </button>
       </div>
     </form>
+  )
+}
+
+/**
+ * Saying who actually went on. Free text with suggestions, because an
+ * understudy is often nobody the catalog has heard of.
+ */
+function CastCorrection({ outing }: { outing: Outing }) {
+  const [name, setName] = useState('')
+  const [role, setRole] = useState('')
+  const [suggestions, setSuggestions] = useState<Awaited<ReturnType<typeof suggestPeople>>>([])
+  const [error, setError] = useState<string | null>(null)
+  const listId = useId()
+
+  useEffect(() => {
+    let cancelled = false
+    const timer = setTimeout(() => {
+      void suggestPeople({ data: { query: name } })
+        .then((rows) => {
+          if (!cancelled) setSuggestions(rows)
+        })
+        .catch(() => {
+          // Suggestions are a convenience; typing a new name must still work.
+        })
+    }, 150)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [name])
+
+  async function add() {
+    setError(null)
+    try {
+      await saveSeenPerformer({
+        data: { outingId: outing.id, personName: name, role: role.trim() || undefined },
+      })
+      window.location.reload()
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'We could not save that.')
+    }
+  }
+
+  return (
+    <div className="cast-correction">
+      <p className="outing-hint">
+        Add whoever went on. If the list above is wrong, remove a name and add the right one.
+      </p>
+      <div className="backfill-pair">
+        <label>
+          Who
+          <input
+            value={name}
+            list={listId}
+            placeholder="An understudy"
+            onChange={(event) => setName(event.target.value)}
+          />
+          <datalist id={listId}>
+            {suggestions.map((person) => (
+              <option key={person.id} value={person.name} />
+            ))}
+          </datalist>
+        </label>
+        <label>
+          As <span>Optional</span>
+          <input
+            value={role}
+            placeholder="Josh Skinner"
+            onChange={(event) => setRole(event.target.value)}
+          />
+        </label>
+      </div>
+      <div className="settings-actions">
+        <button
+          className="button button-primary"
+          type="button"
+          disabled={!name.trim()}
+          onClick={() => void add()}
+        >
+          Add them
+        </button>
+      </div>
+      {outing.seenCast.length ? (
+        <ul className="correction-remove">
+          {outing.seenCast.map((member) => (
+            <li key={member.personId}>
+              <span>{member.name}</span>
+              <button
+                className="text-action"
+                type="button"
+                onClick={async () => {
+                  await dropSeenPerformer({
+                    data: { outingId: outing.id, personId: member.personId },
+                  })
+                  window.location.reload()
+                }}
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {error ? (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
   )
 }

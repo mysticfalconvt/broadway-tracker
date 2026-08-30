@@ -26,6 +26,7 @@ import { Route as ProtectedSettingsRouteImport } from './routes/_protected/setti
 import { Route as ProtectedSubmitShowRouteImport } from './routes/_protected/submit-show'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiUploadsRouteImport } from './routes/api/uploads'
+import { Route as ArtistsIdRouteImport } from './routes/artists/$id'
 import { Route as ListsIdRouteImport } from './routes/lists/$id'
 import { Route as PIdRouteImport } from './routes/p/$id'
 import { Route as ShowsSlugRouteImport } from './routes/shows/$slug'
@@ -126,6 +127,11 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
 const ApiUploadsRoute = ApiUploadsRouteImport.update({
   id: '/api/uploads',
   path: '/api/uploads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArtistsIdRoute = ArtistsIdRouteImport.update({
+  id: '/artists/$id',
+  path: '/artists/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ListsIdRoute = ListsIdRouteImport.update({
@@ -232,6 +238,7 @@ export interface FileRoutesByFullPath {
   '/submit-show': typeof ProtectedSubmitShowRoute
   '/api/health': typeof ApiHealthRoute
   '/api/uploads': typeof ApiUploadsRoute
+  '/artists/$id': typeof ArtistsIdRoute
   '/lists/$id': typeof ListsIdRoute
   '/p/$id': typeof PIdRoute
   '/shows/$slug': typeof ShowsSlugRoute
@@ -267,6 +274,7 @@ export interface FileRoutesByTo {
   '/submit-show': typeof ProtectedSubmitShowRoute
   '/api/health': typeof ApiHealthRoute
   '/api/uploads': typeof ApiUploadsRoute
+  '/artists/$id': typeof ArtistsIdRoute
   '/lists/$id': typeof ListsIdRoute
   '/p/$id': typeof PIdRoute
   '/shows/$slug': typeof ShowsSlugRoute
@@ -304,6 +312,7 @@ export interface FileRoutesById {
   '/_protected/submit-show': typeof ProtectedSubmitShowRoute
   '/api/health': typeof ApiHealthRoute
   '/api/uploads': typeof ApiUploadsRoute
+  '/artists/$id': typeof ArtistsIdRoute
   '/lists/$id': typeof ListsIdRoute
   '/p/$id': typeof PIdRoute
   '/shows/$slug': typeof ShowsSlugRoute
@@ -341,6 +350,7 @@ export interface FileRouteTypes {
     | '/submit-show'
     | '/api/health'
     | '/api/uploads'
+    | '/artists/$id'
     | '/lists/$id'
     | '/p/$id'
     | '/shows/$slug'
@@ -376,6 +386,7 @@ export interface FileRouteTypes {
     | '/submit-show'
     | '/api/health'
     | '/api/uploads'
+    | '/artists/$id'
     | '/lists/$id'
     | '/p/$id'
     | '/shows/$slug'
@@ -412,6 +423,7 @@ export interface FileRouteTypes {
     | '/_protected/submit-show'
     | '/api/health'
     | '/api/uploads'
+    | '/artists/$id'
     | '/lists/$id'
     | '/p/$id'
     | '/shows/$slug'
@@ -441,6 +453,7 @@ export interface RootRouteChildren {
   SignUpRoute: typeof SignUpRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiUploadsRoute: typeof ApiUploadsRoute
+  ArtistsIdRoute: typeof ArtistsIdRoute
   ListsIdRoute: typeof ListsIdRoute
   PIdRoute: typeof PIdRoute
   ShowsSlugRoute: typeof ShowsSlugRoute
@@ -568,6 +581,13 @@ declare module '@tanstack/react-router' {
       path: '/api/uploads'
       fullPath: '/api/uploads'
       preLoaderRoute: typeof ApiUploadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/artists/$id': {
+      id: '/artists/$id'
+      path: '/artists/$id'
+      fullPath: '/artists/$id'
+      preLoaderRoute: typeof ArtistsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lists/$id': {
@@ -750,6 +770,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignUpRoute: SignUpRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiUploadsRoute: ApiUploadsRoute,
+  ArtistsIdRoute: ArtistsIdRoute,
   ListsIdRoute: ListsIdRoute,
   PIdRoute: PIdRoute,
   ShowsSlugRoute: ShowsSlugRoute,

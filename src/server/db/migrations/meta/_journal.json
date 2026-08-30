@@ -64,6 +64,20 @@
       "when": 1788049570608,
       "tag": "0008_lucky_dagger",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788084796738,
+      "tag": "0009_cheerful_gabe_jones",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788086274086,
+      "tag": "0010_lame_the_liberteens",
+      "breakpoints": true
     }
   ]
 }
