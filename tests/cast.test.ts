@@ -16,7 +16,7 @@ import {
   updatePerson,
   searchPeople,
 } from '../src/server/people-functions'
-import { createOutingForUser, outingForAttendee } from '../src/server/outing-functions'
+import { createOutingForUser, outingForViewer } from '../src/server/outing-functions'
 import { db, makeAdmin, makeFriendship, makeShow, makeUser, resetDatabase } from './helpers'
 
 beforeEach(resetDatabase)
@@ -416,7 +416,7 @@ describe('merging keeps what members entered', () => {
     const rows = await db.select().from(seenPerformers)
     expect(rows).toHaveLength(1)
     expect(rows[0]?.personId).toBe(keeper?.id)
-    const after = await outingForAttendee(member.id, outingId)
+    const after = await outingForViewer(member.id, outingId)
     expect(after.seenCast.map((c) => c.name)).toEqual(['Alex Brightman'])
   })
 
@@ -431,7 +431,7 @@ describe('merging keeps what members entered', () => {
     )
     await mergePeople(actor(admin), duplicateId, keptId)
     expect(await db.select().from(seenPerformers)).toHaveLength(1)
-    expect((await outingForAttendee(member.id, outingId)).seenCast).toHaveLength(1)
+    expect((await outingForViewer(member.id, outingId)).seenCast).toHaveLength(1)
   })
 
   it('folds a duplicate casting instead of listing the same role twice', async () => {
@@ -550,7 +550,7 @@ describe('correcting who you actually saw', () => {
 
   it('offers a guess until somebody records an answer', async () => {
     const { member, outingId } = await nightAt()
-    const before = await outingForAttendee(member.id, outingId)
+    const before = await outingForViewer(member.id, outingId)
     expect(before.likelyCast.map((c) => c.name)).toEqual(['Alex Brightman'])
     expect(before.seenCast).toHaveLength(0)
   })
@@ -560,7 +560,7 @@ describe('correcting who you actually saw', () => {
     const { confirmLikelyCast } = await import('../src/server/people-functions')
     const count = await confirmLikelyCast(member.id, outingId, production.id, '2026-05-18')
     expect(count).toBe(1)
-    const after = await outingForAttendee(member.id, outingId)
+    const after = await outingForViewer(member.id, outingId)
     expect(after.seenCast.map((c) => c.name)).toEqual(['Alex Brightman'])
     // The inference stops being offered: they have answered.
     expect(after.likelyCast).toHaveLength(0)
@@ -570,7 +570,7 @@ describe('correcting who you actually saw', () => {
     const { member, outingId } = await nightAt()
     const { recordSeenPerformer } = await import('../src/server/people-functions')
     await recordSeenPerformer(member.id, outingId, 'An Understudy', 'Josh Skinner')
-    const after = await outingForAttendee(member.id, outingId)
+    const after = await outingForViewer(member.id, outingId)
     expect(after.seenCast.map((c) => c.name)).toEqual(['An Understudy'])
     expect(after.seenCast[0]?.role).toBe('Josh Skinner')
     expect(after.likelyCast).toHaveLength(0)
@@ -583,7 +583,7 @@ describe('correcting who you actually saw', () => {
     )
     const { personId } = await recordSeenPerformer(member.id, outingId, 'Wrong Person')
     await removeSeenPerformer(member.id, outingId, personId)
-    expect((await outingForAttendee(member.id, outingId)).seenCast).toHaveLength(0)
+    expect((await outingForViewer(member.id, outingId)).seenCast).toHaveLength(0)
   })
 
   it('does not record the same person twice', async () => {
@@ -591,7 +591,7 @@ describe('correcting who you actually saw', () => {
     const { recordSeenPerformer } = await import('../src/server/people-functions')
     await recordSeenPerformer(member.id, outingId, 'Alex Brightman')
     await recordSeenPerformer(member.id, outingId, 'alex brightman')
-    expect((await outingForAttendee(member.id, outingId)).seenCast).toHaveLength(1)
+    expect((await outingForViewer(member.id, outingId)).seenCast).toHaveLength(1)
   })
 
   it('refuses somebody who was not at the performance', async () => {
@@ -626,8 +626,8 @@ describe('correcting who you actually saw', () => {
     const { recordSeenPerformer } = await import('../src/server/people-functions')
     await recordSeenPerformer(member.id, outing.id, 'An Understudy', 'Josh Skinner')
 
-    const asLogger = await outingForAttendee(member.id, outing.id)
-    const asFriend = await outingForAttendee(friend.id, outing.id)
+    const asLogger = await outingForViewer(member.id, outing.id)
+    const asFriend = await outingForViewer(friend.id, outing.id)
     expect(asLogger.seenCast.map((c) => c.name)).toEqual(['An Understudy'])
     // The friend has not answered, so they still get the guess.
     expect(asFriend.seenCast).toHaveLength(0)

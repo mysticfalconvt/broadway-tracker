@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { outingAttendees, outings, venues } from '../src/server/db/schema'
 import {
   createOutingForUser,
-  outingForAttendee,
+  outingForViewer,
   updateMyReaction,
   updateOutingFacts,
 } from '../src/server/outing-functions'
@@ -36,7 +36,7 @@ describe('editing the shared facts', () => {
       occurredOn: '2026-05-19',
       sharedNotes: 'We were late.',
     })
-    const outing = await outingForAttendee(owner.id, id)
+    const outing = await outingForViewer(owner.id, id)
     expect(outing.occurredOn).toBe('2026-05-19')
     expect(outing.venue).toBe('Walter Kerr Theatre')
     expect(outing.sharedNotes).toBe('We were late.')
@@ -70,7 +70,7 @@ describe('editing the shared facts', () => {
       datePrecision: 'year',
       occurredYear: 2007,
     })
-    const outing = await outingForAttendee(owner.id, id)
+    const outing = await outingForViewer(owner.id, id)
     expect(outing.occurredYear).toBe(2007)
     expect(outing.occurredOn).toBeNull()
   })
@@ -111,7 +111,7 @@ describe('editing your own reaction', () => {
       reviewVisibility: 'public',
       privateNotes: 'Sat in the balcony.',
     })
-    const outing = await outingForAttendee(owner.id, id)
+    const outing = await outingForViewer(owner.id, id)
     const mine = outing.attendees.find((a) => a.isOwn)
     expect(mine?.rating).toBe(9)
     expect(mine?.review).toBe('Better than I expected.')
@@ -134,7 +134,7 @@ describe('editing your own reaction', () => {
       review: 'I liked it less.',
       reviewVisibility: 'friends',
     })
-    const asOwner = await outingForAttendee(owner.id, id)
+    const asOwner = await outingForViewer(owner.id, id)
     expect(asOwner.attendees.find((a) => a.isOwn)?.review).toBe('The logger’s view.')
     expect(asOwner.attendees.find((a) => a.userId === friend.id)?.review).toBe('I liked it less.')
   })
@@ -175,7 +175,7 @@ describe('editing your own reaction', () => {
       log(show.id, { rating: 10, review: 'Loved it.' }),
     )
     await updateMyReaction(owner.id, { outingId: id, favorite: false, reviewVisibility: 'friends' })
-    const mine = (await outingForAttendee(owner.id, id)).attendees.find((a) => a.isOwn)
+    const mine = (await outingForViewer(owner.id, id)).attendees.find((a) => a.isOwn)
     expect(mine?.rating).toBeNull()
     expect(mine?.review).toBeNull()
   })
@@ -199,7 +199,7 @@ describe('a public review reaches an attendee who is not a friend', () => {
       review: 'Anyone here may read this.',
       reviewVisibility: 'public',
     })
-    const asAcquaintance = await outingForAttendee(acquaintance.id, id)
+    const asAcquaintance = await outingForViewer(acquaintance.id, id)
     const theirs = asAcquaintance.attendees.find((a) => a.userId === friend.id)
     expect(theirs?.review).toBe('Anyone here may read this.')
     expect(theirs?.hasWithheldReview).toBe(false)

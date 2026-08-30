@@ -215,7 +215,16 @@ export const createOutingForUser = createServerOnlyFn(
   },
 )
 
-export const outingForAttendee = createServerOnlyFn(async (viewerId: string, outingId: string) => {
+/**
+ * One night, as a particular person is allowed to see it.
+ *
+ * Two kinds of reader reach this page. Somebody who was there sees their own
+ * evening and can write on it. A friend who was not sees the night itself —
+ * what, when, where, and whatever the people on it chose to share — and is
+ * offered the chance to say they were there too. Anybody else gets the same
+ * answer as for a night that does not exist.
+ */
+export const outingForViewer = createServerOnlyFn(async (viewerId: string, outingId: string) => {
   const session = { user: { id: viewerId } }
   const data = { id: outingId }
   const [attendance] = await getDb()
@@ -223,7 +232,17 @@ export const outingForAttendee = createServerOnlyFn(async (viewerId: string, out
     .from(outingAttendees)
     .where(and(eq(outingAttendees.outingId, data.id), eq(outingAttendees.userId, session.user.id)))
     .limit(1)
-  if (!attendance) throw new Error('Unauthorized')
+
+  if (!attendance) {
+    const [owned] = await getDb()
+      .select({ ownerId: outings.createdByUserId, visibility: outings.visibility })
+      .from(outings)
+      .where(eq(outings.id, data.id))
+      .limit(1)
+    const shared =
+      owned && owned.visibility !== 'private' && (await areFriends(session.user.id, owned.ownerId))
+    if (!shared) throw new Error('Unauthorized')
+  }
 
   const [outing] = await getDb()
     .select({
@@ -286,9 +305,10 @@ export const outingForAttendee = createServerOnlyFn(async (viewerId: string, out
   // A recorded answer replaces the guess entirely. Once somebody has said who
   // they saw, showing them an inference alongside it would be arguing with them
   // about their own evening.
-  const seenCast = await seenPerformersFor(session.user.id, data.id)
+  const seenCast = attendance ? await seenPerformersFor(session.user.id, data.id) : []
   const likelyCast =
-    seenCast.length === 0 && outing.productionId && outing.datePrecision === 'exact'
+    // "Who you probably saw" is addressed to somebody who was in the room.
+    attendance && seenCast.length === 0 && outing.productionId && outing.datePrecision === 'exact'
       ? await likelyCastOn(outing.productionId, outing.occurredOn)
       : []
 
@@ -296,6 +316,9 @@ export const outingForAttendee = createServerOnlyFn(async (viewerId: string, out
     ...outing,
     likelyCast,
     seenCast,
+    // Somebody who was there, or a friend looking in. A visitor is shown the
+    // night but offered nothing to write on it.
+    viewerRole: attendance ? ('attendee' as const) : ('visitor' as const),
     // Shared facts belong to whoever logged the night.
     canEditFacts: outing.createdByUserId === session.user.id,
     attendees: attendees.map((attendee) => {
@@ -445,7 +468,7 @@ export const createOuting = createServerFn({ method: 'POST' })
 
 export const getOuting = createServerFn({ method: 'GET' })
   .validator(z.object({ id: z.string().uuid() }))
-  .handler(async ({ data }) => outingForAttendee((await requireSession()).user.id, data.id))
+  .handler(async ({ data }) => outingForViewer((await requireSession()).user.id, data.id))
 
 export const getMyOutingsForShow = createServerFn({ method: 'GET' })
   .validator(z.object({ showId: z.string().uuid() }))

@@ -1,9 +1,7 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
 
 import { ShowArtwork } from '../../../components/ShowArtwork'
 import { formatFuzzyDate } from '../../../lib/fuzzy-date'
-import { joinOuting } from '../../../server/outing-functions'
 import { getFriendProfile } from '../../../server/profile-functions'
 
 export const Route = createFileRoute('/_protected/people/$handle')({
@@ -178,10 +176,6 @@ function FriendOuting({
 }: {
   outing: NonNullable<Awaited<ReturnType<typeof getFriendProfile>>>['outings'][number]
 }) {
-  const [joined, setJoined] = useState(outing.alreadyThere)
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-
   const where = [outing.venue, outing.city].filter(Boolean).join(' · ')
   const when = formatFuzzyDate({
     datePrecision: outing.datePrecision,
@@ -191,21 +185,9 @@ function FriendOuting({
     approximateDate: outing.approximateDate,
   })
 
-  async function join() {
-    setBusy(true)
-    setError(null)
-    try {
-      await joinOuting({ data: { outingId: outing.id } })
-      setJoined(true)
-    } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'We could not add you.')
-    }
-    setBusy(false)
-  }
-
   return (
     <li>
-      <Link params={{ slug: outing.showSlug }} to="/shows/$slug">
+      <Link params={{ id: outing.id }} to="/outings/$id">
         <ShowArtwork
           coverImageKey={outing.coverImageKey}
           title={outing.showTitle}
@@ -213,24 +195,17 @@ function FriendOuting({
         />
       </Link>
       <div className="friend-outing-body">
-        <h3>{outing.showTitle}</h3>
+        <h3>
+          <Link params={{ id: outing.id }} to="/outings/$id">
+            {outing.showTitle}
+          </Link>
+        </h3>
         <p className="friend-outing-facts">{[when, where].filter(Boolean).join(' · ')}</p>
         {outing.sharedNotes ? <p className="friend-outing-note">{outing.sharedNotes}</p> : null}
-        {error ? (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        ) : null}
       </div>
-      {joined ? (
-        <Link className="button button-quiet" params={{ id: outing.id }} to="/outings/$id">
-          You were there
-        </Link>
-      ) : (
-        <button className="button button-quiet" disabled={busy} onClick={join} type="button">
-          {busy ? 'Adding…' : 'I was there too'}
-        </button>
-      )}
+      <Link className="button button-quiet" params={{ id: outing.id }} to="/outings/$id">
+        {outing.alreadyThere ? 'You were there' : 'See the night'}
+      </Link>
     </li>
   )
 }

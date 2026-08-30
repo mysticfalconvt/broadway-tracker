@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { libraryForOwner } from '../src/server/library-functions'
 import {
   createOutingForUser,
-  outingForAttendee,
+  outingForViewer,
   outingsForUserAndShow,
 } from '../src/server/outing-functions'
 import { makeFriendship, makeShow, makeUser, resetDatabase } from './helpers'
@@ -26,7 +26,7 @@ describe('logging a performance', () => {
     const owner = await makeUser()
     const show = await makeShow({ title: 'Hadestown' })
     const { id } = await createOutingForUser(owner.id, log(show.id))
-    const outing = await outingForAttendee(owner.id, id)
+    const outing = await outingForViewer(owner.id, id)
     expect(outing.showTitle).toBe('Hadestown')
     expect(outing.attendees).toHaveLength(1)
     expect(outing.attendees[0]?.attendanceStatus).toBe('accepted')
@@ -78,7 +78,7 @@ describe('fuzzy dates', () => {
     const owner = await makeUser()
     const show = await makeShow()
     const { id } = await createOutingForUser(owner.id, log(show.id))
-    const outing = await outingForAttendee(owner.id, id)
+    const outing = await outingForViewer(owner.id, id)
     expect(outing.datePrecision).toBe('exact')
     expect(outing.occurredOn).toBe('2026-05-18')
     expect(outing.occurredYear).toBeNull()
@@ -97,7 +97,7 @@ describe('fuzzy dates', () => {
         occurredYear: 2026,
       }),
     )
-    const outing = await outingForAttendee(owner.id, id)
+    const outing = await outingForViewer(owner.id, id)
     expect(outing.occurredOn).toBeNull()
     expect(outing.occurredMonth).toBe(5)
     expect(outing.occurredYear).toBe(2026)
@@ -110,7 +110,7 @@ describe('fuzzy dates', () => {
       owner.id,
       log(show.id, { datePrecision: 'year', occurredOn: undefined, occurredYear: 2007 }),
     )
-    const outing = await outingForAttendee(owner.id, id)
+    const outing = await outingForViewer(owner.id, id)
     expect(outing.occurredYear).toBe(2007)
     expect(outing.occurredOn).toBeNull()
     expect(outing.occurredMonth).toBeNull()
@@ -127,7 +127,7 @@ describe('fuzzy dates', () => {
         approximateDate: 'Around 2005',
       }),
     )
-    const outing = await outingForAttendee(owner.id, id)
+    const outing = await outingForViewer(owner.id, id)
     expect(outing.approximateDate).toBe('Around 2005')
     expect(outing.occurredOn).toBeNull()
   })
@@ -139,7 +139,7 @@ describe('fuzzy dates', () => {
       owner.id,
       log(show.id, { datePrecision: 'unknown', occurredOn: undefined }),
     )
-    const outing = await outingForAttendee(owner.id, id)
+    const outing = await outingForViewer(owner.id, id)
     expect(outing.occurredOn).toBeNull()
     expect(outing.occurredMonth).toBeNull()
     expect(outing.occurredYear).toBeNull()
@@ -154,7 +154,7 @@ describe('shared outing authorization', () => {
     await makeFriendship(owner.id, friend.id, 'accepted')
     const show = await makeShow()
     const { id } = await createOutingForUser(owner.id, log(show.id, { attendeeIds: [friend.id] }))
-    const outing = await outingForAttendee(owner.id, id)
+    const outing = await outingForViewer(owner.id, id)
     expect(outing.attendees).toHaveLength(2)
     const invited = outing.attendees.find((a) => a.userId === friend.id)
     expect(invited?.attendanceStatus).toBe('invited')
@@ -184,7 +184,7 @@ describe('shared outing authorization', () => {
     const outsider = await makeUser()
     const show = await makeShow()
     const { id } = await createOutingForUser(owner.id, log(show.id))
-    await expect(outingForAttendee(outsider.id, id)).rejects.toThrow('Unauthorized')
+    await expect(outingForViewer(outsider.id, id)).rejects.toThrow('Unauthorized')
   })
 
   it('does not list another user outings', async () => {
@@ -211,7 +211,7 @@ describe('attendee-owned content', () => {
         rating: 10,
       }),
     )
-    const asFriend = await outingForAttendee(friend.id, id)
+    const asFriend = await outingForViewer(friend.id, id)
     const creatorRow = asFriend.attendees.find((a) => a.userId === owner.id)
     expect(creatorRow?.privateNotes).toBeNull()
     expect(creatorRow?.review).toBeNull()
@@ -226,7 +226,7 @@ describe('attendee-owned content', () => {
       owner.id,
       log(show.id, { privateNotes: 'Took the kids.' }),
     )
-    const outing = await outingForAttendee(owner.id, id)
+    const outing = await outingForViewer(owner.id, id)
     expect(outing.attendees[0]?.privateNotes).toBe('Took the kids.')
   })
 })

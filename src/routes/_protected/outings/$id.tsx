@@ -6,7 +6,12 @@ import { ShowArtwork } from '../../../components/ShowArtwork'
 import { VenueField } from '../../../components/VenueField'
 import { Rating } from '../../../components/Rating'
 import { formFlag, formNumber, formText } from '../../../lib/form'
-import { getOuting, saveMyReaction, saveOutingFacts } from '../../../server/outing-functions'
+import {
+  getOuting,
+  joinOuting,
+  saveMyReaction,
+  saveOutingFacts,
+} from '../../../server/outing-functions'
 import {
   acceptLikelyCast,
   dropSeenPerformer,
@@ -39,8 +44,8 @@ function OutingDetail() {
         <p className="eyebrow">Not your memory</p>
         <h1>{problem}</h1>
         <p>
-          A shared night is only visible to the people who were there. If you were, ask whoever
-          logged it to add you.
+          A night is visible to the people who were there, and to the friends its owner shared it
+          with. If you were there, ask whoever logged it to add you.
         </p>
         <Link className="button button-primary" to="/library">
           Back to your theatre
@@ -85,13 +90,16 @@ function OutingDetail() {
               {editing === 'facts' ? 'Cancel' : 'Edit the details of this night'}
             </button>
           ) : null}
-          <Link
-            className="button button-primary"
-            to="/shows/$slug"
-            params={{ slug: outing.showSlug }}
-          >
-            About {outing.showTitle}
-          </Link>
+          <div className="outing-hero-actions">
+            {outing.viewerRole === 'visitor' ? <IWasThereToo outingId={outing.id} /> : null}
+            <Link
+              className="button button-primary"
+              params={{ slug: outing.showSlug }}
+              to="/shows/$slug"
+            >
+              About {outing.showTitle}
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -105,27 +113,29 @@ function OutingDetail() {
         <div className="outing-main">
           {/* Your own reaction. Separate from the shared record of the night,
               and separate again from what only you can see. */}
-          <section className="outing-block">
-            <div className="block-head">
-              <p className="eyebrow">What you thought</p>
-              <button
-                className="text-action"
-                type="button"
-                onClick={() => setEditing(editing === 'mine' ? 'none' : 'mine')}
-              >
-                {editing === 'mine' ? 'Cancel' : 'Edit'}
-              </button>
-            </div>
-            {editing === 'mine' ? <MyReactionForm outingId={outing.id} mine={ownEntry} /> : null}
-            {editing === 'mine' ? null : ownEntry?.rating || ownEntry?.review ? (
-              <>
-                {ownEntry.rating ? <Rating value={ownEntry.rating / 2} /> : null}
-                {ownEntry.review ? <blockquote>{ownEntry.review}</blockquote> : null}
-              </>
-            ) : (
-              <p className="outing-empty">You have not written anything about this night yet.</p>
-            )}
-          </section>
+          {outing.viewerRole === 'visitor' ? null : (
+            <section className="outing-block">
+              <div className="block-head">
+                <p className="eyebrow">What you thought</p>
+                <button
+                  className="text-action"
+                  type="button"
+                  onClick={() => setEditing(editing === 'mine' ? 'none' : 'mine')}
+                >
+                  {editing === 'mine' ? 'Cancel' : 'Edit'}
+                </button>
+              </div>
+              {editing === 'mine' ? <MyReactionForm outingId={outing.id} mine={ownEntry} /> : null}
+              {editing === 'mine' ? null : ownEntry?.rating || ownEntry?.review ? (
+                <>
+                  {ownEntry.rating ? <Rating value={ownEntry.rating / 2} /> : null}
+                  {ownEntry.review ? <blockquote>{ownEntry.review}</blockquote> : null}
+                </>
+              ) : (
+                <p className="outing-empty">You have not written anything about this night yet.</p>
+              )}
+            </section>
+          )}
 
           {others.length ? (
             <section className="outing-block">
@@ -590,5 +600,45 @@ function CastCorrection({ outing }: { outing: Outing }) {
         </p>
       ) : null}
     </div>
+  )
+}
+
+/**
+ * The one thing a friend can do with somebody else's night.
+ *
+ * Saying so puts them on this same outing rather than making a second record of
+ * one evening, and marks the show seen in their own library. Only ever offered
+ * on a night they were already allowed to see.
+ */
+function IWasThereToo({ outingId }: { outingId: string }) {
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  return (
+    <>
+      <button
+        className="button button-primary"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true)
+          setError(null)
+          try {
+            await joinOuting({ data: { outingId } })
+            window.location.reload()
+          } catch (caughtError) {
+            setError(caughtError instanceof Error ? caughtError.message : 'We could not add you.')
+            setBusy(false)
+          }
+        }}
+        type="button"
+      >
+        {busy ? 'Adding…' : 'I was there too'}
+      </button>
+      {error ? (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </>
   )
 }

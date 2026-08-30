@@ -5,7 +5,7 @@ import {
   createOutingForUser,
   joinOutingAsAttendee,
   leaveOuting,
-  outingForAttendee,
+  outingForViewer,
 } from '../src/server/outing-functions'
 import { friendProfileForViewer } from '../src/server/profile-functions'
 import { db, makeFriendship, makeShow, makeUser, resetDatabase } from './helpers'
@@ -42,7 +42,7 @@ describe('I was there too', () => {
       .where(eq(outingAttendees.outingId, outing.id))
     expect(rows).toHaveLength(2)
     // One night, not two records of the same evening.
-    expect(await outingForAttendee(friend.id, outing.id)).toBeTruthy()
+    expect(await outingForViewer(friend.id, outing.id)).toBeTruthy()
   })
 
   it('marks the show seen in their own library', async () => {
@@ -158,5 +158,91 @@ describe('logging a night no longer hides it', () => {
       .from(libraryEntries)
       .where(eq(libraryEntries.userId, owner.id))
     expect(entry?.visibility).toBe('private')
+  })
+})
+
+describe('a friend looking in on a night they were not at', () => {
+  it('sees the night, marked as a visitor', async () => {
+    const { friend, outing } = await aSharedNight()
+    const seen = await outingForViewer(friend.id, outing.id)
+    expect(seen.viewerRole).toBe('visitor')
+    expect(seen.showTitle).toBe('Hadestown')
+    expect(seen.venue).toBe('Walter Kerr Theatre')
+    expect(seen.canEditFacts).toBe(false)
+  })
+
+  it('becomes an attendee once they say they were there', async () => {
+    const { friend, outing } = await aSharedNight()
+    await joinOutingAsAttendee(friend.id, outing.id)
+    expect((await outingForViewer(friend.id, outing.id)).viewerRole).toBe('attendee')
+  })
+
+  it('is refused a private night', async () => {
+    const { friend, outing } = await aSharedNight('private')
+    await expect(outingForViewer(friend.id, outing.id)).rejects.toThrow('Unauthorized')
+  })
+
+  it('is refused to somebody who is not a friend', async () => {
+    const { outing } = await aSharedNight('public')
+    const stranger = await makeUser()
+    await expect(outingForViewer(stranger.id, outing.id)).rejects.toThrow('Unauthorized')
+  })
+
+  it('is not offered a guess about who was on stage', async () => {
+    // "Who you probably saw" is addressed to somebody who was in the room.
+    const owner = await makeUser({ profileVisibility: 'public' })
+    const friend = await makeUser({ profileVisibility: 'public' })
+    await makeFriendship(owner.id, friend.id, 'accepted')
+    const show = await makeShow({ title: 'Schmigadoon!', slug: 'schmigadoon' })
+    const { findOrCreateProduction } = await import('../src/server/catalog-functions')
+    const production = await findOrCreateProduction(
+      owner.id,
+      show.id,
+      'Original Broadway',
+      'broadway',
+      'Nederlander Theatre',
+      'New York',
+    )
+    const { addCasting } = await import('../src/server/people-functions')
+    await addCasting(owner.id, {
+      productionId: production.id,
+      personName: 'Alex Brightman',
+      role: 'Josh Skinner',
+      kind: 'performer',
+      isPrincipal: true,
+      startedOn: '2026-04-20',
+    })
+    const outing = await createOutingForUser(owner.id, {
+      showId: show.id,
+      productionId: production.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-05-18',
+      attendeeIds: [],
+      favorite: false,
+    })
+    expect((await outingForViewer(owner.id, outing.id)).likelyCast).toHaveLength(1)
+    expect((await outingForViewer(friend.id, outing.id)).likelyCast).toHaveLength(0)
+  })
+
+  it('still withholds what the people on it kept back', async () => {
+    const owner = await makeUser({ profileVisibility: 'public' })
+    const friend = await makeUser({ profileVisibility: 'public' })
+    await makeFriendship(owner.id, friend.id, 'accepted')
+    const show = await makeShow({ title: 'Hadestown', slug: 'hadestown' })
+    const outing = await createOutingForUser(owner.id, {
+      showId: show.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-05-18',
+      attendeeIds: [],
+      favorite: false,
+      privateNotes: 'Took the kids.',
+      review: 'A perfect night.',
+      reviewVisibility: 'private',
+    })
+    const asVisitor = await outingForViewer(friend.id, outing.id)
+    const theirs = asVisitor.attendees.find((a) => a.userId === owner.id)
+    expect(theirs?.privateNotes).toBeNull()
+    expect(theirs?.review).toBeNull()
+    expect(theirs?.hasWithheldReview).toBe(true)
   })
 })

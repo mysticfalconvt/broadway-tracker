@@ -2657,3 +2657,12 @@ a.recent-entry:hover h3,
     justify-self: start;
   }
 }
+
+/* A visitor's one action on somebody else's night. */
+.outing-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 1.25rem;
+}

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { outingAttendees } from '../src/server/db/schema'
 import { acceptedFriendIdsFor } from '../src/server/friend-functions'
-import { createOutingForUser, outingForAttendee } from '../src/server/outing-functions'
+import { createOutingForUser, outingForViewer } from '../src/server/outing-functions'
 import { db, makeFriendship, makeShow, makeUser, resetDatabase } from './helpers'
 
 beforeEach(resetDatabase)
@@ -58,7 +58,7 @@ describe('what one attendee may read of another', () => {
       owner.id,
       log(show.id, { review: 'Mine to keep.', reviewVisibility: 'private' }),
     )
-    const outing = await outingForAttendee(owner.id, id)
+    const outing = await outingForViewer(owner.id, id)
     expect(outing.attendees[0]?.review).toBe('Mine to keep.')
     expect(outing.attendees[0]?.isOwn).toBe(true)
   })
@@ -72,7 +72,7 @@ describe('what one attendee may read of another', () => {
       owner.id,
       log(show.id, { attendeeIds: [friend.id], review: 'A wonderful night.' }),
     )
-    const asFriend = await outingForAttendee(friend.id, id)
+    const asFriend = await outingForViewer(friend.id, id)
     const theirs = asFriend.attendees.find((a) => a.userId === owner.id)
     expect(theirs?.review).toBe('A wonderful night.')
     expect(theirs?.hasWithheldReview).toBe(false)
@@ -91,7 +91,7 @@ describe('what one attendee may read of another', () => {
         reviewVisibility: 'private',
       }),
     )
-    const asFriend = await outingForAttendee(friend.id, id)
+    const asFriend = await outingForViewer(friend.id, id)
     const theirs = asFriend.attendees.find((a) => a.userId === owner.id)
     expect(theirs?.review).toBeNull()
     // The page can say it was kept private rather than implying none exists.
@@ -113,7 +113,7 @@ describe('what one attendee may read of another', () => {
     await writeReview(id, 'Friend’s take.')
 
     // The acquaintance is a friend of the owner, but not of the other attendee.
-    const asAcquaintance = await outingForAttendee(acquaintance.id, id)
+    const asAcquaintance = await outingForViewer(acquaintance.id, id)
     const strangerRow = asAcquaintance.attendees.find((a) => a.userId === friend.id)
     expect(strangerRow?.review).toBeNull()
     expect(strangerRow?.hasWithheldReview).toBe(true)
@@ -128,7 +128,7 @@ describe('what one attendee may read of another', () => {
       owner.id,
       log(show.id, { attendeeIds: [friend.id], privateNotes: 'Took the kids.' }),
     )
-    const asFriend = await outingForAttendee(friend.id, id)
+    const asFriend = await outingForViewer(friend.id, id)
     expect(asFriend.attendees.find((a) => a.userId === owner.id)?.privateNotes).toBeNull()
     expect(JSON.stringify(asFriend)).not.toContain('Took the kids.')
   })
@@ -145,7 +145,7 @@ describe('what one attendee may read of another', () => {
       attendanceStatus: 'invited',
       reviewVisibility: 'private',
     })
-    const outing = await outingForAttendee(owner.id, id)
+    const outing = await outingForViewer(owner.id, id)
     expect(outing.attendees.find((a) => a.userId === friend.id)?.hasWithheldReview).toBe(false)
   })
 })
