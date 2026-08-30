@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useState } from 'react'
+import { proposeShowResearch } from '../../../server/research-functions'
 
 import { applyVenueFix, applyVenueFixes, type VenueFix } from '../../../lib/import-fix'
 import { checkCatalogImport, runCatalogImport } from '../../../server/import-functions'
@@ -60,6 +61,7 @@ function ImportCatalog() {
   const [result, setResult] = useState<Result | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [sources, setSources] = useState<{ title: string; url: string }[]>([])
 
   async function check() {
     setError(null)
@@ -120,6 +122,30 @@ function ImportCatalog() {
           as-is. Nothing existing is overwritten, so the same paste can safely be run twice.
         </p>
       </header>
+
+      <LookItUp
+        onProposed={(proposed, from) => {
+          setJson(proposed)
+          setSources(from)
+          setPreview(null)
+          setResult(null)
+        }}
+      />
+      {sources.length ? (
+        <p className="settings-note">
+          Drafted from{' '}
+          {sources.map((source, index) => (
+            <span key={source.url}>
+              {index > 0 ? ', ' : ''}
+              <a href={source.url} rel="noreferrer" target="_blank">
+                {new URL(source.url).hostname}
+              </a>
+            </span>
+          ))}
+          . Read it before importing — a model reading a cast list can attach the right name to the
+          wrong role.
+        </p>
+      ) : null}
 
       <label className="import-field">
         Catalog JSON
@@ -273,5 +299,65 @@ function ImportCatalog() {
         </section>
       ) : null}
     </main>
+  )
+}
+
+/**
+ * Looking a show up rather than typing it.
+ *
+ * Deliberately stops at the textarea below. The model drafts, a person reads,
+ * and the existing import does the writing — because casting dates decide what
+ * the app later tells somebody they probably saw, and a wrong one looks exactly
+ * like a checked fact.
+ */
+function LookItUp({
+  onProposed,
+}: {
+  onProposed: (json: string, sources: { title: string; url: string }[]) => void
+}) {
+  const [title, setTitle] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+
+  async function look() {
+    setBusy(true)
+    setProblem(null)
+    try {
+      const proposal = await proposeShowResearch({ data: { title } })
+      onProposed(proposal.json, proposal.sources)
+    } catch (caughtError) {
+      setProblem(caughtError instanceof Error ? caughtError.message : 'The lookup failed.')
+    }
+    setBusy(false)
+  }
+
+  return (
+    <div className="look-it-up">
+      <label>
+        Look a show up
+        <input
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder="The Producers"
+          value={title}
+        />
+        <span>
+          Searches, reads, and drafts the JSON below. It takes about half a minute and writes
+          nothing.
+        </span>
+      </label>
+      <button
+        className="button button-quiet"
+        disabled={busy || !title.trim()}
+        onClick={look}
+        type="button"
+      >
+        {busy ? 'Reading…' : 'Draft it'}
+      </button>
+      {problem ? (
+        <p className="form-error" role="alert">
+          {problem}
+        </p>
+      ) : null}
+    </div>
   )
 }

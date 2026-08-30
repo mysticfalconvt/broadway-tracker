@@ -3089,3 +3089,31 @@ a.recent-entry:hover h3,
   font-size: min(2.2rem, 42cqmin);
   container-type: size;
 }
+
+/* Looking a show up instead of typing it. */
+.look-it-up {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.look-it-up label {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+}
+.look-it-up input {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 1rem;
+}
+.look-it-up button {
+  justify-self: start;
+}
