@@ -114,7 +114,10 @@ export const auth = betterAuth({
       profileVisibility: {
         type: ['private', 'friends', 'public'],
         required: false,
-        defaultValue: 'private',
+        // Must match the column default in the schema. Better Auth applies this
+        // itself, overriding both the database default and the synthetic-user
+        // hook, so changing one without the other silently does nothing.
+        defaultValue: 'public',
         input: false,
       },
       role: { type: ['member', 'admin'], required: false, defaultValue: 'member', input: false },

@@ -231,7 +231,18 @@ export const venueWithHistory = createServerOnlyFn(
           .orderBy(desc(outings.occurredOn))
       : []
 
-    return { venue, staged, yourNights }
+    // The venue row carries whoever first recorded it; a building is public
+    // information, the person who typed it in is not.
+    return {
+      venue: {
+        id: venue.id,
+        name: venue.name,
+        city: venue.city,
+        country: venue.country,
+      },
+      staged,
+      yourNights,
+    }
   },
 )
 

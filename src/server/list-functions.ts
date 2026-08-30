@@ -117,7 +117,22 @@ export const listForViewer = createServerOnlyFn(async (viewerId: string | null, 
     .innerJoin(shows, eq(listItems.showId, shows.id))
     .where(eq(listItems.listId, list.id))
     .orderBy(asc(listItems.position))
-  return { ...list, items, canEdit, owner }
+  // Deliberately narrowed rather than spread. The row carries `userId`, the same
+  // opaque id that addresses a public profile -- sending it to a stranger would
+  // let every public list by one person be grouped and tied back to them, which
+  // is exactly what the anonymity of a public page is meant to prevent.
+  return {
+    id: list.id,
+    title: list.title,
+    description: list.description,
+    visibility: list.visibility,
+    createdAt: list.createdAt,
+    updatedAt: list.updatedAt,
+    userId: identified ? list.userId : null,
+    items,
+    canEdit,
+    owner,
+  }
 })
 
 export const addShowToOwnedList = createServerOnlyFn(
