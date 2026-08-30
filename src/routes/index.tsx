@@ -19,7 +19,9 @@ function Home() {
   return home ? <SignedInHome home={home} /> : <VisitorHome />
 }
 
-function SignedInHome({ home }: { home: NonNullable<Awaited<ReturnType<typeof getFrontPage>>> }) {
+type FrontPage = NonNullable<Awaited<ReturnType<typeof getFrontPage>>>
+
+function SignedInHome({ home }: { home: FrontPage }) {
   const { name, stats, wantToSee, recent } = home
   const greeting = useLocalGreeting()
   const isNew = stats.performances === 0 && stats.shows === 0
@@ -69,6 +71,8 @@ function SignedInHome({ home }: { home: NonNullable<Awaited<ReturnType<typeof ge
           </div>
         </dl>
       </section>
+
+      {home.looseEnd ? <LooseEnd end={home.looseEnd} /> : null}
 
       <section className="page-wrap" aria-label="Theatre dashboard">
         <div className="primary-column">
@@ -361,6 +365,56 @@ function VisitorHome() {
         </aside>
       </section>
     </main>
+  )
+}
+
+/**
+ * One gap in the record, with somewhere to go about it.
+ *
+ * Deliberately a single card and not a list. The line under the title is the
+ * only copy here that explains anything, and it earns its place by saying what
+ * answering unlocks — which is the part nobody can see from the page.
+ */
+function LooseEnd({ end }: { end: NonNullable<FrontPage['looseEnd']> }) {
+  const said = {
+    when: {
+      title: `${end.title} has no date on it.`,
+      why: 'The run is on record, so the year can probably be worked out.',
+      action: 'Work it out',
+    },
+    who: {
+      title: `You have not said who you saw in ${end.title}.`,
+      why: 'The cast that night is known — it needs confirming, not typing.',
+      action: 'Confirm the cast',
+    },
+    where: {
+      title: `${end.title} has no theatre.`,
+      why: 'It is missing from your map until it does.',
+      action: 'Add it',
+    },
+    rating: {
+      title: `You have never rated ${end.title}.`,
+      why: null,
+      action: 'Rate it',
+    },
+  }[end.kind]
+
+  return (
+    <section className="page-wrap loose-end" aria-label="Something to finish">
+      <div>
+        <p className="loose-end-title">{said.title}</p>
+        {said.why ? <p className="loose-end-why">{said.why}</p> : null}
+      </div>
+      {end.kind === 'rating' ? (
+        <Link className="button button-quiet" params={{ slug: end.slug }} to="/shows/$slug">
+          {said.action}
+        </Link>
+      ) : (
+        <Link className="button button-quiet" params={{ id: end.outingId }} to="/outings/$id">
+          {said.action}
+        </Link>
+      )}
+    </section>
   )
 }
 

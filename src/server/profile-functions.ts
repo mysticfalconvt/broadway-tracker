@@ -95,15 +95,18 @@ export const homeForUser = createServerOnlyFn(async (userId: string) => {
 export const frontPageFor = createServerOnlyFn(async (userId: string) => {
   const { anniversariesFor, recentReviewsFor, sharedHistoryFor } = await import('./resurfacing')
   const { postsForReader } = await import('./post-functions')
-  const [home, anniversaries, alsoSeen, reviews, fromFriends, writing] = await Promise.all([
-    homeForUser(userId),
-    anniversariesFor(userId),
-    sharedHistoryFor(userId),
-    recentReviewsFor(userId),
-    friendsActivityFor(userId, 4),
-    postsForReader(userId, 3),
-  ])
-  return { ...home, anniversaries, alsoSeen, reviews, fromFriends, writing }
+  const { looseEndFor } = await import('./loose-ends')
+  const [home, anniversaries, alsoSeen, reviews, fromFriends, writing, looseEnd] =
+    await Promise.all([
+      homeForUser(userId),
+      anniversariesFor(userId),
+      sharedHistoryFor(userId),
+      recentReviewsFor(userId),
+      friendsActivityFor(userId, 4),
+      postsForReader(userId, 3),
+      looseEndFor(userId),
+    ])
+  return { ...home, anniversaries, alsoSeen, reviews, fromFriends, writing, looseEnd }
 })
 
 export const getFrontPage = createServerFn({ method: 'GET' }).handler(async () => {

@@ -3378,3 +3378,26 @@ a.recent-entry:hover h3,
   color: var(--ink-muted);
   font-size: 0.8rem;
 }
+
+.loose-end {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.15rem;
+  border-left: 3px solid #3f5a52;
+  border-radius: 0 10px 10px 0;
+  background: var(--canvas);
+}
+.loose-end-title {
+  margin: 0;
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1.05rem;
+}
+.loose-end-why {
+  margin: 0.25rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+}
