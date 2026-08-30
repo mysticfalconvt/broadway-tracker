@@ -250,3 +250,37 @@ export const narrowTheDate = createServerFn({ method: 'GET' })
     await requireSession()
     return narrowDate(data.showId, data.year ?? null, data.personName)
   })
+
+/**
+ * Other nights this person logged around a given year.
+ *
+ * "It was the same trip as..." is a real way people remember things, and it is
+ * a question only this app can answer — no search engine knows that somebody
+ * was in New York that week because they logged two other shows.
+ */
+export const outingsNearYear = createServerOnlyFn(async (viewerId: string, year: number) => {
+  const { outingAttendees, outings } = await import('./db/schema')
+  return getDb()
+    .select({
+      outingId: outings.id,
+      showTitle: shows.title,
+      venue: productions.venue,
+      occurredOn: outings.occurredOn,
+      occurredYear: outings.occurredYear,
+      datePrecision: outings.datePrecision,
+    })
+    .from(outingAttendees)
+    .innerJoin(outings, eq(outingAttendees.outingId, outings.id))
+    .innerJoin(shows, eq(outings.showId, shows.id))
+    .leftJoin(productions, eq(outings.productionId, productions.id))
+    .where(
+      and(
+        eq(outingAttendees.userId, viewerId),
+        sql`coalesce(
+          extract(year from ${outings.occurredOn})::int,
+          ${outings.occurredYear}
+        ) between ${year - 1} and ${year + 1}`,
+      ),
+    )
+    .limit(12)
+})

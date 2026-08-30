@@ -223,8 +223,12 @@ Getting facts in comes first, because nothing downstream works without them.
    agree with the record. Where no casting dates exist it estimates from the
    order replacements took the role, and says that it is doing so. On the log
    form as *not sure when it was?*, with no model involved.
-4. **A tool layer** over those, taking an explicit actor, testable without a
-   model in the loop.
+4. ~~**A tool layer**~~ **Done.** Nine read-only tools in `src/server/tools.ts`,
+   each taking an actor and going through the functions the rest of the app
+   uses. A test asserts none of them writes, so adding one that does fails the
+   suite. Verified against gpt-oss-120b: given the schemas it took three turns —
+   `find_show`, `productions_of`, `narrow_the_year` — and the answer came from
+   the database.
 5. **The local text box**, LM Studio, decompose-and-propose.
 6. **MCP**, only if the paste in step 2 has proved too slow in practice. It may
    not: a paste needs no key, no server, and no new way into the app.
