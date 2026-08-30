@@ -383,7 +383,8 @@ production.
 held it. A performance then resolves its likely cast from the date it happened.
 
 - [x] Add `people` (name, optional disambiguating note) with normalisation and an administrator
-      merge, the way venues work.
+      merge, the way venues work. *(`/admin/people`: suspected duplicates with a choice of which
+      name survives, a rename, and a fold-into picker for anyone the suspicion list missed.)*
 - [x] Keep entry open-ended: any name may be typed, and existing people are offered first.
 - [x] Add `castings`: person, production, role, `startedOn`, `endedOn`, principal, and whether
       the role is on stage or behind it.
@@ -394,6 +395,8 @@ held it. A performance then resolves its likely cast from the date it happened.
       say plainly that it is inferred rather than recorded. *(Exact dates only; performers only.)*
 - [x] Let a member correct or confirm who they actually saw on their own outing.
 - [x] Extend the catalog import format to carry cast, and warn on near-duplicate names.
+- [x] Carry members' recorded cast through a merge. *(`seen_performers` cascades from `people`, so
+      the old merge discarded by hand what members had entered.)*
 
 **Open question — inference versus record.** Matching a date against a casting window gives a
 good guess, not a fact: an understudy went on and nothing in the data will ever say so. The

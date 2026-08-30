@@ -1,14 +1,19 @@
+import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { findOrCreateProduction } from '../src/server/catalog-functions'
-import { castings, people } from '../src/server/db/schema'
+import { castings, people, seenPerformers } from '../src/server/db/schema'
 import {
   addCasting,
   castForProduction,
   findOrCreatePerson,
   likelyCastOn,
   mergePeople,
+  peopleForAdmin,
+  personSuspicions,
   personWithHistory,
+  recordSeenPerformer,
+  updatePerson,
   searchPeople,
 } from '../src/server/people-functions'
 import { createOutingForUser, outingForAttendee } from '../src/server/outing-functions'
@@ -313,6 +318,175 @@ describe('merging duplicate people', () => {
     await expect(mergePeople(actor(admin), person.id, person.id)).rejects.toThrow(
       'different person',
     )
+  })
+})
+
+/** A recorded night with one performer cast, for the merge tests. */
+async function nightAtFor(dateString = '2026-05-18') {
+  const { member, show, production } = await schmigadoon()
+  await addCasting(member.id, {
+    productionId: production.id,
+    personName: 'Alex Brightman',
+    role: 'Josh Skinner',
+    kind: 'performer',
+    isPrincipal: true,
+    startedOn: '2026-04-20',
+  })
+  const outing = await createOutingForUser(member.id, {
+    showId: show.id,
+    productionId: production.id,
+    datePrecision: 'exact',
+    occurredOn: dateString,
+    attendeeIds: [],
+    favorite: false,
+  })
+  return { member, production, outingId: outing.id }
+}
+
+describe('the merge screen', () => {
+  it('counts what rests on each person, so a merge is not made blind', async () => {
+    const { member, production, outingId } = await nightAtFor()
+    const admin = await makeAdmin()
+    await recordSeenPerformer(member.id, outingId, 'Alex Brightman')
+    const rows = await peopleForAdmin(actor(admin))
+    const alex = rows.find((row) => row.name === 'Alex Brightman')
+    expect(alex?.castingCount).toBe(1)
+    expect(alex?.seenCount).toBe(1)
+    expect(production).toBeTruthy()
+  })
+
+  it('surfaces near-identical names without folding them together', async () => {
+    const member = await makeUser()
+    const admin = await makeAdmin()
+    await findOrCreatePerson(member.id, 'Ana Gasteyer')
+    await findOrCreatePerson(member.id, 'Ana Gasteyier')
+    await findOrCreatePerson(member.id, 'Brad Oscar')
+    const pairs = await personSuspicions(actor(admin))
+    expect(pairs).toHaveLength(1)
+    expect([pairs[0]?.a.name, pairs[0]?.b.name].sort()).toEqual(['Ana Gasteyer', 'Ana Gasteyier'])
+    // Surfacing is not merging.
+    expect(await db.select().from(people)).toHaveLength(3)
+  })
+
+  it('refuses a member the list and the suspicions', async () => {
+    const member = await makeUser()
+    await expect(peopleForAdmin(actor(member))).rejects.toThrow('Forbidden')
+    await expect(personSuspicions(actor(member))).rejects.toThrow('Forbidden')
+  })
+
+  it('fixes a misspelling, and refuses a rename onto somebody who exists', async () => {
+    const member = await makeUser()
+    const admin = await makeAdmin()
+    const wrong = await findOrCreatePerson(member.id, 'Ana Gasteyier')
+    const renamed = await updatePerson(actor(admin), wrong.id, '  Ana   Gasteyer ', 'Cloris')
+    expect(renamed.name).toBe('Ana Gasteyer')
+    expect(renamed.note).toBe('Cloris')
+    // The key moves with the name, so the next import collides instead of duplicating.
+    expect((await findOrCreatePerson(member.id, 'ana gasteyer')).id).toBe(wrong.id)
+
+    const other = await findOrCreatePerson(member.id, 'Brad Oscar')
+    await expect(updatePerson(actor(admin), other.id, 'Ana Gasteyer', null)).rejects.toThrow(
+      'merge them instead',
+    )
+  })
+
+  it('refuses a member a rename', async () => {
+    const member = await makeUser()
+    const person = await findOrCreatePerson(member.id, 'Brad Oscar')
+    await expect(updatePerson(actor(member), person.id, 'Someone Else', null)).rejects.toThrow(
+      'Forbidden',
+    )
+  })
+})
+
+describe('merging keeps what members entered', () => {
+  it('moves a member’s record of who they saw onto the surviving person', async () => {
+    const { member, outingId } = await nightAtFor()
+    const admin = await makeAdmin()
+    const { personId: duplicateId } = await recordSeenPerformer(
+      member.id,
+      outingId,
+      'Alexander Brightman',
+    )
+    const [keeper] = await db.select().from(people).where(eq(people.name, 'Alex Brightman'))
+
+    await mergePeople(actor(admin), duplicateId, keeper?.id ?? '')
+
+    // The whole point: the answer survives the merge rather than cascading away.
+    const rows = await db.select().from(seenPerformers)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.personId).toBe(keeper?.id)
+    const after = await outingForAttendee(member.id, outingId)
+    expect(after.seenCast.map((c) => c.name)).toEqual(['Alex Brightman'])
+  })
+
+  it('does not leave a member answering twice for one night', async () => {
+    const { member, outingId } = await nightAtFor()
+    const admin = await makeAdmin()
+    const { personId: keptId } = await recordSeenPerformer(member.id, outingId, 'Alex Brightman')
+    const { personId: duplicateId } = await recordSeenPerformer(
+      member.id,
+      outingId,
+      'Alexander Brightman',
+    )
+    await mergePeople(actor(admin), duplicateId, keptId)
+    expect(await db.select().from(seenPerformers)).toHaveLength(1)
+    expect((await outingForAttendee(member.id, outingId)).seenCast).toHaveLength(1)
+  })
+
+  it('folds a duplicate casting instead of listing the same role twice', async () => {
+    const { member, production } = await schmigadoon()
+    const admin = await makeAdmin()
+    await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Alex Brightman',
+      role: 'Josh Skinner',
+      kind: 'performer',
+      isPrincipal: true,
+    })
+    const duplicate = await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Alexander Brightman',
+      role: 'Josh Skinner',
+      kind: 'performer',
+      isPrincipal: true,
+      startedOn: '2026-04-20',
+      endedOn: '2026-09-01',
+    })
+    const [keeper] = await db.select().from(people).where(eq(people.name, 'Alex Brightman'))
+
+    await mergePeople(actor(admin), duplicate.personId, keeper?.id ?? '')
+
+    const cast = await castForProduction(production.id)
+    expect(cast).toHaveLength(1)
+    // The duplicate carried the run's dates; losing them would break the guess.
+    const [row] = await db.select().from(castings)
+    expect(row?.startedOn).toBe('2026-04-20')
+    expect(row?.endedOn).toBe('2026-09-01')
+    expect(await likelyCastOn(production.id, '2026-05-18')).toHaveLength(1)
+  })
+
+  it('keeps a casting the survivor did not already have', async () => {
+    const { member, production } = await schmigadoon()
+    const admin = await makeAdmin()
+    await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Alex Brightman',
+      role: 'Josh Skinner',
+      kind: 'performer',
+      isPrincipal: true,
+    })
+    const other = await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Alexander Brightman',
+      role: 'Doc Lopez',
+      kind: 'performer',
+      isPrincipal: false,
+    })
+    const [keeper] = await db.select().from(people).where(eq(people.name, 'Alex Brightman'))
+    await mergePeople(actor(admin), other.personId, keeper?.id ?? '')
+    const cast = await castForProduction(production.id)
+    expect(cast.map((c) => c.role).sort()).toEqual(['Doc Lopez', 'Josh Skinner'])
   })
 })
 

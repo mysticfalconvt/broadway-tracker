@@ -4,6 +4,7 @@ import { and, asc, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { normalizePersonName, tidyPersonName } from '../lib/person'
+import { findSuspectPairs } from '../lib/similarity'
 import { auth } from './auth'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { getDb } from './db/client'
@@ -225,7 +226,76 @@ export const personWithHistory = createServerOnlyFn(
   },
 )
 
-/** Folds one person into another, moving their castings. */
+/** Everyone in the catalog, with how much rests on each, for the merge screen. */
+export const peopleForAdmin = createServerOnlyFn(async (actor: Actor) => {
+  assertAdmin(actor)
+  return getDb()
+    .select({
+      id: people.id,
+      name: people.name,
+      note: people.note,
+      // The table names are interpolated and the columns written out: a column
+      // reference renders unqualified here and would correlate against itself.
+      castingCount: sql<number>`(select count(*)::int from ${castings} where ${castings}."person_id" = ${people}."id")`,
+      seenCount: sql<number>`(select count(*)::int from ${seenPerformers} where ${seenPerformers}."person_id" = ${people}."id")`,
+    })
+    .from(people)
+    .orderBy(asc(people.name))
+})
+
+/**
+ * Names close enough to be worth a second look.
+ *
+ * Only a prompt. `normalizePersonName` deliberately keeps "Alex" and
+ * "Alexander" apart, so anything surfaced here is a judgement for a person to
+ * make rather than something to fold together automatically.
+ */
+export const personSuspicions = createServerOnlyFn(async (actor: Actor) => {
+  assertAdmin(actor)
+  const rows = await getDb()
+    .select({ id: people.id, name: people.name, note: people.note })
+    .from(people)
+    .orderBy(asc(people.name))
+  return findSuspectPairs(rows, (row) => normalizePersonName(row.name))
+})
+
+/** Renames a person, keeping their match key consistent with the new wording. */
+export const updatePerson = createServerOnlyFn(
+  async (actor: Actor, id: string, name: string, note: string | null) => {
+    assertAdmin(actor)
+    const cleanName = tidyPersonName(name)
+    const matchKey = normalizePersonName(cleanName)
+    if (!cleanName || !matchKey) throw new Error('A person needs a name.')
+
+    const db = getDb()
+    const [clash] = await db
+      .select({ id: people.id, name: people.name })
+      .from(people)
+      .where(eq(people.matchKey, matchKey))
+      .limit(1)
+    if (clash && clash.id !== id) {
+      throw new Error(`“${clash.name}” already uses that name — merge them instead.`)
+    }
+
+    const [updated] = await db
+      .update(people)
+      .set({ name: cleanName, matchKey, note: note?.trim() || null, updatedAt: new Date() })
+      .where(eq(people.id, id))
+      .returning()
+    if (!updated) throw new Error('That person is not in the catalog.')
+    return updated
+  },
+)
+
+/**
+ * Folds one person into another, moving everything that referenced them.
+ *
+ * Both castings and members' records of who they saw move across. The latter
+ * matters most: `seen_performers` cascades from `people`, so deleting the
+ * source row without moving those first would quietly discard what members
+ * entered by hand. Where a row would collide with one the target already has,
+ * the target's is kept.
+ */
 export const mergePeople = createServerOnlyFn(
   async (actor: Actor, sourceId: string, targetId: string) => {
     assertAdmin(actor)
@@ -235,11 +305,93 @@ export const mergePeople = createServerOnlyFn(
       const [source] = await tx.select().from(people).where(eq(people.id, sourceId)).limit(1)
       const [target] = await tx.select().from(people).where(eq(people.id, targetId)).limit(1)
       if (!source || !target) throw new Error('Both people must exist to merge them.')
-      await tx.update(castings).set({ personId: target.id }).where(eq(castings.personId, source.id))
+
+      // A duplicate pair is precisely the case where both rows name the same
+      // role in the same production, so the collisions are the common case.
+      const sourceCastings = await tx
+        .select()
+        .from(castings)
+        .where(eq(castings.personId, source.id))
+      const targetCastings = await tx
+        .select()
+        .from(castings)
+        .where(eq(castings.personId, target.id))
+      const castingKey = (row: { productionId: string; role: string; kind: string }) =>
+        `${row.productionId}:${normalizePersonName(row.role)}:${row.kind}`
+      const heldByTarget = new Map(targetCastings.map((row) => [castingKey(row), row]))
+
+      for (const row of sourceCastings) {
+        const held = heldByTarget.get(castingKey(row))
+        if (!held) {
+          await tx.update(castings).set({ personId: target.id }).where(eq(castings.id, row.id))
+          continue
+        }
+        // The run's dates drive who you probably saw, so carry them over
+        // rather than lose them with the duplicate.
+        if ((!held.startedOn && row.startedOn) || (!held.endedOn && row.endedOn)) {
+          await tx
+            .update(castings)
+            .set({
+              startedOn: held.startedOn ?? row.startedOn,
+              endedOn: held.endedOn ?? row.endedOn,
+              updatedAt: new Date(),
+            })
+            .where(eq(castings.id, held.id))
+        }
+        await tx.delete(castings).where(eq(castings.id, row.id))
+      }
+
+      const sourceSeen = await tx
+        .select()
+        .from(seenPerformers)
+        .where(eq(seenPerformers.personId, source.id))
+      const targetSeen = await tx
+        .select({ outingId: seenPerformers.outingId, userId: seenPerformers.userId })
+        .from(seenPerformers)
+        .where(eq(seenPerformers.personId, target.id))
+      const answered = new Set(targetSeen.map((row) => `${row.outingId}:${row.userId}`))
+
+      for (const row of sourceSeen) {
+        if (answered.has(`${row.outingId}:${row.userId}`)) {
+          await tx.delete(seenPerformers).where(eq(seenPerformers.id, row.id))
+        } else {
+          await tx
+            .update(seenPerformers)
+            .set({ personId: target.id })
+            .where(eq(seenPerformers.id, row.id))
+        }
+      }
+
       await tx.delete(people).where(eq(people.id, source.id))
     })
   },
 )
+
+export const getPeopleForAdmin = createServerFn({ method: 'GET' }).handler(async () =>
+  peopleForAdmin((await requireSession()).user as Actor),
+)
+
+export const getPersonSuspicions = createServerFn({ method: 'GET' }).handler(async () =>
+  personSuspicions((await requireSession()).user as Actor),
+)
+
+export const savePerson = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      id: z.string().uuid(),
+      name: z.string().trim().min(1).max(200),
+      note: z.string().trim().max(400).optional(),
+    }),
+  )
+  .handler(async ({ data }) =>
+    updatePerson((await requireSession()).user as Actor, data.id, data.name, data.note ?? null),
+  )
+
+export const mergePersonInto = createServerFn({ method: 'POST' })
+  .validator(z.object({ sourceId: z.string().uuid(), targetId: z.string().uuid() }))
+  .handler(async ({ data }) =>
+    mergePeople((await requireSession()).user as Actor, data.sourceId, data.targetId),
+  )
 
 export const suggestPeople = createServerFn({ method: 'GET' })
   .validator(z.object({ query: z.string().trim().max(160) }))
