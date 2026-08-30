@@ -8,17 +8,18 @@ backup is real before it is needed.
 
 | | |
 | --- | --- |
-| Postgres dumps | Scheduled by Coolify |
-| Where they live | **The same host as the database** |
-| Off-host copy | **None** |
-| Restore ever tested | Use `scripts/verify-restore.mjs`, below |
-| RustFS / S3 objects | Not covered by the Postgres schedule at all |
+| Postgres dumps | Scheduled by Coolify, and copied off-host |
+| RustFS / S3 objects | Backed up separately from Postgres |
+| Restore ever tested | The one thing still outstanding — see below |
 
-The gap that matters is the second and third rows together. A scheduled dump on
-the same disk as the database protects against a bad migration, a mistaken
-`DELETE`, or a corrupted table. It protects against none of the things that
-take a host with it: a failed volume, a deleted VM, a ransomware event, or a
-provider account problem. Those are the cases people actually keep backups for.
+Both stores are covered, and the copies leave the machine, which is what makes
+them backups rather than snapshots. The specifics — destination, schedule, and
+retention — live in the Coolify configuration rather than being restated here,
+where they would go stale.
+
+What is not settled is whether any of it restores. That is not pedantry: a
+backup nobody has restored is a hope, and the usual way to discover otherwise
+is during the emergency.
 
 ## Proving a dump restores
 
@@ -72,28 +73,25 @@ structurally perfect restore of an empty database, which looks like success:
     not a restore of a live database
 ```
 
-## Photographs are not in the Postgres backup
+## Photographs are backed up separately, and restore differently
 
-Contributed images live in RustFS/S3, and the database stores only their object
-keys. A Postgres restore therefore brings back every reference and none of the
-pictures: show pages would render, and every contributed photograph would be a
-broken key.
+Contributed images live in RustFS/S3 and the database stores only their object
+keys, so the two backups are only useful together: a Postgres restore alone
+brings back every reference and none of the pictures, and a bucket restore alone
+brings back files nothing points at. **Restore both, from around the same
+moment.** A database from Tuesday against a bucket from Friday leaves keys with
+no object behind them.
 
-The bucket needs its own copy, on the same schedule as the database and ideally
-to the same off-host destination. Until that exists, treat contributed
-photographs as **not backed up**, and say so before inviting people to upload
-family photographs they have nowhere else.
-
-Object storage restores are also not point-in-time the way a dump is: an object
-deleted from the bucket is gone from any mirror that has since synchronised,
-unless versioning or a retention window is switched on at the bucket.
+Object storage also does not restore point-in-time the way a dump does. An
+object deleted from the bucket is gone from any mirror that has since
+synchronised, unless versioning or a retention window is switched on at the
+bucket itself — worth checking, because it is the difference between a backup
+and a copy of the current state.
 
 ## What is left to do
 
-- [ ] Copy Postgres dumps off the host — another machine, or object storage in a
-      different account or region. This is the single largest remaining risk.
-- [ ] Run the restore check above at least once, and record the date here.
-- [ ] Back up the RustFS bucket, or decide in the open that contributed
-      photographs are expendable and tell members so.
-- [ ] Consider bucket versioning, so a deletion is recoverable rather than
-      propagated to every copy.
+- [ ] Run the restore check above at least once, against a real dump, and record
+      the date here. This is the only outstanding item, and it is the one that
+      turns a backup from a hope into a backup.
+- [ ] Confirm bucket versioning or a retention window is on, so a deleted object
+      is recoverable rather than propagated to every copy.

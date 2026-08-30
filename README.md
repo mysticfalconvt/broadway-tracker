@@ -84,11 +84,15 @@ declared type.
 
 ## Backups
 
-Postgres is dumped on a schedule by Coolify, **onto the same host**, and the
-bucket is not backed up at all. Both gaps are real and written up in
-[`docs/backups.md`](docs/backups.md), along with `scripts/verify-restore.mjs`,
-which checks that a restored copy is complete, current, and actually holds
-data — the failure that looks most like success.
+Postgres is dumped on a schedule by Coolify and copied off-host, and the RustFS
+bucket is backed up separately. Restore both from around the same moment: the
+database holds only object keys, so a mismatched pair leaves keys with nothing
+behind them.
+
+`scripts/verify-restore.mjs` checks that a restored copy is complete, current,
+and actually holds data — a structurally perfect restore of an empty database
+is the failure that looks most like success. See
+[`docs/backups.md`](docs/backups.md).
 
 ## Documentation
 

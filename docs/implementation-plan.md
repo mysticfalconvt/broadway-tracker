@@ -49,8 +49,8 @@
 - [x] Configure Coolify environment secrets: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `ADMIN_EMAILS`, SMTP, and S3.
 - [x] Configure the Coolify health check as `GET /api/health`. *(Returns 200 `{status:'ok'}`, 503 when the database is unreachable.)*
 - [x] Deployed and live at `broadway.rboskind.com`.
-- [~] Scheduled Postgres backups exist in Coolify, **on the same host**. Copying them off-host is
-      still open, and is the largest remaining risk. See `docs/backups.md`.
+- [x] Enable scheduled Postgres backups and configure an off-host backup destination. *(Both done,
+      and RustFS is backed up separately. See `docs/backups.md`.)*
 
 ## 2. Authentication and accounts
 
@@ -219,8 +219,8 @@ object is only ever served after an authorization check, which suits a private-b
 - [x] Confirm email verification and password reset deliver successfully from the production domain.
 - [x] Confirm Google OAuth callback and sign-in work against the production hostname.
 - [x] Confirm database migrations run safely on deployment. *(`scripts/migrate.mjs` runs from the `start` script using runtime dependencies only; a failed migration stops the app rather than serving a schema-less database.)*
-- [~] `scripts/verify-restore.mjs` checks a restored copy for completeness, currency, and
-      whether it actually holds data. Needs running once against a real dump; see `docs/backups.md`.
+- [ ] Confirm Postgres and RustFS backups can be restored in a test environment.
+      *(`scripts/verify-restore.mjs` does the checking; it needs running once against a real dump.)*
 - [x] Run the full build, lint, typecheck, and test suite. *(Run on every change.)*
 - [ ] Review privacy rules manually with two test accounts that are not friends, pending friends, and approved friends.
 - [ ] Seed the first curated catalog records. *(Administrators are now set with `ADMIN_EMAILS` in the deployment environment rather than a script.)*
