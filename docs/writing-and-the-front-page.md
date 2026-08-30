@@ -244,10 +244,11 @@ The decisions that matter more than the plumbing:
 - **Only to people who have actually drifted.** Somebody who visits every
   Sunday should never receive one. This is a nudge, not a newsletter, and the
   difference is whether it is conditional on absence.
-- **Monthly rather than weekly, by default.** At two nights a week across the
-  whole app, a weekly email would frequently carry one anniversary and nothing
-  else. Monthly has enough in it to be worth opening. Weekly can be an option
-  for whoever wants it.
+- **Weekly by default** (decided against the original suggestion here). The
+  thin-letter worry is answered by never sending an empty one: a quiet week
+  produces silence rather than a paragraph of nothing, and skipping does not
+  reset the clock, so the next week is considered as soon as there is anything
+  to say. Monthly remains an option.
 - **Anniversaries are the reliable part.** Everything else depends on other
   people having done something; a person's own history does not. That is what
   makes this work at fifteen members rather than fifteen hundred.

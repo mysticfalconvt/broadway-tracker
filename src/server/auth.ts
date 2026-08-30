@@ -70,7 +70,7 @@ export const auth = betterAuth({
       ...coreFields,
       handle: generateHandle(coreFields.name),
       profileVisibility: 'public',
-      digestCadence: 'monthly',
+      digestCadence: 'weekly',
       role: roleFor(coreFields.email, 'member', process.env.ADMIN_EMAILS) ?? 'member',
       id,
     }),
@@ -126,7 +126,7 @@ export const auth = betterAuth({
         required: false,
         // Same trap as profileVisibility: Better Auth applies this itself and
         // wins over the column default, so the two must be changed together.
-        defaultValue: 'monthly',
+        defaultValue: 'weekly',
         input: false,
       },
       role: { type: ['member', 'admin'], required: false, defaultValue: 'member', input: false },

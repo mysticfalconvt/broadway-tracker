@@ -127,6 +127,13 @@
       "when": 1788109074840,
       "tag": "0017_start_activity_clock",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788109708266,
+      "tag": "0018_crazy_omega_sentinel",
+      "breakpoints": true
     }
   ]
 }

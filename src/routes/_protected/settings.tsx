@@ -92,9 +92,9 @@ function describeImpact(counts: {
 }
 
 function cadenceFrom(value: FormDataEntryValue | null) {
-  if (value === 'weekly') return 'weekly' as const
+  if (value === 'monthly') return 'monthly' as const
   if (value === 'off') return 'off' as const
-  return 'monthly' as const
+  return 'weekly' as const
 }
 
 function profileVisibilityFrom(value: FormDataEntryValue | null) {
@@ -182,18 +182,6 @@ function Settings() {
           </p>
           <label>
             <input
-              defaultChecked={user.digestCadence === 'monthly'}
-              name="digestCadence"
-              type="radio"
-              value="monthly"
-            />
-            <span>
-              <strong>Monthly</strong>
-              Anniversaries, anything written, where friends have been.
-            </span>
-          </label>
-          <label>
-            <input
               defaultChecked={user.digestCadence === 'weekly'}
               name="digestCadence"
               type="radio"
@@ -201,7 +189,19 @@ function Settings() {
             />
             <span>
               <strong>Weekly</strong>
-              More often, and often thinner.
+              Anniversaries, anything written, where friends have been.
+            </span>
+          </label>
+          <label>
+            <input
+              defaultChecked={user.digestCadence === 'monthly'}
+              name="digestCadence"
+              type="radio"
+              value="monthly"
+            />
+            <span>
+              <strong>Monthly</strong>
+              Less often, and fuller.
             </span>
           </label>
           <label>

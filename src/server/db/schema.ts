@@ -30,14 +30,15 @@ export const user = pgTable('user', {
   /**
    * How often to write to somebody who has stopped visiting.
    *
-   * Monthly by default rather than weekly: at the size this is built for the
-   * whole app produces under two nights a week, so a weekly letter would often
-   * carry one anniversary and nothing else, and a thin letter is how you teach
-   * somebody to ignore your letters.
+   * Weekly by default. The thin-letter risk is real at this size — the whole
+   * app produces under two nights a week — but it is carried by the rule that
+   * an empty letter is never sent at all: a week with nothing in it produces
+   * silence rather than a paragraph of nothing, and the clock is not reset, so
+   * the next week is considered as soon as there is something to say.
    */
   digestCadence: text('digest_cadence', { enum: ['off', 'weekly', 'monthly'] })
     .notNull()
-    .default('monthly'),
+    .default('weekly'),
   /**
    * When they last looked at anything. Sessions record signing in, which is not
    * the same. Written at most once an hour, so reading a page is not a write.

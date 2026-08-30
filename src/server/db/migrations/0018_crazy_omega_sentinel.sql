@@ -1,0 +1,1 @@
+ALTER TABLE "user" ALTER COLUMN "digest_cadence" SET DEFAULT 'weekly';
