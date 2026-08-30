@@ -14,6 +14,7 @@ import {
   outings,
   shows,
   user,
+  venues,
 } from './db/schema'
 
 /** Everything the signed-in home dashboard shows, in one round trip. */
@@ -156,77 +157,118 @@ export const friendProfileForViewer = createServerOnlyFn(
       throw new Error('This profile is only available to friends.')
     if (profile.visibility === 'private')
       throw new Error('This friend keeps their profile to themselves.')
-    const [seen, outingsCount, favorites, seenShows, sharedLists] = await Promise.all([
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(libraryEntries)
-        .where(and(eq(libraryEntries.userId, profile.id), eq(libraryEntries.status, 'seen'))),
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(outings)
-        .where(eq(outings.createdByUserId, profile.id)),
-      db
-        .select({
-          id: shows.id,
-          title: shows.title,
-          slug: shows.slug,
-          type: shows.type,
-          coverImageKey: shows.coverImageKey,
-        })
-        .from(libraryEntries)
-        .innerJoin(shows, eq(libraryEntries.showId, shows.id))
-        .where(
-          and(
-            eq(libraryEntries.userId, profile.id),
-            eq(libraryEntries.favorite, true),
-            // Public is more open than friends, not less. Matching 'friends'
-            // exactly hid everything from the very people it was shared with,
-            // because new entries default to the profile's own setting and
-            // that defaults to public.
-            inArray(libraryEntries.visibility, ['friends', 'public']),
-          ),
-        )
-        .orderBy(desc(libraryEntries.updatedAt))
-        .limit(6),
-      // The stat said "24 shows seen" above a page listing none of them, unless
-      // the friend happened to have starred something.
-      db
-        .select({
-          id: shows.id,
-          title: shows.title,
-          slug: shows.slug,
-          type: shows.type,
-          coverImageKey: shows.coverImageKey,
-        })
-        .from(libraryEntries)
-        .innerJoin(shows, eq(libraryEntries.showId, shows.id))
-        .where(
-          and(
-            eq(libraryEntries.userId, profile.id),
-            eq(libraryEntries.status, 'seen'),
-            inArray(libraryEntries.visibility, ['friends', 'public']),
-          ),
-        )
-        .orderBy(desc(libraryEntries.updatedAt))
-        .limit(24),
-      db
-        .select({
-          id: lists.id,
-          title: lists.title,
-          description: lists.description,
-          itemCount: sql<number>`count(${listItems.showId})::int`,
-        })
-        .from(lists)
-        .leftJoin(listItems, eq(listItems.listId, lists.id))
-        .where(and(eq(lists.userId, profile.id), inArray(lists.visibility, ['friends', 'public'])))
-        .groupBy(lists.id)
-        .orderBy(asc(lists.title)),
-    ])
+    const [seen, outingsCount, favorites, seenShows, sharedOutings, sharedLists] =
+      await Promise.all([
+        db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(libraryEntries)
+          .where(and(eq(libraryEntries.userId, profile.id), eq(libraryEntries.status, 'seen'))),
+        db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(outings)
+          .where(eq(outings.createdByUserId, profile.id)),
+        db
+          .select({
+            id: shows.id,
+            title: shows.title,
+            slug: shows.slug,
+            type: shows.type,
+            coverImageKey: shows.coverImageKey,
+          })
+          .from(libraryEntries)
+          .innerJoin(shows, eq(libraryEntries.showId, shows.id))
+          .where(
+            and(
+              eq(libraryEntries.userId, profile.id),
+              eq(libraryEntries.favorite, true),
+              // Public is more open than friends, not less. Matching 'friends'
+              // exactly hid everything from the very people it was shared with,
+              // because new entries default to the profile's own setting and
+              // that defaults to public.
+              inArray(libraryEntries.visibility, ['friends', 'public']),
+            ),
+          )
+          .orderBy(desc(libraryEntries.updatedAt))
+          .limit(6),
+        // The stat said "24 shows seen" above a page listing none of them, unless
+        // the friend happened to have starred something.
+        db
+          .select({
+            id: shows.id,
+            title: shows.title,
+            slug: shows.slug,
+            type: shows.type,
+            coverImageKey: shows.coverImageKey,
+          })
+          .from(libraryEntries)
+          .innerJoin(shows, eq(libraryEntries.showId, shows.id))
+          .where(
+            and(
+              eq(libraryEntries.userId, profile.id),
+              eq(libraryEntries.status, 'seen'),
+              inArray(libraryEntries.visibility, ['friends', 'public']),
+            ),
+          )
+          .orderBy(desc(libraryEntries.updatedAt))
+          .limit(24),
+        // The nights themselves, not just how many. A count with nothing under it
+        // is the least useful thing a profile can say.
+        db
+          .select({
+            id: outings.id,
+            showId: outings.showId,
+            showTitle: shows.title,
+            showSlug: shows.slug,
+            showType: shows.type,
+            coverImageKey: shows.coverImageKey,
+            datePrecision: outings.datePrecision,
+            occurredOn: outings.occurredOn,
+            occurredMonth: outings.occurredMonth,
+            occurredYear: outings.occurredYear,
+            approximateDate: outings.approximateDate,
+            venue: sql<string | null>`coalesce(${venues.name}, ${outings.venue})`,
+            city: sql<string | null>`coalesce(${venues.city}, ${outings.city})`,
+            sharedNotes: outings.sharedNotes,
+            // Whether the reader is already on this night, so the page can offer
+            // to add them or say they are already there.
+            alreadyThere: sql<boolean>`exists (
+            select 1 from ${outingAttendees}
+            where ${outingAttendees}."outing_id" = ${outings}."id"
+              and ${outingAttendees}."user_id" = ${viewerId}
+          )`,
+          })
+          .from(outings)
+          .innerJoin(shows, eq(outings.showId, shows.id))
+          .leftJoin(venues, eq(outings.venueId, venues.id))
+          .where(
+            and(
+              eq(outings.createdByUserId, profile.id),
+              inArray(outings.visibility, ['friends', 'public']),
+            ),
+          )
+          .orderBy(desc(outings.occurredOn), desc(outings.createdAt))
+          .limit(24),
+        db
+          .select({
+            id: lists.id,
+            title: lists.title,
+            description: lists.description,
+            itemCount: sql<number>`count(${listItems.showId})::int`,
+          })
+          .from(lists)
+          .leftJoin(listItems, eq(listItems.listId, lists.id))
+          .where(
+            and(eq(lists.userId, profile.id), inArray(lists.visibility, ['friends', 'public'])),
+          )
+          .groupBy(lists.id)
+          .orderBy(asc(lists.title)),
+      ])
     return {
       user: profile,
       stats: { seen: seen[0]?.count ?? 0, outings: outingsCount[0]?.count ?? 0 },
       favorites,
       seenShows,
+      outings: sharedOutings,
       lists: sharedLists,
     }
   },

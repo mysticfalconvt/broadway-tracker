@@ -5,7 +5,7 @@ import { z } from 'zod'
 
 import { auth } from './auth'
 import { getDb } from './db/client'
-import { acceptedFriendIdsFor } from './friend-functions'
+import { acceptedFriendIdsFor, areFriends } from './friend-functions'
 import { defaultVisibilityFor } from './visibility'
 import { findOrCreateVenue } from './venue-functions'
 import {
@@ -155,7 +155,10 @@ export const createOutingForUser = createServerOnlyFn(
           showId: data.showId,
           status: 'seen',
           favorite: data.favorite,
-          visibility: 'private',
+          // The same choice as the night it came from. Hardcoding 'private'
+          // here meant every show anybody logged was marked seen-but-hidden,
+          // whatever their profile said, so friends' shelves were always empty.
+          visibility: data.visibility ?? fallbackVisibility,
         })
       }
 
@@ -334,6 +337,107 @@ export const outingsForUserAndShow = createServerOnlyFn(async (viewerId: string,
     .leftJoin(productions, eq(outings.productionId, productions.id))
     .where(and(eq(outingAttendees.userId, viewerId), eq(outings.showId, showId))),
 )
+
+/**
+ * Joins somebody else's night, because you were there too.
+ *
+ * A shared evening is one outing with several people on it — that is what the
+ * attendee table is for — so this adds the reader to the night rather than
+ * copying it. A duplicate would give the same evening two records, two dates to
+ * keep in step, and two entries in everybody's history.
+ *
+ * Only a night the reader can already see, only among approved friends, and
+ * reversible: `leaveOuting` takes it back. Their own rating, review, and notes
+ * start empty, because they are theirs to write.
+ */
+export const joinOutingAsAttendee = createServerOnlyFn(async (userId: string, outingId: string) => {
+  const db = getDb()
+  const [outing] = await db
+    .select({
+      id: outings.id,
+      showId: outings.showId,
+      ownerId: outings.createdByUserId,
+      visibility: outings.visibility,
+    })
+    .from(outings)
+    .where(eq(outings.id, outingId))
+    .limit(1)
+  // The same answer as a night that does not exist, so this never confirms one.
+  if (!outing) throw new Error('That performance is not available.')
+  if (outing.ownerId === userId) throw new Error('This is already your night.')
+  if (outing.visibility === 'private' || !(await areFriends(userId, outing.ownerId))) {
+    throw new Error('That performance is not available.')
+  }
+
+  const [already] = await db
+    .select({ userId: outingAttendees.userId })
+    .from(outingAttendees)
+    .where(and(eq(outingAttendees.outingId, outingId), eq(outingAttendees.userId, userId)))
+    .limit(1)
+  if (already) throw new Error('You are already on this night.')
+
+  const fallbackVisibility = await defaultVisibilityFor(userId)
+  await db.transaction(async (tx) => {
+    await tx.insert(outingAttendees).values({
+      outingId,
+      userId,
+      invitedByUserId: userId,
+      attendanceStatus: 'accepted',
+      reviewVisibility: fallbackVisibility,
+    })
+    // Having been there means having seen it.
+    const [entry] = await tx
+      .select({ id: libraryEntries.id })
+      .from(libraryEntries)
+      .where(and(eq(libraryEntries.userId, userId), eq(libraryEntries.showId, outing.showId)))
+      .limit(1)
+    if (entry) {
+      await tx
+        .update(libraryEntries)
+        .set({ status: 'seen', updatedAt: new Date() })
+        .where(eq(libraryEntries.id, entry.id))
+    } else {
+      await tx.insert(libraryEntries).values({
+        userId,
+        showId: outing.showId,
+        status: 'seen',
+        visibility: fallbackVisibility,
+      })
+    }
+  })
+  return { outingId, showId: outing.showId }
+})
+
+/** Takes back a mistaken "I was there too". The owner's night is left alone. */
+export const leaveOuting = createServerOnlyFn(async (userId: string, outingId: string) => {
+  const db = getDb()
+  const [outing] = await db
+    .select({ ownerId: outings.createdByUserId })
+    .from(outings)
+    .where(eq(outings.id, outingId))
+    .limit(1)
+  if (!outing) throw new Error('That performance is not available.')
+  if (outing.ownerId === userId) {
+    throw new Error('This is your own night — delete it instead of leaving it.')
+  }
+  await db
+    .delete(outingAttendees)
+    .where(and(eq(outingAttendees.outingId, outingId), eq(outingAttendees.userId, userId)))
+})
+
+export const joinOuting = createServerFn({ method: 'POST' })
+  .validator(z.object({ outingId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const session = await requireSession()
+    return joinOutingAsAttendee(session.user.id, data.outingId)
+  })
+
+export const dropOutOfOuting = createServerFn({ method: 'POST' })
+  .validator(z.object({ outingId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const session = await requireSession()
+    return leaveOuting(session.user.id, data.outingId)
+  })
 
 export const createOuting = createServerFn({ method: 'POST' })
   .validator(outingInput)

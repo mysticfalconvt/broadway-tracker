@@ -1,6 +1,9 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
 
 import { ShowArtwork } from '../../../components/ShowArtwork'
+import { formatFuzzyDate } from '../../../lib/fuzzy-date'
+import { joinOuting } from '../../../server/outing-functions'
 import { getFriendProfile } from '../../../server/profile-functions'
 
 export const Route = createFileRoute('/_protected/people/$handle')({
@@ -29,7 +32,7 @@ function FriendProfile() {
       </main>
     )
   }
-  const { user, stats, favorites, seenShows, lists } = profile
+  const { user, stats, favorites, seenShows, outings, lists } = profile
   return (
     <main className="profile-page page-wrap">
       <header className="settings-header">
@@ -77,6 +80,27 @@ function FriendProfile() {
           </div>
         ) : (
           <p className="profile-empty">No favorites have been shared.</p>
+        )}
+      </section>
+      <section className="profile-favorites">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Nights out</p>
+            <h2>What they went to.</h2>
+          </div>
+        </div>
+        {outings.length ? (
+          <ul className="friend-outings">
+            {outings.map((outing) => (
+              <FriendOuting key={outing.id} outing={outing} />
+            ))}
+          </ul>
+        ) : (
+          <p className="profile-empty">
+            {stats.outings
+              ? 'Their nights out are kept private.'
+              : 'They have not logged a night out yet.'}
+          </p>
         )}
       </section>
       <section className="profile-favorites">
@@ -139,5 +163,74 @@ function FriendProfile() {
         )}
       </section>
     </main>
+  )
+}
+
+/**
+ * One of a friend's nights, with the offer to say you were there too.
+ *
+ * Saying so puts the reader on that same outing rather than making a second
+ * record of one evening — so it then appears in their own history, and the show
+ * is marked seen in their library.
+ */
+function FriendOuting({
+  outing,
+}: {
+  outing: NonNullable<Awaited<ReturnType<typeof getFriendProfile>>>['outings'][number]
+}) {
+  const [joined, setJoined] = useState(outing.alreadyThere)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const where = [outing.venue, outing.city].filter(Boolean).join(' · ')
+  const when = formatFuzzyDate({
+    datePrecision: outing.datePrecision,
+    occurredOn: outing.occurredOn,
+    occurredMonth: outing.occurredMonth,
+    occurredYear: outing.occurredYear,
+    approximateDate: outing.approximateDate,
+  })
+
+  async function join() {
+    setBusy(true)
+    setError(null)
+    try {
+      await joinOuting({ data: { outingId: outing.id } })
+      setJoined(true)
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'We could not add you.')
+    }
+    setBusy(false)
+  }
+
+  return (
+    <li>
+      <Link params={{ slug: outing.showSlug }} to="/shows/$slug">
+        <ShowArtwork
+          coverImageKey={outing.coverImageKey}
+          title={outing.showTitle}
+          type={outing.showType}
+        />
+      </Link>
+      <div className="friend-outing-body">
+        <h3>{outing.showTitle}</h3>
+        <p className="friend-outing-facts">{[when, where].filter(Boolean).join(' · ')}</p>
+        {outing.sharedNotes ? <p className="friend-outing-note">{outing.sharedNotes}</p> : null}
+        {error ? (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </div>
+      {joined ? (
+        <Link className="button button-quiet" params={{ id: outing.id }} to="/outings/$id">
+          You were there
+        </Link>
+      ) : (
+        <button className="button button-quiet" disabled={busy} onClick={join} type="button">
+          {busy ? 'Adding…' : 'I was there too'}
+        </button>
+      )}
+    </li>
   )
 }
