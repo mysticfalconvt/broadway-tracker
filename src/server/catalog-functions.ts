@@ -1,5 +1,5 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { and, asc, desc, eq, ilike, ne, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
 import { currentSession, requireSession } from './session'
@@ -57,6 +57,75 @@ export const searchCatalog = createServerOnlyFn(async (rawQuery: string) => {
     .orderBy(asc(shows.title))
     .limit(30)
 })
+
+/**
+ * The catalog as one person sees it: everything published, plus their own
+ * submissions while those wait.
+ *
+ * They can already log a night against their own pending show and describe its
+ * productions, so a search that cannot find it leaves them holding something
+ * they created and cannot reach.
+ */
+export const searchCatalogFor = createServerOnlyFn(
+  async (viewerId: string | null, rawQuery: string) => {
+    const query = rawQuery.replace(/[%_\\]/g, '\\$&')
+    const visible = viewerId
+      ? or(
+          eq(shows.catalogStatus, 'published'),
+          and(eq(shows.catalogStatus, 'pending'), eq(shows.submittedByUserId, viewerId)),
+        )
+      : eq(shows.catalogStatus, 'published')
+
+    return getDb()
+      .select({ ...catalogShow, catalogStatus: shows.catalogStatus })
+      .from(shows)
+      .where(query ? and(visible, ilike(shows.title, `%${query}%`)) : visible)
+      .orderBy(asc(shows.title))
+      .limit(30)
+  },
+)
+
+/**
+ * Titles from the catalog that appear in a sentence, longest first.
+ *
+ * Asking a model to spot a title is asking it to guess at something the app
+ * already knows for certain. It answered null for "I saw the producers in
+ * 2003ish" — a lowercase title does not look like a title — and the person was
+ * then told to name the show they had just named.
+ *
+ * So the catalog reads the sentence itself. Longest first, because "Company"
+ * sits inside "The Producers Touring Company" and the longer match is the one
+ * somebody meant.
+ */
+export const showsMentionedIn = createServerOnlyFn(
+  async (viewerId: string | null, text: string) => {
+    const said = text.trim()
+    if (said.length < 3) return []
+
+    const visible = viewerId
+      ? or(
+          eq(shows.catalogStatus, 'published'),
+          eq(shows.catalogStatus, 'local'),
+          and(eq(shows.catalogStatus, 'pending'), eq(shows.submittedByUserId, viewerId)),
+        )
+      : eq(shows.catalogStatus, 'published')
+
+    return getDb()
+      .select({ ...catalogShow, catalogStatus: shows.catalogStatus })
+      .from(shows)
+      .where(
+        and(
+          visible,
+          // Short titles match too much: "Six" is a word before it is a show,
+          // and matching it inside "at six o'clock" would be worse than missing it.
+          sql`length(${shows.title}) >= 4`,
+          sql`position(lower(${shows.title}) in lower(${said})) > 0`,
+        ),
+      )
+      .orderBy(desc(sql`length(${shows.title})`))
+      .limit(5)
+  },
+)
 
 export const publishedShowBySlug = createServerOnlyFn(async (slug: string) => {
   const [show] = await getDb()
@@ -638,12 +707,23 @@ export const findOrCreateProduction = createServerOnlyFn(
     if (!cleanName) throw new Error('A production needs a name.')
 
     const db = getDb()
+    // Somebody may describe their own submission while it waits, exactly as
+    // they may log a night against it. Waiting on an administrator before a
+    // show can even have a venue is how a night ends up never recorded.
     const [show] = await db
       .select({ id: shows.id })
       .from(shows)
-      .where(and(eq(shows.id, showId), eq(shows.catalogStatus, 'published')))
+      .where(
+        and(
+          eq(shows.id, showId),
+          or(
+            inArray(shows.catalogStatus, ['published', 'local']),
+            and(eq(shows.catalogStatus, 'pending'), eq(shows.submittedByUserId, userId)),
+          ),
+        ),
+      )
       .limit(1)
-    if (!show) throw new Error('Choose a published show from the catalog.')
+    if (!show) throw new Error('Choose a show from the catalog.')
 
     // Compare the way venues do, so "National Tour" and "national tour" agree.
     const wanted = normalizeProductionName(cleanName)

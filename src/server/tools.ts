@@ -44,12 +44,14 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
       'title is mentioned, however uncertainly. Returns nothing if the show has not been ' +
       'added yet, which is common and not an error.',
     parameters: z.object({ title: z.string().trim().min(1).max(120) }),
-    run: async (_actorId, { title }) => {
-      const { searchCatalog } = await import('./catalog-functions')
-      return (await searchCatalog(title)).map((show) => ({
+    run: async (actorId, { title }) => {
+      const { searchCatalogFor } = await import('./catalog-functions')
+      return (await searchCatalogFor(actorId, title)).map((show) => ({
         showId: show.id,
         title: show.title,
         type: show.type,
+        // So a person can see their own submission is not public yet.
+        awaitingReview: show.catalogStatus === 'pending',
       }))
     },
   }),

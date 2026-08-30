@@ -48,6 +48,8 @@ export type Step = { tool: string; ok: boolean; summary: string }
 export type Answer = {
   say: string
   proposal: Proposal | null
+  /** A title worth researching, when the catalog has never heard of it. */
+  lookUp?: string
   steps: Step[]
 }
 
@@ -77,7 +79,19 @@ Reply with JSON only:
 
 Use null for anything they did not say. Do not guess, do not add anything they did not
 mention, and do not correct them — another part of the program checks their memory against
-the record. "Around 2003", "2003ish" and "about 2003" all mean 2003.`
+the record. "Around 2003", "2003ish" and "about 2003" all mean 2003.
+
+Titles are often written in lowercase and without quotes, and the sentence is often a
+question. Both still count. Examples:
+
+"i saw the producers in 2003ish, tony danza was in it"
+{"showTitle": "the producers", "personName": "tony danza", "year": 2003, "venue": null, "companion": null}
+
+"When was Tony Danza in The Producers?"
+{"showTitle": "The Producers", "personName": "Tony Danza", "year": null, "venue": null, "companion": null}
+
+"went to wicked at the gershwin with mum"
+{"showTitle": "wicked", "personName": null, "year": null, "venue": "the Gershwin", "companion": "mum"}`
 
 const extracted = z.object({
   showTitle: z.string().nullish(),
@@ -117,23 +131,67 @@ export const askAboutANight = createServerOnlyFn(
       JSON.stringify({ showTitle, personName, year, venue, companion }),
     )
 
-    if (!showTitle) {
-      return {
-        say: 'Which show was it? I can work back from a theatre or somebody in the cast, but I need somewhere to start.',
-        proposal: null,
-        steps,
+    // From here the app decides. No model discretion, so the same question
+    // gives the same answer every time.
+    type Match = { showId: string; title: string }
+    let matches: Match[] = []
+
+    // The catalog reads the sentence itself before anything else. It knows its
+    // own titles for certain, and a model that missed one would otherwise send
+    // somebody away to name a show they had already named.
+    const { showsMentionedIn } = await import('./catalog-functions')
+    const mentioned = await showsMentionedIn(actorId, question)
+    if (mentioned.length) {
+      matches = mentioned.map((row) => ({ showId: row.id, title: row.title }))
+      note('recognised the title', true, matches.map((m) => m.title).join(', '))
+    }
+
+    if (!matches.length && showTitle) {
+      const found = await runTool(actorId, 'find_show', { title: showTitle })
+      matches = (found.ok ? found.data : []) as Match[]
+      note('find_show', found.ok, JSON.stringify(matches.map((m) => m.title)))
+    }
+
+    // Working back from somebody in the cast, which the app used to offer and
+    // then not do. This is the case a search engine cannot help with at all.
+    if (!matches.length && personName) {
+      const who = await runTool(actorId, 'find_person', { name: personName })
+      const people = (who.ok ? who.data : []) as { personId: string; name: string }[]
+      note('find_person', who.ok, people.map((one) => one.name).join(', ') || 'nobody')
+
+      const first = people[0]
+      if (first) {
+        const { showsFeaturing } = await import('./people-functions')
+        const theirShows = await showsFeaturing(actorId, first.personId)
+        note('what they were in', true, theirShows.map((one) => one.title).join(', ') || 'nothing')
+
+        if (theirShows.length === 1) {
+          matches = theirShows.map((row) => ({ showId: row.showId, title: row.title }))
+        } else if (theirShows.length > 1) {
+          return {
+            say: `${first.name} is recorded in ${theirShows.map((one) => one.title).join(', ')}. Which of those was it?`,
+            proposal: null,
+            steps,
+          }
+        }
       }
     }
 
-    // From here the app decides. No model discretion, so the same question
-    // gives the same answer every time.
-    const found = await runTool(actorId, 'find_show', { title: showTitle })
-    const matches = (found.ok ? found.data : []) as { showId: string; title: string }[]
-    note('find_show', found.ok, JSON.stringify(matches.map((m) => m.title)))
-
-    if (matches.length === 0) {
+    if (!matches.length) {
+      if (showTitle) {
+        // A dead end otherwise: the person is told to go and find an
+        // administrator, which is not an answer to anything.
+        return {
+          say: `${showTitle} is not in the catalog yet. I can look it up if you like — it takes about half a minute, and you will see what I find before anything is added.`,
+          proposal: null,
+          lookUp: showTitle,
+          steps,
+        }
+      }
       return {
-        say: `${showTitle} is not in the catalog yet. An administrator can add it from the import screen, and then I can work out when you saw it.`,
+        say: personName
+          ? `Nothing here has ${personName} in it yet. Name the show and I can look it up.`
+          : 'Which show was it? I can work back from somebody in the cast too, if the name is easier to remember.',
         proposal: null,
         steps,
       }

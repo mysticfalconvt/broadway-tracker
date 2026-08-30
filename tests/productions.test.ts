@@ -100,12 +100,25 @@ describe('a member adding a production', () => {
     expect(await db.select().from(venues)).toHaveLength(2)
   })
 
-  it('refuses a show that is not published', async () => {
+  it("refuses somebody else's submission", async () => {
     const member = await makeUser()
-    const pending = await makeShow({ catalogStatus: 'pending' })
+    const stranger = await makeUser()
+    const pending = await makeShow({
+      catalogStatus: 'pending',
+      submittedByUserId: stranger.id,
+    })
     await expect(
       findOrCreateProduction(member.id, pending.id, 'National Tour', 'tour'),
-    ).rejects.toThrow('published show')
+    ).rejects.toThrow('from the catalog')
+  })
+
+  it('lets somebody describe their own submission while it waits', async () => {
+    // They can already log a night against it. Making them wait on review
+    // before the show can even have a venue is how a night goes unrecorded.
+    const member = await makeUser()
+    const mine = await makeShow({ catalogStatus: 'pending', submittedByUserId: member.id })
+    const made = await findOrCreateProduction(member.id, mine.id, 'National Tour', 'tour')
+    expect(made.created).toBe(true)
   })
 
   it('refuses an empty name', async () => {

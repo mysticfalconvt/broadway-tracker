@@ -37,22 +37,6 @@ function Profile() {
           </div>
         </div>
         <div className="profile-account">
-          <Link className="text-action" to="/ask">
-            Work out when you saw something
-          </Link>
-          <span className="profile-account-divider" aria-hidden="true" />
-          <Link className="text-action" search={{ piece: undefined }} to="/write">
-            Write something
-          </Link>
-          <span className="profile-account-divider" aria-hidden="true" />
-          <Link className="text-action" to="/places">
-            Everywhere you have been
-          </Link>
-          <span className="profile-account-divider" aria-hidden="true" />
-          <Link className="text-action" to="/build-history">
-            Add shows you saw years ago
-          </Link>
-          <span className="profile-account-divider" aria-hidden="true" />
           <Link className="text-action" to="/settings">
             Edit profile settings
           </Link>
@@ -60,17 +44,48 @@ function Profile() {
           {/* Sign-out lived inside settings, two clicks from anywhere. It is
               quieter than the settings link so the two do not read as one. */}
           <button
-            type="button"
             className="text-action profile-signout"
             onClick={async () => {
               await authClient.signOut()
               window.location.assign('/')
             }}
+            type="button"
           >
             Sign out
           </button>
         </div>
       </header>
+
+      {/* These were a row of six identical text links, which reads as a list of
+          words rather than a set of choices — the same complaint the
+          administration index had. */}
+      <section className="profile-doors">
+        <Link to="/ask">
+          <strong>Work out when you saw something</strong>
+          <span>Say what you remember and the catalog checks it</span>
+        </Link>
+        <Link to="/build-history">
+          <strong>Add shows you saw years ago</strong>
+          <span>A back catalogue, several at a time</span>
+        </Link>
+        <Link to="/places">
+          <strong>Everywhere you have been</strong>
+          <span>A map of your theatres</span>
+        </Link>
+        <Link search={{ piece: undefined }} to="/write">
+          <strong>Write something</strong>
+          <span>Longer than a review, about a show or a theatre</span>
+        </Link>
+        <Link to="/writing">
+          <strong>Read what people have written</strong>
+          <span>Pieces from your friends, and anything published openly</span>
+        </Link>
+        <Link to="/circle">
+          <strong>Where your friends have been</strong>
+          <span>Their nights out, newest first</span>
+        </Link>
+      </section>
+
       <dl className="stat-list profile-stats">
         <div>
           <dt>Shows seen</dt>

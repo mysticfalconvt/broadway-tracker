@@ -154,6 +154,9 @@ function SignedInHome({ home }: { home: NonNullable<Awaited<ReturnType<typeof ge
       {home.writing.length ? (
         <section className="page-wrap" aria-label="Writing">
           <SectionHeading eyebrow="Writing" title="Longer than a review" />
+          <Link className="text-action" to="/writing">
+            Everything people have written
+          </Link>
           <ul className="piece-list">
             {home.writing.map((piece) => (
               <li key={piece.id}>

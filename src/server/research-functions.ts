@@ -1,7 +1,6 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { z } from 'zod'
 
-import { type Actor, assertAdmin } from './catalog-functions'
 import { askModelForJson } from './model'
 import { readPage, readWikipedia, searchWeb, searchWikipedia } from './search'
 import { requireSession } from './session'
@@ -59,11 +58,66 @@ Rules, in order of importance:
    invented one is not. This applies most of all to startedOn and endedOn: those decide
    which performer somebody is told they saw on a given night.
 2. Include every performer who held a principal role and the dates they held it, not only
-   the opening-night company. Replacements are the point.
+   the opening-night company. Replacements are the point. If a page has a section listing
+   replacements or later casts, every name in it belongs in your output — a cast list with
+   only the opening company in it is a wrong answer, not a short one.
 3. If the pages only give you the opening cast, return that and leave the dates out
    rather than guessing when anybody was replaced.
 4. Use YYYY-MM-DD. If a page gives only a month or a year, omit the date entirely.
-5. Return only the JSON object. No commentary.`
+5. Only stage productions. If a page describes a film or television adaptation, ignore its
+   cast entirely — a screen actor recorded as a stage performer is worse than a gap, because
+   somebody will be told they saw them on stage.
+6. Return only the JSON object. No commentary.`
+
+/**
+ * Screen adaptations, which search returns alongside the stage article and
+ * which must not be read.
+ *
+ * "The Producers" returns the musical and the 2005 film. Half the pages given
+ * to the model were then about a film, and its cast is not the cast anybody
+ * saw at the St. James.
+ */
+const SCREEN = /\((\d{4} )?(film|movie|TV series|television series|miniseries)\)/i
+
+/** The shape research comes back in, checked before any of it is written. */
+const researched = z.object({
+  shows: z
+    .array(
+      z.object({
+        title: z.string().trim().min(1).max(200),
+        type: z.enum(['musical', 'play', 'other']).catch('other'),
+        synopsis: z.string().trim().max(5_000).nullish(),
+        productions: z
+          .array(
+            z.object({
+              name: z.string().trim().min(1).max(200),
+              productionType: z
+                .enum(['broadway', 'off_broadway', 'tour', 'regional', 'local', 'other'])
+                .catch('other'),
+              venue: z.string().trim().max(200).nullish(),
+              city: z.string().trim().max(120).nullish(),
+              openedOn: z.string().date().nullish(),
+              closedOn: z.string().date().nullish(),
+              source: z.string().trim().max(500).nullish(),
+              cast: z
+                .array(
+                  z.object({
+                    name: z.string().trim().min(1).max(160),
+                    role: z.string().trim().min(1).max(160),
+                    kind: z.enum(['performer', 'creative']).catch('performer'),
+                    isPrincipal: z.boolean().nullish(),
+                    startedOn: z.string().date().nullish(),
+                    endedOn: z.string().date().nullish(),
+                  }),
+                )
+                .optional(),
+            }),
+          )
+          .optional(),
+      }),
+    )
+    .min(1),
+})
 
 export type Proposal = {
   json: string
@@ -72,8 +126,7 @@ export type Proposal = {
 }
 
 export const researchShow = createServerOnlyFn(
-  async (actor: Actor, title: string, pagesToRead = 3): Promise<Proposal> => {
-    assertAdmin(actor)
+  async (_actorId: string, title: string, pagesToRead = 3): Promise<Proposal> => {
     const wanted = title.trim()
     if (!wanted) throw new Error('Name a show to look up.')
 
@@ -85,7 +138,18 @@ export const researchShow = createServerOnlyFn(
     // Wikipedia first and directly. It answers, its API is meant to be used,
     // and its articles carry run dates and cast sections. General search is a
     // supplement, not the foundation.
-    for (const article of await searchWikipedia(`${wanted} musical Broadway`, 2)) {
+    const articles = await searchWikipedia(`${wanted} musical Broadway`, 5)
+    const named = articles.filter(
+      (article) =>
+        !SCREEN.test(article.title) && article.title.toLowerCase().includes(wanted.toLowerCase()),
+    )
+    // Search fills the rest of the page with things that merely mention the
+    // show — "List of the longest-running Broadway shows" is not a source about
+    // anybody's cast. Fall back to the top result only if nothing is named.
+    for (const article of (named.length
+      ? named
+      : articles.filter((a) => !SCREEN.test(a.title))
+    ).slice(0, 2)) {
       const text = await readWikipedia(article.title).catch(() => '')
       if (text.length > 500) read.push({ ...article, text })
     }
@@ -114,10 +178,16 @@ export const researchShow = createServerOnlyFn(
       .map((page) => `--- ${page.title}\n--- ${page.url}\n\n${page.text}`)
       .join('\n\n')
 
-    const proposal = await askModelForJson<unknown>([
-      { role: 'system', content: INSTRUCTIONS },
-      { role: 'user', content: `Show to describe: ${wanted}\n\nPages:\n\n${pages}` },
-    ])
+    // Room for a full cast. A long run has dozens of principals across its
+    // replacements, and a budget that fits only the opening company produces a
+    // cast list that looks complete and is not.
+    const proposal = await askModelForJson<unknown>(
+      [
+        { role: 'system', content: INSTRUCTIONS },
+        { role: 'user', content: `Show to describe: ${wanted}\n\nPages:\n\n${pages}` },
+      ],
+      { maxTokens: 12_000 },
+    )
 
     return {
       json: JSON.stringify(proposal, null, 2),
@@ -129,4 +199,102 @@ export const researchShow = createServerOnlyFn(
 
 export const proposeShowResearch = createServerFn({ method: 'POST' })
   .validator(z.object({ title: z.string().trim().min(1).max(200) }))
-  .handler(async ({ data }) => researchShow((await requireSession()).user as Actor, data.title))
+  .handler(async ({ data }) => researchShow((await requireSession()).user.id, data.title))
+
+/**
+ * Takes a researched proposal and enters it as a submission.
+ *
+ * Open to any member, because what it creates is a **pending** show — the same
+ * thing they would get by filling in the submission form, and subject to the
+ * same review. They can log a night against their own submission straight away,
+ * so nobody waits on an administrator to record last night, and the catalog
+ * only gains a published record once a person has looked.
+ *
+ * Everything written is marked `research`: found by a machine reading the web,
+ * confirmed by nobody. A wrong run date must never look like a checked fact.
+ */
+export const acceptResearch = createServerOnlyFn(async (actorId: string, json: string) => {
+  const parsed = researched.safeParse(JSON.parse(json))
+  if (!parsed.success) throw new Error('That research did not come back in a usable shape.')
+  const first = parsed.data.shows[0]
+  if (!first) throw new Error('There was no show in that.')
+
+  // Researching something already known would otherwise quietly make a second
+  // copy, and `/ask` would then ask which of two identical titles was meant.
+  const { searchCatalogFor } = await import('./catalog-functions')
+  const clash = (await searchCatalogFor(actorId, first.title)).find(
+    (row) => row.title.toLowerCase() === first.title.toLowerCase(),
+  )
+  if (clash) {
+    throw new Error(`${clash.title} is already here — there is nothing to add.`)
+  }
+
+  const { submitShowForUser, findOrCreateProduction } = await import('./catalog-functions')
+  const submitted = await submitShowForUser(actorId, {
+    title: first.title,
+    type: first.type,
+    synopsis: first.synopsis ?? undefined,
+  })
+
+  const { getDb } = await import('./db/client')
+  const { eq } = await import('drizzle-orm')
+  const { productions } = await import('./db/schema')
+  const { addCasting } = await import('./people-functions')
+
+  let productionsAdded = 0
+  let castingsAdded = 0
+  for (const production of first.productions ?? []) {
+    const made = await findOrCreateProduction(
+      actorId,
+      submitted.id,
+      production.name,
+      production.productionType,
+      production.venue ?? undefined,
+      production.city ?? undefined,
+    )
+    productionsAdded += 1
+    await getDb()
+      .update(productions)
+      .set({
+        openedOn: production.openedOn ?? null,
+        closedOn: production.closedOn ?? null,
+        source: 'research',
+        sourceNote: production.source ?? null,
+      })
+      .where(eq(productions.id, made.id))
+
+    // The order a source lists replacements in is data even when the dates are
+    // missing, and it is what lets the app say "late in the run, not 2003".
+    const seen = new Map<string, number>()
+    for (const member of production.cast ?? []) {
+      const nth = (seen.get(member.role) ?? 0) + 1
+      seen.set(member.role, nth)
+      await addCasting(
+        actorId,
+        {
+          productionId: made.id,
+          personName: member.name,
+          role: member.role,
+          kind: member.kind,
+          isPrincipal: member.isPrincipal ?? member.kind === 'performer',
+          startedOn: member.startedOn ?? undefined,
+          endedOn: member.endedOn ?? undefined,
+          replacementOrder: member.kind === 'performer' ? nth : undefined,
+        },
+        { source: 'research', sourceNote: production.source ?? null },
+      )
+      castingsAdded += 1
+    }
+  }
+
+  return {
+    showId: submitted.id,
+    title: submitted.title,
+    productions: productionsAdded,
+    castings: castingsAdded,
+  }
+})
+
+export const addResearchedShow = createServerFn({ method: 'POST' })
+  .validator(z.object({ json: z.string().min(2).max(200_000) }))
+  .handler(async ({ data }) => acceptResearch((await requireSession()).user.id, data.json))

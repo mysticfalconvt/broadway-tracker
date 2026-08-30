@@ -238,6 +238,35 @@ export const personWithHistory = createServerOnlyFn(
   },
 )
 
+/**
+ * The shows somebody was recorded in — the way back when a person is all that
+ * is remembered.
+ *
+ * Separate from `personWithHistory` because that is a page and this is an
+ * answer: no covers, no nights, and it can see the reader's own submission,
+ * which is exactly the show they are most likely to be asking about.
+ */
+export const showsFeaturing = createServerOnlyFn(
+  async (viewerId: string | null, personId: string) => {
+    const visible = viewerId
+      ? or(
+          eq(shows.catalogStatus, 'published'),
+          eq(shows.catalogStatus, 'local'),
+          and(eq(shows.catalogStatus, 'pending'), eq(shows.submittedByUserId, viewerId)),
+        )
+      : eq(shows.catalogStatus, 'published')
+
+    const rows = await getDb()
+      .selectDistinct({ showId: shows.id, title: shows.title, type: shows.type })
+      .from(castings)
+      .innerJoin(productions, eq(castings.productionId, productions.id))
+      .innerJoin(shows, eq(productions.showId, shows.id))
+      .where(and(eq(castings.personId, personId), visible))
+      .orderBy(asc(shows.title))
+    return rows
+  },
+)
+
 /** Everyone in the catalog, with how much rests on each, for the merge screen. */
 export const peopleForAdmin = createServerOnlyFn(async (actor: Actor) => {
   assertAdmin(actor)
