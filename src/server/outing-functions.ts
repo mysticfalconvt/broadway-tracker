@@ -1,9 +1,8 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { getRequestHeaders } from '@tanstack/react-start/server'
 import { and, eq, inArray, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
+import { requireSession } from './session'
 
-import { auth } from './auth'
 import { getDb } from './db/client'
 import { acceptedFriendIdsFor, areFriends } from './friend-functions'
 import { defaultVisibilityFor } from './visibility'
@@ -67,12 +66,6 @@ export const outingInput = z
       })
     }
   })
-
-async function requireSession() {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
-  if (!session) throw new Error('Unauthorized')
-  return session
-}
 
 // The exported helpers below hold the authorization rules and take the acting
 // user explicitly, so they can be exercised without a request. `createServerOnlyFn`

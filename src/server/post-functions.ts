@@ -1,20 +1,13 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { getRequestHeaders } from '@tanstack/react-start/server'
 import { and, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
+import { currentSession, requireSession } from './session'
 
-import { auth } from './auth'
 import type { Actor } from './catalog-functions'
 import { getDb } from './db/client'
 import { outingAttendees, outings, people, posts, shows, user, venues } from './db/schema'
 import { acceptedFriendIdsFor } from './friend-functions'
 import { defaultVisibilityFor } from './visibility'
-
-async function requireSession() {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
-  if (!session) throw new Error('Unauthorized')
-  return session
-}
 
 export const postInput = z.object({
   title: z.string().trim().min(1).max(200),
@@ -321,12 +314,12 @@ export const removePost = createServerFn({ method: 'POST' })
 export const getPost = createServerFn({ method: 'GET' })
   .validator(z.object({ slug: z.string().min(1).max(120) }))
   .handler(async ({ data }) => {
-    const session = await auth.api.getSession({ headers: getRequestHeaders() })
+    const session = await currentSession()
     return postForReader(session?.user.id ?? null, data.slug)
   })
 
 export const getPosts = createServerFn({ method: 'GET' }).handler(async () => {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
+  const session = await currentSession()
   return postsForReader(session?.user.id ?? null)
 })
 
@@ -347,6 +340,6 @@ export const getPostsAbout = createServerFn({ method: 'GET' })
     }),
   )
   .handler(async ({ data }) => {
-    const session = await auth.api.getSession({ headers: getRequestHeaders() })
+    const session = await currentSession()
     return postsAbout(session?.user.id ?? null, data)
   })

@@ -1,24 +1,17 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { getRequestHeaders } from '@tanstack/react-start/server'
 import { and, asc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
+import { currentSession, requireSession } from './session'
 
-import { auth } from './auth'
 import { getDb } from './db/client'
 import { applyViewerCovers } from './image-functions'
 import { listItems, lists, shows, user } from './db/schema'
 import { areFriends } from './friend-functions'
 import { defaultVisibilityFor } from './visibility'
 
-async function requireSession() {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
-  if (!session) throw new Error('Unauthorized')
-  return session
-}
-
 /** Public lists are readable signed out, so this read tolerates no session. */
 async function optionalViewerId() {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
+  const session = await currentSession()
   return session?.user.id ?? null
 }
 

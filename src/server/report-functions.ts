@@ -1,19 +1,12 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { getRequestHeaders } from '@tanstack/react-start/server'
 import { asc, desc, eq, inArray } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
+import { requireSession } from './session'
 
-import { auth } from './auth'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { getDb } from './db/client'
 import { reportReplies, reports, user } from './db/schema'
-
-async function requireSession() {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
-  if (!session) throw new Error('Unauthorized')
-  return session
-}
 
 export const reportInput = z.object({
   kind: z.enum(['bug', 'idea']),

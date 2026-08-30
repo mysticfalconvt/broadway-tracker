@@ -1,20 +1,13 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { getRequestHeaders } from '@tanstack/react-start/server'
 import { and, asc, desc, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
+import { currentSession, requireSession } from './session'
 
 import { tidyPlace, venueKey } from '../lib/place'
-import { auth } from './auth'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { getDb } from './db/client'
 import { applyViewerCovers } from './image-functions'
 import { outingAttendees, outings, productions, shows, venues } from './db/schema'
-
-async function requireSession() {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
-  if (!session) throw new Error('Unauthorized')
-  return session
-}
 
 /**
  * Returns the venue matching this name-and-city, creating it only if nothing
@@ -280,6 +273,6 @@ export const venueWithHistory = createServerOnlyFn(
 export const getVenue = createServerFn({ method: 'GET' })
   .validator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data }) => {
-    const session = await auth.api.getSession({ headers: getRequestHeaders() })
+    const session = await currentSession()
     return venueWithHistory(session?.user.id ?? null, data.id)
   })

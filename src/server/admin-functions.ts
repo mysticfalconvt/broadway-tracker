@@ -1,11 +1,10 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { getRequestHeaders } from '@tanstack/react-start/server'
 import { and, asc, desc, eq, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
+import { currentSession, requireSession } from './session'
 
 import { normalizeVenueName } from '../lib/place'
 import { findSuspectPairs } from '../lib/similarity'
-import { auth } from './auth'
 import { pendingRequestCountFor } from './friend-functions'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { getDb } from './db/client'
@@ -21,12 +20,6 @@ import {
   user,
   venues,
 } from './db/schema'
-
-async function requireSession() {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
-  if (!session) throw new Error('Unauthorized')
-  return session
-}
 
 function looseTitleKey(title: string) {
   return title
@@ -270,7 +263,7 @@ export const navBadgesFor = createServerOnlyFn(
  * role, and because a badge that appears only after hydration reads as a glitch.
  */
 export const getNavBadges = createServerFn({ method: 'GET' }).handler(async () => {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
+  const session = await currentSession()
   if (session) {
     // Every page makes this call, so it is where being here is noticed. Cheap
     // because it only writes when the record is more than an hour stale.

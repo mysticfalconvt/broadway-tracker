@@ -1,19 +1,12 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { getRequestHeaders } from '@tanstack/react-start/server'
 import { and, asc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
+import { currentSession, requireSession } from './session'
 
-import { auth } from './auth'
 import { getDb } from './db/client'
 import { libraryEntries, shows } from './db/schema'
 import { applyViewerCovers } from './image-functions'
 import { defaultVisibilityFor } from './visibility'
-
-async function requireSession() {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
-  if (!session) throw new Error('Unauthorized')
-  return session
-}
 
 const libraryInput = z.object({
   showId: z.string().uuid(),
@@ -121,9 +114,7 @@ export const showStateForViewer = createServerOnlyFn(
 export const getMyShowState = createServerFn({ method: 'GET' })
   .validator(z.object({ showId: z.string().uuid() }))
   .handler(async ({ data }) => {
-    const { auth } = await import('./auth')
-    const { getRequestHeaders } = await import('@tanstack/react-start/server')
-    const session = await auth.api.getSession({ headers: getRequestHeaders() })
+    const session = await currentSession()
     return showStateForViewer(session?.user.id ?? null, data.showId)
   })
 

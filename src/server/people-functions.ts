@@ -1,11 +1,10 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { getRequestHeaders } from '@tanstack/react-start/server'
 import { and, asc, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
+import { currentSession, requireSession } from './session'
 
 import { normalizePersonName, tidyPersonName } from '../lib/person'
 import { findSuspectPairs } from '../lib/similarity'
-import { auth } from './auth'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { getDb } from './db/client'
 import { applyViewerCovers } from './image-functions'
@@ -18,12 +17,6 @@ import {
   seenPerformers,
   shows,
 } from './db/schema'
-
-async function requireSession() {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
-  if (!session) throw new Error('Unauthorized')
-  return session
-}
 
 /**
  * Returns the person of this name, creating them only if nobody matches.
@@ -413,7 +406,7 @@ export const recordCasting = createServerFn({ method: 'POST' })
 export const getPerson = createServerFn({ method: 'GET' })
   .validator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data }) => {
-    const session = await auth.api.getSession({ headers: getRequestHeaders() })
+    const session = await currentSession()
     return personWithHistory(session?.user.id ?? null, data.id)
   })
 

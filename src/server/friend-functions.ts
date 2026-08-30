@@ -1,17 +1,10 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { getRequestHeaders } from '@tanstack/react-start/server'
 import { and, asc, eq, ne, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
+import { requireSession } from './session'
 
-import { auth } from './auth'
 import { getDb } from './db/client'
 import { friendships, user } from './db/schema'
-
-async function requireSession() {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
-  if (!session) throw new Error('Unauthorized')
-  return session
-}
 
 function pair(userId: string, otherUserId: string) {
   return userId < otherUserId ? [userId, otherUserId] : [otherUserId, userId]

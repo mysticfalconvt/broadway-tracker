@@ -1,9 +1,8 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { getRequestHeaders } from '@tanstack/react-start/server'
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
+import { currentSession } from './session'
 
-import { auth } from './auth'
 import { getDb } from './db/client'
 import { acceptedFriendIdsFor } from './friend-functions'
 import { applyViewerCovers } from './image-functions'
@@ -108,20 +107,20 @@ export const frontPageFor = createServerOnlyFn(async (userId: string) => {
 })
 
 export const getFrontPage = createServerFn({ method: 'GET' }).handler(async () => {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
+  const session = await currentSession()
   // Null rather than an error: a signed-out visitor gets the visitor page.
   if (!session) return null
   return { name: session.user.name, ...(await frontPageFor(session.user.id)) }
 })
 
 export const getHome = createServerFn({ method: 'GET' }).handler(async () => {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
+  const session = await currentSession()
   if (!session) return null
   return { name: session.user.name, ...(await homeForUser(session.user.id)) }
 })
 
 export const getMyProfile = createServerFn({ method: 'GET' }).handler(async () => {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
+  const session = await currentSession()
   if (!session) throw new Error('Unauthorized')
   const db = getDb()
   const [seen, favorites, outingsCount, seenThisYear] = await Promise.all([
@@ -374,14 +373,14 @@ export const friendsActivityFor = createServerOnlyFn(async (viewerId: string, li
 
 /** The reader's own map. Never anybody else's — see `placesVisitedBy`. */
 export const getMyPlaces = createServerFn({ method: 'GET' }).handler(async () => {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
+  const session = await currentSession()
   if (!session) throw new Error('Unauthorized')
   const { placesVisitedBy } = await import('./geocoding')
   return placesVisitedBy(session.user.id)
 })
 
 export const getFriendsActivity = createServerFn({ method: 'GET' }).handler(async () => {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
+  const session = await currentSession()
   if (!session) throw new Error('Unauthorized')
   return friendsActivityFor(session.user.id)
 })
@@ -453,7 +452,7 @@ export const getPublicProfile = createServerFn({ method: 'GET' })
 export const getFriendProfile = createServerFn({ method: 'GET' })
   .validator(z.object({ handle: z.string().trim().min(1).max(30) }))
   .handler(async ({ data }) => {
-    const session = await auth.api.getSession({ headers: getRequestHeaders() })
+    const session = await currentSession()
     if (!session) throw new Error('Unauthorized')
     return friendProfileForViewer(session.user.id, data.handle)
   })

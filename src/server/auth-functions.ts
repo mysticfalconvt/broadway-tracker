@@ -1,16 +1,13 @@
 import { createServerFn } from '@tanstack/react-start'
-import { getRequestHeaders } from '@tanstack/react-start/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { currentSession } from './session'
 
-import { auth } from './auth'
 import { getDb } from './db/client'
 import { handleProblem, normalizeHandle } from '../lib/handle'
 import { user } from './db/schema'
 
-export const getSession = createServerFn({ method: 'GET' }).handler(async () =>
-  auth.api.getSession({ headers: getRequestHeaders() }),
-)
+export const getSession = createServerFn({ method: 'GET' }).handler(async () => currentSession())
 
 export const updateAccountSettings = createServerFn({ method: 'POST' })
   .validator(
@@ -27,7 +24,7 @@ export const updateAccountSettings = createServerFn({ method: 'POST' })
     }),
   )
   .handler(async ({ data }) => {
-    const session = await auth.api.getSession({ headers: getRequestHeaders() })
+    const session = await currentSession()
     if (!session) throw new Error('Unauthorized')
 
     try {
@@ -64,7 +61,7 @@ export const updateAccountSettings = createServerFn({ method: 'POST' })
 
 /** How much would move if this person changed their profile sharing. */
 export const getSharingImpact = createServerFn({ method: 'GET' }).handler(async () => {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
+  const session = await currentSession()
   if (!session) throw new Error('Unauthorized')
   const { contentFollowingProfile } = await import('./visibility')
   return contentFollowingProfile(session.user.id)

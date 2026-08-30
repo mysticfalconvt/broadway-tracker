@@ -1,9 +1,8 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { getRequestHeaders } from '@tanstack/react-start/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { requireSession } from './session'
 
-import { auth } from './auth'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { getDb } from './db/client'
 import { people, productions, shows, venues } from './db/schema'
@@ -11,12 +10,6 @@ import { normalizePersonName } from '../lib/person'
 import { normalizeVenueName, venueKey } from '../lib/place'
 import { similarity } from '../lib/similarity'
 import { findOrCreateVenue } from './venue-functions'
-
-async function requireSession() {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
-  if (!session) throw new Error('Unauthorized')
-  return session
-}
 
 const castSchema = z.object({
   name: z.string().trim().min(1).max(160),

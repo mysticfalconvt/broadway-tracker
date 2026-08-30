@@ -2,6 +2,7 @@ import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { and, asc, desc, eq, ilike, ne, or, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
+import { currentSession, requireSession } from './session'
 
 import { localTitleKey } from '../lib/show'
 import { getDb } from './db/client'
@@ -136,9 +137,7 @@ export const publishedProductionsForShow = createServerOnlyFn(async (showId: str
 export const searchPublishedShows = createServerFn({ method: 'GET' })
   .validator(z.object({ query: z.string().trim().max(100) }))
   .handler(async ({ data }) => {
-    const { auth } = await import('./auth')
-    const { getRequestHeaders } = await import('@tanstack/react-start/server')
-    const session = await auth.api.getSession({ headers: getRequestHeaders() })
+    const session = await currentSession()
     const { applyViewerCovers } = await import('./image-functions')
     return applyViewerCovers(session?.user.id ?? null, await searchCatalog(data.query))
   })
@@ -160,9 +159,7 @@ export const getShowBySlug = createServerFn({ method: 'GET' })
     const published = await publishedShowBySlug(data.slug)
     if (published) return { show: published, scope: 'catalog' as const, mayEdit: false }
 
-    const { auth } = await import('./auth')
-    const { getRequestHeaders } = await import('@tanstack/react-start/server')
-    const session = await auth.api.getSession({ headers: getRequestHeaders() })
+    const session = await currentSession()
     if (!session) return { show: null, scope: 'catalog' as const, mayEdit: false }
 
     const local = await localShowBySlug(data.slug)
@@ -195,14 +192,6 @@ function toSlug(title: string) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '')
   return slug || 'show'
-}
-
-async function requireSession() {
-  const { auth } = await import('./auth')
-  const { getRequestHeaders } = await import('@tanstack/react-start/server')
-  const session = await auth.api.getSession({ headers: getRequestHeaders() })
-  if (!session) throw new Error('Unauthorized')
-  return session
 }
 
 async function requireAdmin() {
