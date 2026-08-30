@@ -60,6 +60,9 @@ function Friends() {
         <p className="eyebrow">My theatre</p>
         <h1>Friends in the house.</h1>
         <p>Connect by handle to share friends-visible lists and theatre plans.</p>
+        <Link className="button button-quiet" to="/circle">
+          Where your friends have been
+        </Link>
       </header>
       <form className="settings-form" onSubmit={search}>
         <label>

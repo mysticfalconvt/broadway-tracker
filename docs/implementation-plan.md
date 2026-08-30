@@ -148,7 +148,9 @@
 - [x] Allow friends to view only `friends`-visible profiles, entries, reviews, and lists.
 - [x] Show a friend's nights, their shelf, and their lists on their profile, with the offer to
       say you were there too. *(Joining adds you to that same outing rather than copying it.)*
-- [ ] Build a quiet, chronological friends activity view (optional after core sharing works).
+- [x] Build a quiet, chronological friends activity view. *(`/circle`, linked from the friends
+      page rather than the navigation. Nights out only — a feed that reports every rating changed
+      is one nobody reads.)*
 
 ### Public sharing and the home dashboard
 
@@ -312,7 +314,8 @@ have no equivalent path at all, and there is no single place to see what people 
 - [x] Document the format so it can be handed to a language model verbatim.
 - [x] Warn about venues that resemble an existing one before anything is written.
 - [x] Offer a one-click correction that rewrites the paste to use the existing venue.
-- [ ] Let an administrator edit a production after import without going through the show screen.
+- [x] Let an administrator edit a production after import without going through the show screen.
+      *(A flat, searchable list of everything recorded, newest first, on `/admin/productions`.)*
 
 ## 15. Local and community theatre
 

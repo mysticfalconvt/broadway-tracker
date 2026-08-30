@@ -1,5 +1,5 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { and, asc, eq, ilike, ne, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, ne, or, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
 
@@ -286,6 +286,56 @@ export const getPublishedShowsForAdmin = createServerFn({ method: 'GET' }).handl
     .where(eq(shows.catalogStatus, 'published'))
     .orderBy(asc(shows.title))
 })
+
+/**
+ * Recently recorded productions across every show, newest first.
+ *
+ * After a bulk import the thing an administrator wants to fix is whatever just
+ * landed, and they do not know which show to pick from a list of hundreds to
+ * find it. This is the flat view: search it, or just look at the top.
+ */
+export const recentProductionsForAdmin = createServerOnlyFn(
+  async (actor: Actor, query = '', limit = 40) => {
+    assertAdmin(actor)
+    const needle = query.trim().replace(/[%_\\]/g, '\\$&')
+    const filters = needle
+      ? [
+          or(
+            ilike(shows.title, `%${needle}%`),
+            ilike(productions.name, `%${needle}%`),
+            ilike(venues.name, `%${needle}%`),
+          ),
+        ]
+      : []
+    return getDb()
+      .select({
+        id: productions.id,
+        name: productions.name,
+        productionType: productions.productionType,
+        scope: productions.scope,
+        venue: sql<string | null>`coalesce(${venues.name}, ${productions.venue})`,
+        city: sql<string | null>`coalesce(${venues.city}, ${productions.city})`,
+        country: productions.country,
+        openedOn: productions.openedOn,
+        closedOn: productions.closedOn,
+        createdAt: productions.createdAt,
+        showId: shows.id,
+        showTitle: shows.title,
+      })
+      .from(productions)
+      .innerJoin(shows, eq(productions.showId, shows.id))
+      .leftJoin(venues, eq(productions.venueId, venues.id))
+      .where(filters.length ? and(...filters) : undefined)
+      .orderBy(desc(productions.createdAt))
+      .limit(limit)
+  },
+)
+
+export const getRecentProductions = createServerFn({ method: 'GET' })
+  .validator(z.object({ query: z.string().trim().max(120).optional() }))
+  .handler(async ({ data }) =>
+    recentProductionsForAdmin((await requireSession()).user as Actor, data.query ?? ''),
+  )
 
 export const getProductionsForAdmin = createServerFn({ method: 'GET' })
   .validator(z.object({ showId: z.string().uuid() }))

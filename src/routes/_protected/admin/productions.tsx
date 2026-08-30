@@ -5,6 +5,7 @@ import { ShowArtwork } from '../../../components/ShowArtwork'
 import {
   deleteProduction,
   getProductionsForAdmin,
+  getRecentProductions,
   getPublishedShowsForAdmin,
   saveProduction,
 } from '../../../server/catalog-functions'
@@ -13,7 +14,13 @@ export const Route = createFileRoute('/_protected/admin/productions')({
   beforeLoad: ({ context }) => {
     if (context.user.role !== 'admin') throw redirect({ to: '/' })
   },
-  loader: () => getPublishedShowsForAdmin(),
+  loader: async () => ({
+    shows: await getPublishedShowsForAdmin(),
+    // Resolved here rather than after mount: a list that says "nothing
+    // recorded yet" for a moment, on a screen whose whole job is fixing what
+    // was just recorded, is worse than a slightly later first paint.
+    recent: await getRecentProductions({ data: {} }),
+  }),
   component: ProductionAdmin,
 })
 
@@ -90,19 +97,53 @@ function CoverField({
 }
 
 type Production = Awaited<ReturnType<typeof getProductionsForAdmin>>[number]
+type Recent = Awaited<ReturnType<typeof getRecentProductions>>[number]
+
+/**
+ * Only what the form actually fills in, so it can be handed a row from either
+ * the per-show list or the flat one without either having to pretend to be a
+ * whole database record.
+ */
+type EditableProduction = {
+  id: string
+  name: string
+  productionType: Production['productionType']
+  venue: string | null
+  city: string | null
+  country: string | null
+  openedOn: string | null
+  closedOn: string | null
+}
 
 function ProductionAdmin() {
-  const shows = Route.useLoaderData()
+  const { shows, recent: initialRecent } = Route.useLoaderData()
   const [showId, setShowId] = useState(shows[0]?.id ?? '')
   const [productions, setProductions] = useState<Production[]>([])
+  // What just landed, whichever show it belongs to. After an import an
+  // administrator knows the venue was wrong, not which of hundreds of shows to
+  // pick from a list to reach it.
+  const [recent, setRecent] = useState<Recent[]>(initialRecent)
+  const [query, setQuery] = useState('')
+  const [editing, setEditing] = useState<string | null>(null)
 
   useEffect(() => {
     if (!showId) return
     void getProductionsForAdmin({ data: { showId } }).then(setProductions)
   }, [showId])
 
+  // Only re-asks once somebody types; the first list came with the page.
+  const [searched, setSearched] = useState(false)
+  useEffect(() => {
+    if (!searched) return
+    const timer = setTimeout(() => {
+      void getRecentProductions({ data: { query } }).then(setRecent)
+    }, 200)
+    return () => clearTimeout(timer)
+  }, [query, searched])
+
   function refresh() {
     if (showId) void getProductionsForAdmin({ data: { showId } }).then(setProductions)
+    void getRecentProductions({ data: { query } }).then(setRecent)
   }
 
   const selected = shows.find((show) => show.id === showId)
@@ -117,6 +158,71 @@ function ProductionAdmin() {
           staging.
         </p>
       </header>
+      <section className="recent-productions">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Everything recorded</p>
+            <h2>Fix what just arrived.</h2>
+          </div>
+        </div>
+        <label className="people-filter">
+          Find a production
+          <input
+            onChange={(event) => {
+              setSearched(true)
+              setQuery(event.target.value)
+            }}
+            placeholder="A show, a staging, or a theatre"
+            type="search"
+            value={query}
+          />
+        </label>
+        {recent.length ? (
+          <ul className="recent-production-list">
+            {recent.map((row) => (
+              <li key={row.id}>
+                <div>
+                  <strong>{row.showTitle}</strong>
+                  <span>
+                    {row.name}
+                    {row.venue ? ` · ${row.venue}` : ''}
+                    {row.city ? `, ${row.city}` : ''}
+                    {row.scope === 'local' ? ' · local' : ''}
+                  </span>
+                </div>
+                <button
+                  className="button button-quiet"
+                  onClick={() => setEditing(editing === row.id ? null : row.id)}
+                  type="button"
+                >
+                  {editing === row.id ? 'Close' : 'Edit'}
+                </button>
+                {editing === row.id ? (
+                  <ProductionForm
+                    onSaved={refresh}
+                    production={{
+                      id: row.id,
+                      name: row.name,
+                      productionType: row.productionType,
+                      venue: row.venue,
+                      city: row.city,
+                      country: row.country,
+                      openedOn: row.openedOn,
+                      closedOn: row.closedOn,
+                    }}
+                    showId={row.showId}
+                  />
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="profile-empty">
+            {query ? 'Nothing matches that.' : 'No productions recorded yet.'}
+          </p>
+        )}
+      </section>
+
       {selected ? <CoverField key={selected.id} show={selected} /> : null}
       {shows.length ? (
         <>
@@ -158,7 +264,7 @@ function ProductionForm({
   onSaved,
 }: {
   showId: string
-  production?: Production
+  production?: EditableProduction
   onSaved: () => void
 }) {
   const [error, setError] = useState<string | null>(null)

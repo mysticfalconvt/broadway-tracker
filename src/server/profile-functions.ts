@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { auth } from './auth'
 import { getDb } from './db/client'
+import { acceptedFriendIdsFor } from './friend-functions'
 import { applyViewerCovers } from './image-functions'
 import { areFriends } from './friend-functions'
 import {
@@ -279,6 +280,70 @@ export const friendProfileForViewer = createServerOnlyFn(
     }
   },
 )
+
+/**
+ * What the people you share with have been to lately, newest first.
+ *
+ * Deliberately quiet: nights out, and nothing else. Not every rating changed
+ * and every list reordered — a feed that reports everything is one nobody
+ * reads, and this is a theatre journal, not a timeline.
+ *
+ * Each night is subject to the same rules as its owner's profile: the
+ * friendship must be approved, the night must be shared beyond private, and a
+ * friend who keeps their profile to themselves appears in nobody's feed.
+ */
+export const friendsActivityFor = createServerOnlyFn(async (viewerId: string, limit = 30) => {
+  const friendIds = [...(await acceptedFriendIdsFor(viewerId))]
+  if (friendIds.length === 0) return []
+
+  const rows = await getDb()
+    .select({
+      id: outings.id,
+      showId: outings.showId,
+      showTitle: shows.title,
+      showSlug: shows.slug,
+      showType: shows.type,
+      coverImageKey: shows.coverImageKey,
+      datePrecision: outings.datePrecision,
+      occurredOn: outings.occurredOn,
+      occurredMonth: outings.occurredMonth,
+      occurredYear: outings.occurredYear,
+      approximateDate: outings.approximateDate,
+      venue: sql<string | null>`coalesce(${venues.name}, ${outings.venue})`,
+      city: sql<string | null>`coalesce(${venues.city}, ${outings.city})`,
+      sharedNotes: outings.sharedNotes,
+      createdAt: outings.createdAt,
+      friendName: user.name,
+      friendHandle: user.handle,
+      alreadyThere: sql<boolean>`exists (
+        select 1 from ${outingAttendees}
+        where ${outingAttendees}."outing_id" = ${outings}."id"
+          and ${outingAttendees}."user_id" = ${viewerId}
+      )`,
+    })
+    .from(outings)
+    .innerJoin(shows, eq(outings.showId, shows.id))
+    .innerJoin(user, eq(outings.createdByUserId, user.id))
+    .leftJoin(venues, eq(outings.venueId, venues.id))
+    .where(
+      and(
+        inArray(outings.createdByUserId, friendIds),
+        inArray(outings.visibility, ['friends', 'public']),
+        // Somebody who keeps their profile to themselves is not in a feed.
+        inArray(user.profileVisibility, ['friends', 'public']),
+      ),
+    )
+    .orderBy(desc(outings.createdAt))
+    .limit(limit)
+
+  return applyViewerCovers(viewerId, rows, (row) => row.showId)
+})
+
+export const getFriendsActivity = createServerFn({ method: 'GET' }).handler(async () => {
+  const session = await auth.api.getSession({ headers: getRequestHeaders() })
+  if (!session) throw new Error('Unauthorized')
+  return friendsActivityFor(session.user.id)
+})
 
 /**
  * A public profile is deliberately anonymous: it carries no name and no handle,

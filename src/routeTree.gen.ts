@@ -17,6 +17,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as ProtectedBuildHistoryRouteImport } from './routes/_protected/build-history'
+import { Route as ProtectedCircleRouteImport } from './routes/_protected/circle'
 import { Route as ProtectedFeedbackRouteImport } from './routes/_protected/feedback'
 import { Route as ProtectedFriendsRouteImport } from './routes/_protected/friends'
 import { Route as ProtectedLibraryRouteImport } from './routes/_protected/library'
@@ -84,6 +85,11 @@ const SignUpRoute = SignUpRouteImport.update({
 const ProtectedBuildHistoryRoute = ProtectedBuildHistoryRouteImport.update({
   id: '/build-history',
   path: '/build-history',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedCircleRoute = ProtectedCircleRouteImport.update({
+  id: '/circle',
+  path: '/circle',
   getParentRoute: () => ProtectedRoute,
 } as any)
 const ProtectedFeedbackRoute = ProtectedFeedbackRouteImport.update({
@@ -241,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/build-history': typeof ProtectedBuildHistoryRoute
+  '/circle': typeof ProtectedCircleRoute
   '/feedback': typeof ProtectedFeedbackRoute
   '/friends': typeof ProtectedFriendsRoute
   '/library': typeof ProtectedLibraryRoute
@@ -279,6 +286,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/build-history': typeof ProtectedBuildHistoryRoute
+  '/circle': typeof ProtectedCircleRoute
   '/feedback': typeof ProtectedFeedbackRoute
   '/friends': typeof ProtectedFriendsRoute
   '/library': typeof ProtectedLibraryRoute
@@ -319,6 +327,7 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/_protected/build-history': typeof ProtectedBuildHistoryRoute
+  '/_protected/circle': typeof ProtectedCircleRoute
   '/_protected/feedback': typeof ProtectedFeedbackRoute
   '/_protected/friends': typeof ProtectedFriendsRoute
   '/_protected/library': typeof ProtectedLibraryRoute
@@ -359,6 +368,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/build-history'
+    | '/circle'
     | '/feedback'
     | '/friends'
     | '/library'
@@ -397,6 +407,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/build-history'
+    | '/circle'
     | '/feedback'
     | '/friends'
     | '/library'
@@ -436,6 +447,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/_protected/build-history'
+    | '/_protected/circle'
     | '/_protected/feedback'
     | '/_protected/friends'
     | '/_protected/library'
@@ -542,6 +554,13 @@ declare module '@tanstack/react-router' {
       path: '/build-history'
       fullPath: '/build-history'
       preLoaderRoute: typeof ProtectedBuildHistoryRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/circle': {
+      id: '/_protected/circle'
+      path: '/circle'
+      fullPath: '/circle'
+      preLoaderRoute: typeof ProtectedCircleRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/_protected/feedback': {
@@ -752,6 +771,7 @@ declare module '@tanstack/react-router' {
 
 interface ProtectedRouteChildren {
   ProtectedBuildHistoryRoute: typeof ProtectedBuildHistoryRoute
+  ProtectedCircleRoute: typeof ProtectedCircleRoute
   ProtectedFeedbackRoute: typeof ProtectedFeedbackRoute
   ProtectedFriendsRoute: typeof ProtectedFriendsRoute
   ProtectedLibraryRoute: typeof ProtectedLibraryRoute
@@ -776,6 +796,7 @@ interface ProtectedRouteChildren {
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedBuildHistoryRoute: ProtectedBuildHistoryRoute,
+  ProtectedCircleRoute: ProtectedCircleRoute,
   ProtectedFeedbackRoute: ProtectedFeedbackRoute,
   ProtectedFriendsRoute: ProtectedFriendsRoute,
   ProtectedLibraryRoute: ProtectedLibraryRoute,
