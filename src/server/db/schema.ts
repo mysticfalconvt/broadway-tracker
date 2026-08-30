@@ -447,6 +447,69 @@ export const showImages = pgTable(
  * The page they were on is captured because the most useful part of a bug
  * report is usually the thing the reporter forgets to mention.
  */
+/**
+ * Something somebody wrote at length.
+ *
+ * Separate from a review, which is a field on an attendee row: your reaction to
+ * one night, finished the evening you write it. A piece is edited for years, has
+ * a title, and exists in draft before anybody sees it. Forcing one shape onto
+ * both would spoil whichever lost.
+ *
+ * A piece is normally *about* something — a show, a staging, a theatre, a
+ * performer, a night — which is what keeps this a theatre journal rather than a
+ * general blog nobody maintains. It also means writing accumulates onto the
+ * pages it concerns instead of scrolling away.
+ */
+export const posts = pgTable(
+  'posts',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    authorUserId: text('author_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    slug: text('slug').notNull().unique(),
+    body: text('body').notNull(),
+    /** Editorial is an administrator writing for everybody, not a separate system. */
+    kind: text('kind', { enum: ['piece', 'editorial'] })
+      .notNull()
+      .default('piece'),
+    status: text('status', { enum: ['draft', 'published'] })
+      .notNull()
+      .default('draft'),
+    visibility: text('visibility', { enum: ['private', 'friends', 'public'] })
+      .notNull()
+      .default('friends'),
+    /**
+     * The name this is published under.
+     *
+     * A public profile carries no name by design, and an essay wants one. The
+     * two are kept apart: a byline is chosen for the piece, and never links to
+     * the author's profile, so publishing does not quietly put a real name on
+     * everything else they have marked public.
+     */
+    byline: text('byline'),
+    // What it is about. Nullable and mutually exclusive in practice, spelled out
+    // rather than made polymorphic so a show page can simply ask for its own.
+    showId: uuid('show_id').references(() => shows.id, { onDelete: 'cascade' }),
+    productionId: uuid('production_id').references(() => productions.id, {
+      onDelete: 'set null',
+    }),
+    venueId: uuid('venue_id').references(() => venues.id, { onDelete: 'set null' }),
+    personId: uuid('person_id').references(() => people.id, { onDelete: 'set null' }),
+    outingId: uuid('outing_id').references(() => outings.id, { onDelete: 'set null' }),
+    publishedAt: timestamp('published_at'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => [
+    index('posts_author_idx').on(table.authorUserId),
+    index('posts_published_idx').on(table.status, table.publishedAt),
+    index('posts_show_idx').on(table.showId),
+    index('posts_venue_idx').on(table.venueId),
+  ],
+)
+
 export const reports = pgTable(
   'reports',
   {

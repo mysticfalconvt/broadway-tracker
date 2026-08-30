@@ -26,6 +26,7 @@ import { Route as ProtectedPlacesRouteImport } from './routes/_protected/places'
 import { Route as ProtectedProfileRouteImport } from './routes/_protected/profile'
 import { Route as ProtectedSettingsRouteImport } from './routes/_protected/settings'
 import { Route as ProtectedSubmitShowRouteImport } from './routes/_protected/submit-show'
+import { Route as ProtectedWriteRouteImport } from './routes/_protected/write'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiUploadsRouteImport } from './routes/api/uploads'
 import { Route as ArtistsIdRouteImport } from './routes/artists/$id'
@@ -33,6 +34,8 @@ import { Route as ListsIdRouteImport } from './routes/lists/$id'
 import { Route as PIdRouteImport } from './routes/p/$id'
 import { Route as ShowsSlugRouteImport } from './routes/shows/$slug'
 import { Route as VenuesIdRouteImport } from './routes/venues/$id'
+import { Route as WritingIndexRouteImport } from './routes/writing/index'
+import { Route as WritingSlugRouteImport } from './routes/writing/$slug'
 import { Route as ProtectedAdminIndexRouteImport } from './routes/_protected/admin/index'
 import { Route as ProtectedAdminCatalogRouteImport } from './routes/_protected/admin/catalog'
 import { Route as ProtectedAdminImportRouteImport } from './routes/_protected/admin/import'
@@ -133,6 +136,11 @@ const ProtectedSubmitShowRoute = ProtectedSubmitShowRouteImport.update({
   path: '/submit-show',
   getParentRoute: () => ProtectedRoute,
 } as any)
+const ProtectedWriteRoute = ProtectedWriteRouteImport.update({
+  id: '/write',
+  path: '/write',
+  getParentRoute: () => ProtectedRoute,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
@@ -166,6 +174,16 @@ const ShowsSlugRoute = ShowsSlugRouteImport.update({
 const VenuesIdRoute = VenuesIdRouteImport.update({
   id: '/venues/$id',
   path: '/venues/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WritingIndexRoute = WritingIndexRouteImport.update({
+  id: '/writing/',
+  path: '/writing/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WritingSlugRoute = WritingSlugRouteImport.update({
+  id: '/writing/$slug',
+  path: '/writing/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProtectedAdminIndexRoute = ProtectedAdminIndexRouteImport.update({
@@ -262,6 +280,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProtectedProfileRoute
   '/settings': typeof ProtectedSettingsRoute
   '/submit-show': typeof ProtectedSubmitShowRoute
+  '/write': typeof ProtectedWriteRoute
   '/api/health': typeof ApiHealthRoute
   '/api/uploads': typeof ApiUploadsRoute
   '/artists/$id': typeof ArtistsIdRoute
@@ -269,6 +288,8 @@ export interface FileRoutesByFullPath {
   '/p/$id': typeof PIdRoute
   '/shows/$slug': typeof ShowsSlugRoute
   '/venues/$id': typeof VenuesIdRoute
+  '/writing/$slug': typeof WritingSlugRoute
+  '/writing/': typeof WritingIndexRoute
   '/admin/catalog': typeof ProtectedAdminCatalogRoute
   '/admin/import': typeof ProtectedAdminImportRoute
   '/admin/local': typeof ProtectedAdminLocalRoute
@@ -302,6 +323,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProtectedProfileRoute
   '/settings': typeof ProtectedSettingsRoute
   '/submit-show': typeof ProtectedSubmitShowRoute
+  '/write': typeof ProtectedWriteRoute
   '/api/health': typeof ApiHealthRoute
   '/api/uploads': typeof ApiUploadsRoute
   '/artists/$id': typeof ArtistsIdRoute
@@ -309,6 +331,8 @@ export interface FileRoutesByTo {
   '/p/$id': typeof PIdRoute
   '/shows/$slug': typeof ShowsSlugRoute
   '/venues/$id': typeof VenuesIdRoute
+  '/writing/$slug': typeof WritingSlugRoute
+  '/writing': typeof WritingIndexRoute
   '/admin/catalog': typeof ProtectedAdminCatalogRoute
   '/admin/import': typeof ProtectedAdminImportRoute
   '/admin/local': typeof ProtectedAdminLocalRoute
@@ -344,6 +368,7 @@ export interface FileRoutesById {
   '/_protected/profile': typeof ProtectedProfileRoute
   '/_protected/settings': typeof ProtectedSettingsRoute
   '/_protected/submit-show': typeof ProtectedSubmitShowRoute
+  '/_protected/write': typeof ProtectedWriteRoute
   '/api/health': typeof ApiHealthRoute
   '/api/uploads': typeof ApiUploadsRoute
   '/artists/$id': typeof ArtistsIdRoute
@@ -351,6 +376,8 @@ export interface FileRoutesById {
   '/p/$id': typeof PIdRoute
   '/shows/$slug': typeof ShowsSlugRoute
   '/venues/$id': typeof VenuesIdRoute
+  '/writing/$slug': typeof WritingSlugRoute
+  '/writing/': typeof WritingIndexRoute
   '/_protected/admin/catalog': typeof ProtectedAdminCatalogRoute
   '/_protected/admin/import': typeof ProtectedAdminImportRoute
   '/_protected/admin/local': typeof ProtectedAdminLocalRoute
@@ -386,6 +413,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/settings'
     | '/submit-show'
+    | '/write'
     | '/api/health'
     | '/api/uploads'
     | '/artists/$id'
@@ -393,6 +421,8 @@ export interface FileRouteTypes {
     | '/p/$id'
     | '/shows/$slug'
     | '/venues/$id'
+    | '/writing/$slug'
+    | '/writing/'
     | '/admin/catalog'
     | '/admin/import'
     | '/admin/local'
@@ -426,6 +456,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/settings'
     | '/submit-show'
+    | '/write'
     | '/api/health'
     | '/api/uploads'
     | '/artists/$id'
@@ -433,6 +464,8 @@ export interface FileRouteTypes {
     | '/p/$id'
     | '/shows/$slug'
     | '/venues/$id'
+    | '/writing/$slug'
+    | '/writing'
     | '/admin/catalog'
     | '/admin/import'
     | '/admin/local'
@@ -467,6 +500,7 @@ export interface FileRouteTypes {
     | '/_protected/profile'
     | '/_protected/settings'
     | '/_protected/submit-show'
+    | '/_protected/write'
     | '/api/health'
     | '/api/uploads'
     | '/artists/$id'
@@ -474,6 +508,8 @@ export interface FileRouteTypes {
     | '/p/$id'
     | '/shows/$slug'
     | '/venues/$id'
+    | '/writing/$slug'
+    | '/writing/'
     | '/_protected/admin/catalog'
     | '/_protected/admin/import'
     | '/_protected/admin/local'
@@ -506,6 +542,8 @@ export interface RootRouteChildren {
   PIdRoute: typeof PIdRoute
   ShowsSlugRoute: typeof ShowsSlugRoute
   VenuesIdRoute: typeof VenuesIdRoute
+  WritingSlugRoute: typeof WritingSlugRoute
+  WritingIndexRoute: typeof WritingIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiImagesSplatRoute: typeof ApiImagesSplatRoute
 }
@@ -631,6 +669,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedSubmitShowRouteImport
       parentRoute: typeof ProtectedRoute
     }
+    '/_protected/write': {
+      id: '/_protected/write'
+      path: '/write'
+      fullPath: '/write'
+      preLoaderRoute: typeof ProtectedWriteRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
@@ -678,6 +723,20 @@ declare module '@tanstack/react-router' {
       path: '/venues/$id'
       fullPath: '/venues/$id'
       preLoaderRoute: typeof VenuesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/writing/': {
+      id: '/writing/'
+      path: '/writing'
+      fullPath: '/writing/'
+      preLoaderRoute: typeof WritingIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/writing/$slug': {
+      id: '/writing/$slug'
+      path: '/writing/$slug'
+      fullPath: '/writing/$slug'
+      preLoaderRoute: typeof WritingSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_protected/admin/': {
@@ -799,6 +858,7 @@ interface ProtectedRouteChildren {
   ProtectedProfileRoute: typeof ProtectedProfileRoute
   ProtectedSettingsRoute: typeof ProtectedSettingsRoute
   ProtectedSubmitShowRoute: typeof ProtectedSubmitShowRoute
+  ProtectedWriteRoute: typeof ProtectedWriteRoute
   ProtectedAdminCatalogRoute: typeof ProtectedAdminCatalogRoute
   ProtectedAdminImportRoute: typeof ProtectedAdminImportRoute
   ProtectedAdminLocalRoute: typeof ProtectedAdminLocalRoute
@@ -825,6 +885,7 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedProfileRoute: ProtectedProfileRoute,
   ProtectedSettingsRoute: ProtectedSettingsRoute,
   ProtectedSubmitShowRoute: ProtectedSubmitShowRoute,
+  ProtectedWriteRoute: ProtectedWriteRoute,
   ProtectedAdminCatalogRoute: ProtectedAdminCatalogRoute,
   ProtectedAdminImportRoute: ProtectedAdminImportRoute,
   ProtectedAdminLocalRoute: ProtectedAdminLocalRoute,
@@ -859,6 +920,8 @@ const rootRouteChildren: RootRouteChildren = {
   PIdRoute: PIdRoute,
   ShowsSlugRoute: ShowsSlugRoute,
   VenuesIdRoute: VenuesIdRoute,
+  WritingSlugRoute: WritingSlugRoute,
+  WritingIndexRoute: WritingIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiImagesSplatRoute: ApiImagesSplatRoute,
 }

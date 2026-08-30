@@ -181,12 +181,23 @@ approved friends. Restricting resurfaced material to a reader's own circle
 would have made a small archive smaller, and the whole point is that what
 somebody chose to share openly can be found.
 
-**Second — posts.** Table, editor, drafts, attachment to a subject, visibility
-following the profile like everything else. Admin editorial and member pieces
-are the same object; "editorial" is a flag, not a separate system.
+**Second — posts. Done.** Table, editor, drafts, attachment to a subject,
+visibility following the profile. Editorial is a flag on the same object rather
+than a separate system: a piece written by an administrator is editorial.
 
-**Third — promote a review, and replies.** Once there is something to promote
-and somewhere to reply.
+Decided while building: **a piece is plain paragraphs.** Blank lines separate
+them and nothing else is interpreted. Markdown would ask family who have never
+seen it to learn a syntax to write a sentence, and interpreting member-written
+text as markup is a hole better kept shut.
+
+**The byline is kept apart from the account.** A reader is given the name the
+author chose for the piece and never their account name, and the byline links
+nowhere. Publishing an essay therefore does not attach a real name to
+everything else that person has marked public.
+
+**Third — promote a review (done), and replies (not yet).** "Make this a piece"
+opens a draft holding the review, attached to the same show and night, and
+leaves the review where it was written.
 
 **Fourth — the composed front page**, drawing on all of it.
 
@@ -194,6 +205,45 @@ The order matters: step one alone probably delivers most of the interaction
 gain, and it is the cheapest thing here. Posts are the larger build and they
 are worth doing, but a front page that only had posts on it would be empty
 until somebody wrote something.
+
+## In the hopper: a reminder for people who have drifted
+
+Not planned yet. Captured because it fits what is already built.
+
+The idea: an occasional email to somebody who has not visited — an anniversary,
+a piece they have not read, a friend's night they missed. A profile setting,
+defaulting to on.
+
+It is cheaper than it sounds, because **it is the front page in a different
+envelope.** `anniversariesFor`, `recentReviewsFor`, `sharedHistoryFor` and the
+posts listing already assemble exactly this, already respect each item's
+sharing, and are already tested. The digest is a template and a schedule over
+queries that exist.
+
+What it needs that does not exist:
+
+- **Somewhere to record last activity.** Sessions know when somebody signed in,
+  not when they last looked at anything. One column, written cheaply.
+- **A schedule.** Production runs a single instance, so a cron on the host
+  calling a protected endpoint is enough; nothing needs a job runner.
+- **One-click unsubscribe**, honoured without a login. Not optional.
+
+The decisions that matter more than the plumbing:
+
+- **Only send when there is something to say.** An empty digest is the empty
+  feed problem again, and worse: a feed nobody opens is ignored, an empty email
+  is a reason to unsubscribe. If the queries come back with nothing, send
+  nothing.
+- **Only to people who have actually drifted.** Somebody who visits every
+  Sunday should never receive one. This is a nudge, not a newsletter, and the
+  difference is whether it is conditional on absence.
+- **Monthly rather than weekly, by default.** At two nights a week across the
+  whole app, a weekly email would frequently carry one anniversary and nothing
+  else. Monthly has enough in it to be worth opening. Weekly can be an option
+  for whoever wants it.
+- **Anniversaries are the reliable part.** Everything else depends on other
+  people having done something; a person's own history does not. That is what
+  makes this work at fifteen members rather than fifteen hundred.
 
 ## Open decisions
 

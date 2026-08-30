@@ -2913,3 +2913,67 @@ a.recent-entry:hover h3,
   color: var(--ink-muted);
   font-size: 0.8rem;
 }
+
+/* Writing. */
+.piece-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.piece-list a {
+  display: block;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+}
+.piece-list a:hover {
+  border-color: var(--ink-muted);
+}
+.piece-list h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+.piece-tag {
+  display: inline-block;
+  margin-bottom: 0.4rem;
+  color: var(--ink-muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.piece-opening {
+  margin: 0.5rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.92rem;
+}
+.piece-meta {
+  margin: 0.5rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+.piece-about {
+  margin: 0.4rem 0 0;
+  font-size: 0.9rem;
+}
+.piece-body {
+  max-width: 38rem;
+  margin: 2rem 0 0;
+}
+.piece-body p {
+  margin: 0 0 1.1rem;
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1.15rem;
+  line-height: 1.65;
+}
+.piece-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}

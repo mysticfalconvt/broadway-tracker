@@ -49,6 +49,10 @@ function Profile() {
           </div>
         </div>
         <div className="profile-account">
+          <Link className="text-action" search={{ piece: undefined }} to="/write">
+            Write something
+          </Link>
+          <span className="profile-account-divider" aria-hidden="true" />
           <Link className="text-action" to="/places">
             Everywhere you have been
           </Link>

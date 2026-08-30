@@ -11,6 +11,7 @@ import {
   saveLocalStagingYear,
 } from '../../server/catalog-functions'
 import { getCastForShow } from '../../server/people-functions'
+import { getPostsAbout } from '../../server/post-functions'
 import { getMyShowState, saveLibraryEntry } from '../../server/library-functions'
 import { changePhotoVisibility, deleteShowPhoto, getShowPhotos } from '../../server/image-functions'
 import { formatFuzzyDate } from '../../lib/fuzzy-date'
@@ -26,6 +27,7 @@ export const Route = createFileRoute('/shows/$slug')({
       photos: show ? await getShowPhotos({ data: { showId: show.id } }) : [],
       productions: show ? await getProductionsForShow({ data: { showId: show.id, scope } }) : [],
       cast: show ? await getCastForShow({ data: { showId: show.id } }) : [],
+      writing: show ? await getPostsAbout({ data: { showId: show.id } }) : [],
       // Where the reader already stands with this show, so the buttons are
       // right on the first paint rather than corrected a moment later.
       mine: show
@@ -40,7 +42,8 @@ export const Route = createFileRoute('/shows/$slug')({
 })
 
 function ShowDetail() {
-  const { show, scope, mayEdit, photos, productions, cast, mine, session } = Route.useLoaderData()
+  const { show, scope, mayEdit, photos, productions, cast, writing, mine, session } =
+    Route.useLoaderData()
 
   if (!show) {
     return (
@@ -95,6 +98,27 @@ function ShowDetail() {
           show={show}
           venue={productions[0]?.venue ?? ''}
         />
+      ) : null}
+      {writing.length ? (
+        <section className="productions-section page-wrap">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Written about this</p>
+              <h2>Pieces.</h2>
+            </div>
+          </div>
+          <ul className="piece-list">
+            {writing.map((piece) => (
+              <li key={piece.id}>
+                <Link params={{ slug: piece.slug }} to="/writing/$slug">
+                  <h2>{piece.title}</h2>
+                  <p className="piece-opening">{piece.opening}</p>
+                  <p className="piece-meta">{piece.byline ?? 'Unsigned'}</p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
       <Productions productions={productions} scope={scope} />
       <Cast cast={cast} />

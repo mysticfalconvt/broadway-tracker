@@ -151,6 +151,24 @@ function SignedInHome({ home }: { home: NonNullable<Awaited<ReturnType<typeof ge
         </section>
       ) : null}
 
+      {home.writing.length ? (
+        <section className="page-wrap" aria-label="Writing">
+          <SectionHeading eyebrow="Writing" title="Longer than a review" />
+          <ul className="piece-list">
+            {home.writing.map((piece) => (
+              <li key={piece.id}>
+                <Link params={{ slug: piece.slug }} to="/writing/$slug">
+                  {piece.kind === 'editorial' ? <span className="piece-tag">Editorial</span> : null}
+                  <h2>{piece.title}</h2>
+                  <p className="piece-opening">{piece.opening}</p>
+                  <p className="piece-meta">{piece.byline ?? 'Unsigned'}</p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       {home.reviews.length ? (
         <section className="page-wrap" aria-label="Reviews">
           <SectionHeading eyebrow="Worth reading" title="What people thought" />
