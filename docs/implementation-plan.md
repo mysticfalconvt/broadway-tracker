@@ -35,7 +35,7 @@
 - [x] Install Node 22 and pnpm on the development server.
 - [x] Run `pnpm install`; `pnpm-lock.yaml` is ready to commit.
 - [x] Run `pnpm build` and `pnpm lint`; both pass.
-- [ ] Create the remote Git repository and push the initial project.
+- [x] Create the remote Git repository and push the initial project.
 - [x] Add a test runner and a `pnpm test` script. *(Vitest against an isolated `broadway_tracker_test` database, created and migrated automatically.)*
 
 ## 1. Local and production infrastructure
@@ -44,12 +44,13 @@
 - [x] Configure development `DATABASE_URL` through the host-published Coolify Postgres port.
 - [x] Apply the initial migration with `pnpm db:migrate`.
 - [x] Confirm `GET /api/health` returns `200 {"status":"ok"}` against the development database.
-- [ ] Create a Coolify application connected to the Git repository.
+- [x] Create a Coolify application connected to the Git repository.
 - [x] Create or attach a Coolify Postgres resource.
-- [ ] Configure Coolify environment secrets: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `ADMIN_EMAILS`, SMTP, and S3.
-- [ ] Configure the Coolify health check as `GET /api/health`.
-- [ ] Deploy the empty foundation successfully to a non-production/test hostname.
-- [ ] Enable scheduled Postgres backups and configure an off-host backup destination.
+- [x] Configure Coolify environment secrets: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `ADMIN_EMAILS`, SMTP, and S3.
+- [x] Configure the Coolify health check as `GET /api/health`. *(Returns 200 `{status:'ok'}`, 503 when the database is unreachable.)*
+- [x] Deployed and live at `broadway.rboskind.com`.
+- [~] Scheduled Postgres backups exist in Coolify, **on the same host**. Copying them off-host is
+      still open, and is the largest remaining risk. See `docs/backups.md`.
 
 ## 2. Authentication and accounts
 
@@ -64,8 +65,8 @@
 - [x] Implement email/password sign-in and sign-out.
 - [x] Implement a password-reset request and password-reset flow.
 - [x] Add Google OAuth configuration behind `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
-- [ ] Create the Google Cloud OAuth client once the public hostname is known. *(Blocked on deployment.)*
-- [ ] Configure the exact Google authorized redirect URI for the deployed hostname. *(Blocked on deployment.)*
+- [x] Create the Google Cloud OAuth client once the public hostname is known.
+- [x] Configure the exact Google authorized redirect URI for the deployed hostname. *(Sign-in confirmed working.)*
 - [x] Define safe account-linking behavior for users who sign in with both password and Google.
 - [x] Add protected-route/session middleware and an authenticated application layout.
 - [x] Build settings for name, handle, profile image, and default profile visibility.
@@ -181,7 +182,7 @@ object is only ever served after an authorization check, which suits a private-b
 - [x] Create a dedicated RustFS bucket for Broadway Tracker.
 - [x] Create restricted credentials for only this bucket and only the actions the app needs.
       *(Verified: cross-bucket access denied, own bucket read/write/delete intact.)*
-- [ ] Configure `S3_ENDPOINT`, bucket, credentials, and region in Coolify secrets.
+- [x] Configure `S3_ENDPOINT`, bucket, credentials, and region in Coolify secrets. *(Upload confirmed working.)*
 - [x] Build a typed storage client (endpoint, path-style addressing, no public URL).
 - [x] Accept uploads at a server route that authorizes, validates, then writes to RustFS.
 - [x] Serve reads through an authorizing backend proxy route that streams from RustFS.
@@ -191,7 +192,7 @@ object is only ever served after an authorization check, which suits a private-b
 - [x] Apply the existing visibility rules to image reads, including the anonymous public tier.
 - [x] Add caching/ETag handling so the proxy does not re-fetch an unchanged object every request.
 - [x] Implement image replacement and deletion without orphaning objects.
-- [ ] Document RustFS backup/restore expectations separately from Postgres backups.
+- [x] Document RustFS backup/restore expectations separately from Postgres backups. *(`docs/backups.md` — the bucket is not covered by the Postgres schedule, so contributed photographs are currently unprotected.)*
 
 > **Resolved.** The application's credentials were previously able to list every bucket on the
 > RustFS instance, including `vaultwarden-backups`. They are now scoped to the single application
@@ -214,12 +215,13 @@ object is only ever served after an authorization check, which suits a private-b
 
 ## 10. Launch readiness
 
-- [ ] Review environment variables: no secrets in Git, all production values stored in Coolify.
-- [ ] Confirm email verification and password reset deliver successfully from the production domain.
-- [ ] Confirm Google OAuth callback and sign-in work against the production hostname.
+- [x] Review environment variables: no secrets in Git, all production values stored in Coolify. *(`.env` is ignored and untracked; `.env.example` matches every variable the code reads.)*
+- [x] Confirm email verification and password reset deliver successfully from the production domain.
+- [x] Confirm Google OAuth callback and sign-in work against the production hostname.
 - [x] Confirm database migrations run safely on deployment. *(`scripts/migrate.mjs` runs from the `start` script using runtime dependencies only; a failed migration stops the app rather than serving a schema-less database.)*
-- [ ] Confirm Postgres and RustFS backups can be restored in a test environment.
-- [ ] Run the full build, lint, typecheck, and test suite.
+- [~] `scripts/verify-restore.mjs` checks a restored copy for completeness, currency, and
+      whether it actually holds data. Needs running once against a real dump; see `docs/backups.md`.
+- [x] Run the full build, lint, typecheck, and test suite. *(Run on every change.)*
 - [ ] Review privacy rules manually with two test accounts that are not friends, pending friends, and approved friends.
 - [ ] Seed the first curated catalog records. *(Administrators are now set with `ADMIN_EMAILS` in the deployment environment rather than a script.)*
 - [ ] Invite the first family/friend users.
