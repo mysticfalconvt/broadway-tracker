@@ -10,6 +10,7 @@ import {
   submitShowForUser,
 } from '../src/server/catalog-functions'
 import { saveEntryForOwner } from '../src/server/library-functions'
+import { createOutingForUser } from '../src/server/outing-functions'
 import { db, makeAdmin, makeList, makeShow, makeUser, resetDatabase } from './helpers'
 import { shows } from '../src/server/db/schema'
 import { addShowToOwnedList, listForViewer } from '../src/server/list-functions'
@@ -252,5 +253,77 @@ describe('merging duplicates', () => {
       'Choose an existing published show to merge into.',
     )
     expect(pending.catalogStatus).toBe('pending')
+  })
+})
+
+describe('a submission somebody has already logged a night against', () => {
+  it('cannot be rejected, because the night would be orphaned', async () => {
+    const admin = await makeAdmin()
+    const submitter = await makeUser()
+    const pending = await makeShow({
+      title: 'Just Submitted',
+      slug: 'just-submitted',
+      catalogStatus: 'pending',
+      submittedByUserId: submitter.id,
+    })
+    await createOutingForUser(submitter.id, {
+      showId: pending.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-05-18',
+      attendeeIds: [],
+      favorite: false,
+    })
+    await expect(
+      reviewShowAsAdmin(actor(admin), {
+        id: pending.id,
+        action: 'reject',
+        title: 'Just Submitted',
+        type: 'musical',
+        slug: 'just-submitted',
+      }),
+    ).rejects.toThrow('Merge it into the right show')
+  })
+
+  it('can still be published', async () => {
+    const admin = await makeAdmin()
+    const submitter = await makeUser()
+    const pending = await makeShow({
+      title: 'Just Submitted',
+      slug: 'just-submitted',
+      catalogStatus: 'pending',
+      submittedByUserId: submitter.id,
+    })
+    await createOutingForUser(submitter.id, {
+      showId: pending.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-05-18',
+      attendeeIds: [],
+      favorite: false,
+    })
+    await reviewShowAsAdmin(actor(admin), {
+      id: pending.id,
+      action: 'publish',
+      title: 'Just Submitted',
+      type: 'musical',
+      slug: 'just-submitted',
+    })
+    expect((await publishedShowBySlug('just-submitted'))?.id).toBe(pending.id)
+  })
+
+  it('is still rejectable when nobody has logged anything', async () => {
+    const admin = await makeAdmin()
+    const pending = await makeShow({
+      title: 'Nobody Saw This',
+      slug: 'nobody-saw-this',
+      catalogStatus: 'pending',
+    })
+    await reviewShowAsAdmin(actor(admin), {
+      id: pending.id,
+      action: 'reject',
+      title: 'Nobody Saw This',
+      type: 'musical',
+      slug: 'nobody-saw-this',
+    })
+    expect(await publishedShowBySlug('nobody-saw-this')).toBeNull()
   })
 })

@@ -85,12 +85,25 @@ export const createOutingForUser = createServerOnlyFn(
     // openly does not have to say so on every night out.
     const fallbackVisibility = await defaultVisibilityFor(actorId)
     const attendeeIds = [...new Set(data.attendeeIds)].filter((id) => id !== session.user.id)
+    // A show still awaiting review is loggable by whoever submitted it. Waiting
+    // for an administrator before you can record last night is the sort of delay
+    // that means the night never gets recorded at all, and nobody else can find
+    // a pending show anyway. If it is later merged into a catalog record, the
+    // outing follows it.
     const [show] = await getDb()
       .select({ id: shows.id })
       .from(shows)
-      .where(and(eq(shows.id, data.showId), inArray(shows.catalogStatus, ['published', 'local'])))
+      .where(
+        and(
+          eq(shows.id, data.showId),
+          or(
+            inArray(shows.catalogStatus, ['published', 'local']),
+            and(eq(shows.catalogStatus, 'pending'), eq(shows.submittedByUserId, session.user.id)),
+          ),
+        ),
+      )
       .limit(1)
-    if (!show) throw new Error('Choose a published show from the catalog.')
+    if (!show) throw new Error('Choose a show from the catalog.')
 
     if (data.productionId) {
       const [production] = await getDb()
@@ -521,7 +534,9 @@ const myReactionInput = z.object({
   rating: z.number().int().min(1).max(10).optional(),
   favorite: z.boolean().default(false),
   review: z.string().trim().max(5000).optional(),
-  reviewVisibility: z.enum(['private', 'friends', 'public']).default('friends'),
+  // Absent means "follow my profile", filled in below. A default here would
+  // pin every review to one level regardless of what the person set.
+  reviewVisibility: z.enum(['private', 'friends', 'public']).optional(),
   privateNotes: z.string().trim().max(5000).optional(),
 })
 
@@ -597,7 +612,7 @@ export const updateMyReaction = createServerOnlyFn(
         rating: data.rating || null,
         favorite: data.favorite,
         review: data.review || null,
-        reviewVisibility: data.reviewVisibility,
+        reviewVisibility: data.reviewVisibility ?? (await defaultVisibilityFor(actorId)),
         privateNotes: data.privateNotes || null,
         // Editing your own row is also how an invitation is accepted.
         attendanceStatus: 'accepted',

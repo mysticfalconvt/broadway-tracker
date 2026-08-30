@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useRef, useState, type FormEvent } from 'react'
 
 import { authClient } from '../../lib/auth-client'
-import { updateAccountSettings } from '../../server/auth-functions'
+import { getSharingImpact, updateAccountSettings } from '../../server/auth-functions'
 
 /**
  * Uploads go through the application because the storage bucket is unreachable
@@ -73,16 +73,38 @@ function AvatarField({ currentKey }: { currentKey?: string | null }) {
   )
 }
 
+/** "2 shows, 1 night out" — so the number is not the only thing on offer. */
+function describeImpact(counts: {
+  shows: number
+  lists: number
+  outings: number
+  reviews: number
+}) {
+  const parts: string[] = []
+  const add = (n: number, one: string, many: string) => {
+    if (n > 0) parts.push(`${n} ${n === 1 ? one : many}`)
+  }
+  add(counts.shows, 'show', 'shows')
+  add(counts.outings, 'night out', 'nights out')
+  add(counts.lists, 'list', 'lists')
+  add(counts.reviews, 'review', 'reviews')
+  return parts.join(', ')
+}
+
 function profileVisibilityFrom(value: FormDataEntryValue | null) {
   if (value === 'friends') return 'friends' as const
   if (value === 'public') return 'public' as const
   return 'private' as const
 }
 
-export const Route = createFileRoute('/_protected/settings')({ component: Settings })
+export const Route = createFileRoute('/_protected/settings')({
+  loader: async () => ({ impact: await getSharingImpact() }),
+  component: Settings,
+})
 
 function Settings() {
   const { user } = Route.useRouteContext()
+  const { impact } = Route.useLoaderData()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
@@ -95,14 +117,19 @@ function Settings() {
     setIsPending(true)
 
     try {
-      await updateAccountSettings({
+      const result = await updateAccountSettings({
         data: {
           name: String(form.get('name')),
           handle: String(form.get('handle')),
           profileVisibility: profileVisibilityFrom(form.get('profileVisibility')),
         },
       })
-      setMessage('Settings saved.')
+      const moved = result?.sharing?.moved
+      setMessage(
+        moved && moved.total > 0
+          ? `Settings saved. ${moved.total} ${moved.total === 1 ? 'thing' : 'things'} moved with it: ${describeImpact(moved)}.`
+          : 'Settings saved.',
+      )
     } catch (caughtError) {
       setError(
         caughtError instanceof Error ? caughtError.message : 'We could not save your settings.',
@@ -142,7 +169,13 @@ function Settings() {
         </label>
         <AvatarField currentKey={user.image} />
         <fieldset>
-          <legend>Default profile visibility</legend>
+          <legend>Who your theatre is for</legend>
+          <p className="settings-note settings-sharing-lede">
+            This governs your shows, your nights out, your lists, and your reviews. Changing it
+            moves everything that was following it — anything you set differently on its own stays
+            where you put it. Photographs are the exception: a public one goes past an administrator
+            first, so those stay as they are.
+          </p>
           <label>
             <input
               type="radio"
@@ -152,7 +185,7 @@ function Settings() {
             />
             <span>
               <strong>Only me</strong>
-              Keep new profile details private by default.
+              Nobody else sees your theatre.
             </span>
           </label>
           <label>
@@ -164,7 +197,7 @@ function Settings() {
             />
             <span>
               <strong>Friends</strong>
-              Share profile details with approved friends.
+              Approved friends see your shows, your nights, and your lists.
             </span>
           </label>
           <label>
@@ -181,6 +214,12 @@ function Settings() {
             </span>
           </label>
         </fieldset>
+        {impact && impact.total > 0 ? (
+          <p className="settings-note">
+            You have {impact.total} {impact.total === 1 ? 'thing' : 'things'} following this
+            setting: {describeImpact(impact)}. Changing it above moves all of them.
+          </p>
+        ) : null}
         <p className="settings-note">
           Your photo is stored privately and is only ever shown to you and to approved friends.
           Public pages stay anonymous and never display it.

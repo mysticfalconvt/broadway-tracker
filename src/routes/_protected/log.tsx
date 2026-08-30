@@ -9,6 +9,7 @@ import {
   addLocalProduction,
   addLocalShow,
   addProduction,
+  submitShow,
   getLocalProductionsAt,
   getPublishedProductions,
   searchPublishedShows,
@@ -43,10 +44,13 @@ function LogOuting() {
   // recorded with its staging in one go, because a local work has no meaning
   // apart from the hall it was put on in.
   const [addingShow, setAddingShow] = useState(false)
+  // A work missing from the catalog is either one that belongs there and nobody
+  // has added yet, or one that never will. They are recorded differently.
+  const [showKind, setShowKind] = useState<'catalog' | 'local'>('catalog')
   const [newShowTitle, setNewShowTitle] = useState('')
   const [newShowType, setNewShowType] = useState('musical')
   const [newShowYear, setNewShowYear] = useState('')
-  const [localShow, setLocalShow] = useState<{ id: string; title: string } | null>(null)
+  const [addedShow, setAddedShow] = useState<{ id: string; title: string } | null>(null)
   const [addingProduction, setAddingProduction] = useState(false)
   // A school production and a national tour are recorded differently: one is
   // named, the other is found by where and when. Asking a parent to name their
@@ -161,23 +165,48 @@ function LogOuting() {
                 {show.title}
               </option>
             ))}
-            {localShow ? <option value={localShow.id}>{localShow.title}</option> : null}
+            {addedShow ? <option value={addedShow.id}>{addedShow.title}</option> : null}
           </select>
           <button
             className="text-action"
             onClick={() => setAddingShow((open) => !open)}
             type="button"
           >
-            {addingShow ? 'Cancel' : 'Not in the catalog? A school or community production'}
+            {addingShow ? 'Cancel' : 'Not in the catalog? Add it'}
           </button>
         </label>
         {addingShow ? (
           <div className="new-production">
-            <p className="settings-note">
-              For a work that is not in the catalog and would not belong there — a company’s own
-              revue, a school’s devised piece. It stays out of everyone else’s search, and anyone
-              from the same place who logs the same hall and year lands on this record.
-            </p>
+            <fieldset className="production-kind">
+              <legend>What kind of work?</legend>
+              <label>
+                <input
+                  checked={showKind === 'catalog'}
+                  name="showKind"
+                  onChange={() => setShowKind('catalog')}
+                  type="radio"
+                />
+                A professional production
+                <span>
+                  Broadway, a tour, a regional company. It joins the shared catalog once an
+                  administrator has looked at it — you can log tonight straight away.
+                </span>
+              </label>
+              <label>
+                <input
+                  checked={showKind === 'local'}
+                  name="showKind"
+                  onChange={() => setShowKind('local')}
+                  type="radio"
+                />
+                A school or community production
+                <span>
+                  A company’s own revue, a school’s devised piece. It stays out of everyone else’s
+                  search, and anyone from the same place who logs the same hall and year lands on
+                  this record.
+                </span>
+              </label>
+            </fieldset>
             <label>
               What was it called?
               <input
@@ -194,59 +223,77 @@ function LogOuting() {
                 <option value="other">Something else</option>
               </select>
             </label>
-            <label>
-              Where was it?
-              <input
-                onChange={(event) => setVenue(event.target.value)}
-                placeholder="Grange Hall"
-                value={venue}
-              />
-            </label>
-            <label>
-              Town or city <span>Optional</span>
-              <input
-                onChange={(event) => setCity(event.target.value)}
-                placeholder="Millbrook"
-                value={city}
-              />
-            </label>
-            <label>
-              Which year?
-              <input
-                max="2200"
-                min="1800"
-                onChange={(event) => setNewShowYear(event.target.value)}
-                placeholder="2019"
-                type="number"
-                value={newShowYear}
-              />
-            </label>
+            {showKind === 'local' ? (
+              <>
+                <label>
+                  Where was it?
+                  <input
+                    onChange={(event) => setVenue(event.target.value)}
+                    placeholder="Grange Hall"
+                    value={venue}
+                  />
+                </label>
+                <label>
+                  Town or city <span>Optional</span>
+                  <input
+                    onChange={(event) => setCity(event.target.value)}
+                    placeholder="Millbrook"
+                    value={city}
+                  />
+                </label>
+                <label>
+                  Which year?
+                  <input
+                    max="2200"
+                    min="1800"
+                    onChange={(event) => setNewShowYear(event.target.value)}
+                    placeholder="2019"
+                    type="number"
+                    value={newShowYear}
+                  />
+                </label>
+              </>
+            ) : null}
             <button
               className="button button-quiet"
-              disabled={!newShowTitle.trim() || !venue.trim() || !newShowYear.trim()}
+              disabled={
+                !newShowTitle.trim() ||
+                (showKind === 'local' && (!venue.trim() || !newShowYear.trim()))
+              }
               onClick={async () => {
                 setProductionMessage(null)
                 try {
-                  const result = await addLocalShow({
-                    data: {
-                      title: newShowTitle,
-                      type: newShowType as 'musical',
-                      venue,
-                      city: city || undefined,
-                      year: Number(newShowYear),
-                    },
-                  })
-                  setLocalShow({ id: result.show.id, title: result.show.title })
-                  setShowId(result.show.id)
-                  setProductionId(result.productionId)
+                  if (showKind === 'local') {
+                    const result = await addLocalShow({
+                      data: {
+                        title: newShowTitle,
+                        type: newShowType as 'musical',
+                        venue,
+                        city: city || undefined,
+                        year: Number(newShowYear),
+                      },
+                    })
+                    setAddedShow({ id: result.show.id, title: result.show.title })
+                    setShowId(result.show.id)
+                    setProductionId(result.productionId)
+                    setProductionMessage(
+                      result.created
+                        ? 'Added. It is yours and your friends’ — not the shared catalog.'
+                        : 'Somebody from there had already recorded it — you are both on it now.',
+                    )
+                  } else {
+                    const created = await submitShow({
+                      data: { title: newShowTitle, type: newShowType as 'musical' },
+                    })
+                    setAddedShow({ id: created.id, title: created.title })
+                    setShowId(created.id)
+                    setProductionMessage(
+                      'Sent to the catalog for review. Log your night now — it will not wait on us.',
+                    )
+                  }
                   setAddingShow(false)
                   setNewShowTitle('')
                   setNewShowYear('')
-                  setProductionMessage(
-                    result.created
-                      ? 'Added. It is yours and your friends’ — not the shared catalog.'
-                      : 'Somebody from there had already recorded it — you are both on it now.',
-                  )
                 } catch (caughtError) {
                   setProductionMessage(
                     caughtError instanceof Error ? caughtError.message : 'We could not add that.',

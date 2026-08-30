@@ -64,12 +64,28 @@ describe('logging a performance', () => {
     expect(await outingsForUserAndShow(owner.id, show.id)).toHaveLength(2)
   })
 
-  it('refuses a show that is not published', async () => {
+  it('refuses somebody else’s unreviewed submission', async () => {
     const owner = await makeUser()
-    const pending = await makeShow({ catalogStatus: 'pending' })
+    const submitter = await makeUser()
+    const pending = await makeShow({
+      catalogStatus: 'pending',
+      submittedByUserId: submitter.id,
+    })
     await expect(createOutingForUser(owner.id, log(pending.id))).rejects.toThrow(
-      'Choose a published show from the catalog.',
+      'Choose a show from the catalog.',
     )
+  })
+
+  it('lets the submitter log against their own unreviewed submission', async () => {
+    // Waiting for an administrator before you can record last night is how a
+    // night ends up never recorded.
+    const submitter = await makeUser()
+    const pending = await makeShow({
+      catalogStatus: 'pending',
+      submittedByUserId: submitter.id,
+    })
+    const outing = await createOutingForUser(submitter.id, log(pending.id))
+    expect(outing.id).toBeTruthy()
   })
 })
 

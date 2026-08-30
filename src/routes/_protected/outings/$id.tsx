@@ -2,6 +2,7 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import { useEffect, useId, useState, type FormEvent } from 'react'
 
 import { PrivacyBadge } from '../../../components/PrivacyBadge'
+import { SharingField } from '../../../components/SharingField'
 import { ShowArtwork } from '../../../components/ShowArtwork'
 import { VenueField } from '../../../components/VenueField'
 import { Rating } from '../../../components/Rating'
@@ -19,6 +20,7 @@ import {
   suggestPeople,
 } from '../../../server/people-functions'
 import { formatFuzzyDate } from '../../../lib/fuzzy-date'
+import type { Visibility } from '../../../server/visibility'
 
 export const Route = createFileRoute('/_protected/outings/$id')({
   loader: async ({ params }) => {
@@ -290,6 +292,7 @@ type Attendee = Outing['attendees'][number]
 
 /** The reader's own reaction: the one part of a shared night that is theirs. */
 function MyReactionForm({ outingId, mine }: { outingId: string; mine?: Attendee }) {
+  const { user } = Route.useRouteContext()
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -305,7 +308,8 @@ function MyReactionForm({ outingId, mine }: { outingId: string; mine?: Attendee 
           rating: formNumber(form, 'rating'),
           favorite: formFlag(form, 'favorite'),
           review: formText(form, 'review'),
-          reviewVisibility: (formText(form, 'reviewVisibility') ?? 'friends') as 'friends',
+          // Absent means "follow my profile", which the server fills in.
+          reviewVisibility: formText(form, 'reviewVisibility') as Visibility | undefined,
           privateNotes: formText(form, 'privateNotes'),
         },
       })
@@ -337,14 +341,17 @@ function MyReactionForm({ outingId, mine }: { outingId: string; mine?: Attendee 
         Your review <span>Optional</span>
         <textarea name="review" rows={4} defaultValue={mine?.review ?? ''} />
       </label>
-      <label>
-        Who can read your review
-        <select name="reviewVisibility" defaultValue={mine?.reviewVisibility ?? 'friends'}>
-          <option value="private">Only me</option>
-          <option value="friends">Friends who were there</option>
-          <option value="public">Anyone who was there</option>
-        </select>
-      </label>
+      <SharingField
+        current={mine?.reviewVisibility as Visibility | undefined}
+        label="Your review is for"
+        name="reviewVisibility"
+        profileDefault={user.profileVisibility as Visibility}
+        wording={{
+          private: 'only you',
+          friends: 'friends who were there',
+          public: 'anyone who was there',
+        }}
+      />
       <label>
         Private note <span>Only ever visible to you</span>
         <textarea name="privateNotes" rows={3} defaultValue={mine?.privateNotes ?? ''} />
@@ -365,6 +372,7 @@ function MyReactionForm({ outingId, mine }: { outingId: string; mine?: Attendee 
 
 /** The facts of the night, which everyone who was there sees. */
 function SharedFactsForm({ outing }: { outing: Outing }) {
+  const { user } = Route.useRouteContext()
   const [precision, setPrecision] = useState(outing.datePrecision)
   const [venue, setVenue] = useState(outing.venue ?? '')
   const [city, setCity] = useState(outing.city ?? '')
@@ -468,14 +476,13 @@ function SharedFactsForm({ outing }: { outing: Outing }) {
           />
         </label>
       ) : null}
-      <label>
-        Who can see this night
-        <select name="visibility" defaultValue={outing.visibility}>
-          <option value="private">Only the people who were there</option>
-          <option value="friends">Friends</option>
-          <option value="public">Anyone</option>
-        </select>
-      </label>
+      <SharingField
+        current={outing.visibility as Visibility}
+        label="This night is for"
+        name="visibility"
+        profileDefault={user.profileVisibility as Visibility}
+        wording={{ private: 'only the people who were there' }}
+      />
       <label>
         A note for everyone who was there <span>Optional</span>
         <textarea name="sharedNotes" rows={3} defaultValue={outing.sharedNotes ?? ''} />

@@ -370,6 +370,23 @@ export const reviewShowAsAdmin = createServerOnlyFn(
       .limit(1)
     if (slugConflict) throw new Error('That URL slug is already in use.')
 
+    // Somebody can log a night against their own submission while it waits, so
+    // rejecting one would leave a real memory pointing at a record nothing will
+    // ever show. Merging it into the right catalog entry carries the night over;
+    // rejection does not.
+    if (data.action === 'reject') {
+      const [logged] = await getDb()
+        .select({ id: outings.id })
+        .from(outings)
+        .where(eq(outings.showId, data.id))
+        .limit(1)
+      if (logged) {
+        throw new Error(
+          'Somebody has recorded a night against this submission. Merge it into the right show instead of rejecting it.',
+        )
+      }
+    }
+
     const [show] = await getDb()
       .update(shows)
       .set({

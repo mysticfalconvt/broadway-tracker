@@ -30,9 +30,14 @@ export const updateAccountSettings = createServerFn({ method: 'POST' })
     if (!session) throw new Error('Unauthorized')
 
     try {
+      // Sharing is changed through its own path, because changing it brings
+      // everything that was following the old setting along with it.
+      const { applyProfileVisibility } = await import('./visibility')
+      const sharing = await applyProfileVisibility(session.user.id, data.profileVisibility)
+
       const [updatedUser] = await getDb()
         .update(user)
-        .set({ ...data, updatedAt: new Date() })
+        .set({ name: data.name, handle: data.handle, updatedAt: new Date() })
         .where(eq(user.id, session.user.id))
         .returning({
           name: user.name,
@@ -41,7 +46,7 @@ export const updateAccountSettings = createServerFn({ method: 'POST' })
         })
 
       if (!updatedUser) throw new Error('Account not found')
-      return updatedUser
+      return { ...updatedUser, sharing }
     } catch (error) {
       if ((error as { code?: string }).code === '23505') {
         throw new Error('That handle is already in use.')
@@ -49,6 +54,14 @@ export const updateAccountSettings = createServerFn({ method: 'POST' })
       throw error
     }
   })
+
+/** How much would move if this person changed their profile sharing. */
+export const getSharingImpact = createServerFn({ method: 'GET' }).handler(async () => {
+  const session = await auth.api.getSession({ headers: getRequestHeaders() })
+  if (!session) throw new Error('Unauthorized')
+  const { contentFollowingProfile } = await import('./visibility')
+  return contentFollowingProfile(session.user.id)
+})
 
 /** Whether a handle is free, for live feedback while someone is choosing one. */
 export const checkHandle = createServerFn({ method: 'GET' })

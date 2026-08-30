@@ -1,7 +1,10 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 
+import { SharingField } from '../../../components/SharingField'
+import { formText } from '../../../lib/form'
 import { createList, getMyLists } from '../../../server/list-functions'
+import type { Visibility } from '../../../server/visibility'
 
 export const Route = createFileRoute('/_protected/lists/')({
   loader: () => getMyLists(),
@@ -10,6 +13,7 @@ export const Route = createFileRoute('/_protected/lists/')({
 
 function Lists() {
   const lists = Route.useLoaderData()
+  const { user } = Route.useRouteContext()
   const [error, setError] = useState<string | null>(null)
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -20,12 +24,8 @@ function Lists() {
         data: {
           title: String(form.get('title')),
           description: String(form.get('description')).trim() || undefined,
-          visibility:
-            form.get('visibility') === 'friends'
-              ? 'friends'
-              : form.get('visibility') === 'public'
-                ? 'public'
-                : 'private',
+          // Absent means "follow my profile", which the server fills in.
+          visibility: formText(form, 'visibility') as Visibility | undefined,
         },
       })
       window.location.assign(`/lists/${list.id}`)
@@ -51,14 +51,12 @@ function Lists() {
           Description <span>Optional</span>
           <textarea name="description" rows={3} />
         </label>
-        <label>
-          Visible to
-          <select name="visibility" defaultValue="friends">
-            <option value="private">Only me</option>
-            <option value="friends">Friends</option>
-            <option value="public">Public — anonymous, no name attached</option>
-          </select>
-        </label>
+        <SharingField
+          label="Visible to"
+          name="visibility"
+          profileDefault={user.profileVisibility as Visibility}
+          wording={{ public: 'anyone — anonymously, with no name attached' }}
+        />
         {error ? (
           <p className="form-error" role="alert">
             {error}
