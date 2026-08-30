@@ -14,6 +14,7 @@ import {
   getPublishedProductions,
   searchPublishedShows,
 } from '../../server/catalog-functions'
+import { narrowTheDate } from '../../server/narrowing'
 import { createOuting } from '../../server/outing-functions'
 
 export const Route = createFileRoute('/_protected/log')({
@@ -33,6 +34,8 @@ function LogOuting() {
     Awaited<ReturnType<typeof getPublishedProductions>>
   >([])
   const [precision, setPrecision] = useState('exact')
+  // Filled in when the catalog settles a year the reader was unsure about.
+  const [narrowedYear, setNarrowedYear] = useState('')
   // Resolved after mount: the server runs in UTC, so its "today" is the wrong
   // day for much of the world for part of every day.
   const [today, setToday] = useState('')
@@ -500,6 +503,13 @@ function LogOuting() {
           </div>
         ) : null}
         {productionMessage ? <p className="settings-note">{productionMessage}</p> : null}
+        <NarrowTheYear
+          onYear={(year) => {
+            setPrecision('year')
+            setNarrowedYear(String(year))
+          }}
+          showId={showId}
+        />
         <fieldset>
           <legend>When did you see it?</legend>
           <label>
@@ -532,14 +542,30 @@ function LogOuting() {
               </label>
               <label>
                 Year
-                <input name="occurredYear" type="number" min="1800" max="2200" required />
+                <input
+                  defaultValue={narrowedYear}
+                  key={narrowedYear}
+                  max="2200"
+                  min="1800"
+                  name="occurredYear"
+                  required
+                  type="number"
+                />
               </label>
             </>
           ) : null}
           {precision === 'year' ? (
             <label>
               Year
-              <input name="occurredYear" type="number" min="1800" max="2200" required />
+              <input
+                defaultValue={narrowedYear}
+                key={narrowedYear}
+                max="2200"
+                min="1800"
+                name="occurredYear"
+                required
+                type="number"
+              />
             </label>
           ) : null}
           {precision === 'approximate' ? (
@@ -588,5 +614,93 @@ function LogOuting() {
         </button>
       </form>
     </main>
+  )
+}
+
+/**
+ * Working out a year somebody is unsure about.
+ *
+ * Remembering who was in it is usually a better clue than remembering when, so
+ * that is what this asks for. The answer comes from the catalog rather than a
+ * model: a run cannot have happened before it opened, and somebody eighth of
+ * eight to play a part was late in it.
+ */
+function NarrowTheYear({ showId, onYear }: { showId: string; onYear: (year: number) => void }) {
+  const [who, setWho] = useState('')
+  const [guess, setGuess] = useState('')
+  const [answer, setAnswer] = useState<Awaited<ReturnType<typeof narrowTheDate>> | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [open, setOpen] = useState(false)
+
+  if (!showId) return null
+
+  async function ask() {
+    setBusy(true)
+    try {
+      setAnswer(
+        await narrowTheDate({
+          data: {
+            showId,
+            year: guess.trim() ? Number(guess) : null,
+            personName: who.trim() || undefined,
+          },
+        }),
+      )
+    } catch {
+      setAnswer(null)
+    }
+    setBusy(false)
+  }
+
+  if (!open) {
+    return (
+      <button className="text-action" onClick={() => setOpen(true)} type="button">
+        Not sure when it was?
+      </button>
+    )
+  }
+
+  return (
+    <div className="narrow-year">
+      <p className="settings-note">
+        Tell me what you remember and I will check it against the catalog.
+      </p>
+      <label>
+        Roughly what year? <span>Optional</span>
+        <input
+          max="2200"
+          min="1800"
+          onChange={(event) => setGuess(event.target.value)}
+          placeholder="2003"
+          type="number"
+          value={guess}
+        />
+      </label>
+      <label>
+        Anybody you remember being in it? <span>Optional</span>
+        <input
+          onChange={(event) => setWho(event.target.value)}
+          placeholder="Tony Danza"
+          value={who}
+        />
+      </label>
+      <button className="button button-quiet" disabled={busy} onClick={ask} type="button">
+        {busy ? 'Checking…' : 'Check it'}
+      </button>
+      {answer ? (
+        <div className={`narrow-answer narrow-${answer.verdict}`}>
+          <p>{answer.message}</p>
+          {answer.suggestion ? (
+            <button
+              className="button button-quiet"
+              onClick={() => onYear(answer.suggestion?.year ?? 0)}
+              type="button"
+            >
+              Use {answer.suggestion.year}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   )
 }

@@ -252,6 +252,19 @@ export const castings = pgTable(
       .default('member'),
     /** Where it was found: a URL, a book, whatever would let somebody check. */
     sourceNote: text('source_note'),
+    /**
+     * Where this person came in the sequence of people who played the role.
+     *
+     * Sources very often publish the order of replacements and no dates at all
+     * — "Max: Henry Goodman, Brad Oscar, … Richard Kind, Tony Danza" — and that
+     * order is worth keeping. Somebody seventh of seven, in a run that ended in
+     * April 2007, was late in it, which is enough to tell a person their memory
+     * of 2003 is a few years out.
+     *
+     * An estimate made from this is never a date. It narrows a guess and says
+     * that it is doing so.
+     */
+    replacementOrder: smallint('replacement_order'),
     createdByUserId: text('created_by_user_id').references(() => user.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),

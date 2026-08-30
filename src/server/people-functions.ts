@@ -71,6 +71,8 @@ const castingInput = z.object({
   isPrincipal: z.boolean().default(false),
   startedOn: z.string().date().optional(),
   endedOn: z.string().date().optional(),
+  /** Position in the sequence of people who played the role, when it is known. */
+  replacementOrder: z.number().int().min(1).max(99).optional(),
 })
 
 /** Records that somebody held a role in a production. */
@@ -111,6 +113,7 @@ export const addCasting = createServerOnlyFn(
         isPrincipal: data.isPrincipal,
         startedOn: data.startedOn || null,
         endedOn: data.endedOn || null,
+        replacementOrder: data.replacementOrder ?? null,
         source: provenance.source ?? 'member',
         sourceNote: provenance.sourceNote ?? null,
         createdByUserId: userId,

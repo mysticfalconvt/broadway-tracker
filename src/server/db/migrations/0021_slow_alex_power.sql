@@ -1,0 +1,1 @@
+ALTER TABLE "castings" ADD COLUMN "replacement_order" smallint;
