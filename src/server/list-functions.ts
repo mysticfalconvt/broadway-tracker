@@ -7,6 +7,7 @@ import { auth } from './auth'
 import { getDb } from './db/client'
 import { listItems, lists, shows, user } from './db/schema'
 import { areFriends } from './friend-functions'
+import { defaultVisibilityFor } from './visibility'
 
 async function requireSession() {
   const session = await auth.api.getSession({ headers: getRequestHeaders() })
@@ -27,7 +28,7 @@ async function optionalViewerId() {
 const listInput = z.object({
   title: z.string().trim().min(1).max(120),
   description: z.string().trim().max(1000).optional(),
-  visibility: z.enum(['private', 'friends', 'public']).default('friends'),
+  visibility: z.enum(['private', 'friends', 'public']).optional(),
 })
 
 export const listsForOwner = createServerOnlyFn(async (ownerId: string) => {
@@ -57,7 +58,12 @@ export const createListForOwner = createServerOnlyFn(
   async (ownerId: string, input: z.infer<typeof listInput>) => {
     const [list] = await getDb()
       .insert(lists)
-      .values({ userId: ownerId, ...input, description: input.description || null })
+      .values({
+        userId: ownerId,
+        ...input,
+        description: input.description || null,
+        visibility: input.visibility ?? (await defaultVisibilityFor(ownerId)),
+      })
       .returning({ id: lists.id })
     if (!list) throw new Error('Unable to create list.')
     return list
@@ -205,3 +211,34 @@ export const moveListItem = createServerFn({ method: 'POST' })
   .handler(async ({ data }) =>
     moveItemInOwnedList((await requireSession()).user.id, data.listId, data.showId, data.direction),
   )
+
+/** Renames a list, or changes who can see it. */
+export const updateOwnedList = createServerOnlyFn(
+  async (
+    ownerId: string,
+    listId: string,
+    input: { title: string; description?: string; visibility: 'private' | 'friends' | 'public' },
+  ) => {
+    const list = await requireOwnedList(ownerId, listId)
+    await getDb()
+      .update(lists)
+      .set({
+        title: input.title,
+        description: input.description || null,
+        visibility: input.visibility,
+        updatedAt: new Date(),
+      })
+      .where(eq(lists.id, list.id))
+  },
+)
+
+export const saveList = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      id: z.string().uuid(),
+      title: z.string().trim().min(1).max(120),
+      description: z.string().trim().max(1000).optional(),
+      visibility: z.enum(['private', 'friends', 'public']),
+    }),
+  )
+  .handler(async ({ data }) => updateOwnedList((await requireSession()).user.id, data.id, data))

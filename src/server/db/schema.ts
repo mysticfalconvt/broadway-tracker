@@ -25,7 +25,7 @@ export const user = pgTable('user', {
     enum: ['private', 'friends', 'public'],
   })
     .notNull()
-    .default('friends'),
+    .default('public'),
   role: text('role', { enum: ['member', 'admin'] })
     .notNull()
     .default('member'),

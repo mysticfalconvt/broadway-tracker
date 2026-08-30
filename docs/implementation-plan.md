@@ -7,7 +7,13 @@
 ## Guiding decisions
 
 - **Audience:** Family and friends initially; designed to grow without becoming an engagement-driven social network.
-- **Privacy:** Profiles and user-created content default to **friends** — visible to an approved friend and nobody else. Private remains one click away on every item, and nothing is ever public without an explicit choice. Public sharing is **anonymous**: a public page carries no name and no handle, and is addressed by an opaque account id.
+- **Privacy:** Profiles default to **public** and everything a person makes inherits their profile
+  setting unless they choose otherwise. The product is small, and an archive nobody can see gives
+  nobody a reason to come back — so the default leans toward sharing. What makes that defensible is
+  that **public is anonymous**: a public page carries no name and no handle, and is addressed by an
+  opaque account id rather than anything derived from an email. Private remains one choice away on
+  every item, changing a profile never rewrites what already exists, and a photograph offered
+  publicly still waits for review before it reaches strangers.
 - **Catalog:** Start with a manually curated catalog. Signed-in users can submit missing shows; an administrator approves, rejects, or merges submissions.
 - **Data model:** A *show* is the work itself; a *production* is a particular Broadway, touring, regional, or local staging of that work.
 - **Images:** Use RustFS through its S3-compatible API. Do not store image uploads on a Coolify application volume.
@@ -302,7 +308,102 @@ have no equivalent path at all, and there is no single place to see what people 
 - [x] Offer a one-click correction that rewrites the paste to use the existing venue.
 - [ ] Let an administrator edit a production after import without going through the show screen.
 
-## 15. Places: venues and cities
+## 15. Local and community theatre
+
+**Goal:** A school production, a church hall, an amateur society — recorded as easily as
+Broadway, without either being distorted to fit the other.
+
+Much of this already works and should not be rebuilt: `productionType` already includes
+`regional` and `local`, venues are created by members simply by logging a night there, fuzzy
+dates handle a memory from decades ago, and a venue needs nothing more than a name.
+
+What does not work is the shared catalog itself. It is curated, reviewed, and global — and a
+community theatre's original revue, or a specific high-school staging, is none of those things:
+
+- **A local staging of a known work has nowhere to live.** *Les Misérables* is in the catalog;
+  the 2019 Lincoln High production is not, and only an administrator can add a production. The
+  night is still recorded with its venue, but it cannot say *which* staging it was.
+- **An original local work should not enter the shared catalog at all.** Submitting it means an
+  administrator reviews and publishes a record only one family will ever use, and every such
+  record makes the catalog worse for everyone else.
+- **The review queue does not scale to this.** Somebody backfilling a childhood of school
+  productions would generate a queue of submissions nobody else benefits from.
+
+- [ ] Let a performance name a show that is not in the shared catalog, without a submission.
+- [ ] Decide where such a record lives: personal to the logger, or shared with their friends.
+- [ ] Let a member add a local or regional production of a catalog show without administrator review.
+- [ ] Keep unreviewed local records out of catalog search, so the shared archive stays curated.
+- [ ] Offer promotion: an administrator can lift a local record into the shared catalog if it
+      turns out to be of general interest.
+- [ ] Review the logging copy, which currently assumes a professional production.
+
+**The tension to resolve first.** Everything else here follows from one decision: whether a
+locally-entered show is *private data that happens to look like catalog data*, or *catalog data
+with a smaller audience*. The first keeps the shared archive clean and makes local entry
+instant; the second means two families who saw the same school production can share it. They
+pull in opposite directions and the answer shapes the schema.
+
+## 16. Mapping
+
+**Goal:** See where you have seen theatre — a map of a life's theatregoing, not a utility.
+
+Venues already carry a name, city, and country, which is enough to place them roughly but not
+to plot them. Nothing stores coordinates.
+
+- [ ] Add coordinates to venues, populated by geocoding rather than by hand.
+- [ ] Choose a geocoding source and a tile provider, and record their terms.
+- [ ] Show a venue's location on its page.
+- [ ] Build a personal map of everywhere the reader has seen a performance.
+- [ ] Consider a friends view: where the people you share with have seen theatre.
+- [ ] Fall back gracefully: a venue that cannot be geocoded must not break the map or the page.
+- [x] Decided: no public map. A personal map, and possibly a friends one; never on the
+      anonymous public profile.
+
+**Privacy is the whole question here.** A map of where somebody has been, with dates, is far
+more revealing than the same facts listed as text — it shows patterns, a home city, a routine.
+That argues for the personal map being private by default and never part of the anonymous public
+profile, whatever the individual entries' visibility says. Venue coordinates themselves are
+public facts about buildings and carry no such weight.
+
+**Also worth checking:** tile providers and geocoding services usually require attribution and
+often prohibit bulk geocoding or caching. Whatever is chosen, the terms need reading before it
+goes in — the same care already applied to catalog imports.
+
+## 17. People: cast and creative team
+
+**Goal:** Record who was on stage, so a memory can hold *the night Alex Brightman played Josh*
+— and so a performer becomes something you can follow through your own history.
+
+This is the largest remaining gap between the data and what a theatregoer actually remembers.
+It is also the one most likely to be wrong if guessed at, because casts change constantly:
+understudies, replacements, and limited runs mean the answer depends on the *date*, not the
+production.
+
+**Model:** a `people` table, and a `castings` join carrying the role and the dates that person
+held it. A performance then resolves its likely cast from the date it happened.
+
+- [ ] Add `people` (name, optional disambiguating note) with the same normalisation and merge
+      tools venues have — the same person will be entered many ways.
+- [ ] Keep entry open-ended: any name may be typed, and existing people are offered first, the
+      way venues already work. Nobody should be blocked because a performer is not on a list.
+- [ ] Add `castings`: person, production, role, `startedOn`, `endedOn`, and whether principal.
+- [ ] Show the cast on a production, ordered with principals first.
+- [ ] Build a person page listing their roles, and the nights the reader saw them.
+- [ ] Resolve *who you probably saw* from a performance's date against the casting dates, and
+      say plainly that it is inferred rather than recorded.
+- [ ] Let a member correct or confirm who they actually saw on their own outing.
+- [ ] Extend the catalog import format to carry cast, and warn on near-duplicate names.
+
+**Open question — inference versus record.** Matching a date against a casting window gives a
+good guess, not a fact: an understudy went on and nothing in the data will ever say so. The
+honest treatment is to show it as *likely* and let the attendee confirm or correct it, the same
+way a fuzzy date is shown as approximate rather than rounded to something exact.
+
+**Open question — how much creative team.** Director, choreographer, book, music, and lyrics are
+production-level and stable, so they are much easier than cast. They may be worth doing first as
+a smaller, safer slice.
+
+## 18. Places: venues and cities
 
 **Goal:** Stop the same theatre and the same city from being recorded four different ways.
 
@@ -317,7 +418,7 @@ vocabulary, so drift compounds across both. There is already a `NYC` in the data
 - [x] Backfill existing free-text venues and cities onto the new entities. *(`pnpm db:backfill-venues`, idempotent.)*
 - [x] Keep entry fast: suggestions are debounced and free text is still accepted.
 
-- [ ] Build a venue page listing every show and performance recorded there, linked from a
+- [x] Build a venue page listing every show and performance recorded there, linked from a
       show's production and from a logged memory.
 
 This also unlocks the *Favorite venues* and *Cities* views listed under Stats in the design brief,

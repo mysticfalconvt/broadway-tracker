@@ -1,0 +1,1 @@
+ALTER TABLE "user" ALTER COLUMN "profile_visibility" SET DEFAULT 'public';

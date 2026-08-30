@@ -7,6 +7,7 @@ import { auth } from './auth'
 import { getDb } from './db/client'
 import { libraryEntries, shows } from './db/schema'
 import { applyViewerCovers } from './image-functions'
+import { defaultVisibilityFor } from './visibility'
 
 async function requireSession() {
   const session = await auth.api.getSession({ headers: getRequestHeaders() })
@@ -20,7 +21,8 @@ const libraryInput = z.object({
   favorite: z.boolean().default(false),
   rating: z.number().int().min(1).max(10).optional(),
   review: z.string().trim().max(5000).optional(),
-  visibility: z.enum(['private', 'friends', 'public']).default('friends'),
+  // Left unset so it can follow the person's profile setting.
+  visibility: z.enum(['private', 'friends', 'public']).optional(),
 })
 
 // The exported helpers below hold the authorization rules and take the acting
@@ -71,7 +73,7 @@ export const saveEntryForOwner = createServerOnlyFn(
         favorite: data.favorite,
         rating: data.rating || null,
         review: data.review || null,
-        visibility: data.visibility,
+        visibility: data.visibility ?? (await defaultVisibilityFor(ownerId)),
       })
       .onConflictDoUpdate({
         target: [libraryEntries.userId, libraryEntries.showId],
@@ -80,7 +82,7 @@ export const saveEntryForOwner = createServerOnlyFn(
           favorite: data.favorite,
           rating: data.rating || null,
           review: data.review || null,
-          visibility: data.visibility,
+          visibility: data.visibility ?? (await defaultVisibilityFor(ownerId)),
           updatedAt: new Date(),
         },
       })

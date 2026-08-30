@@ -63,6 +63,26 @@ export const pendingRequestCountFor = createServerOnlyFn(async (userId: string) 
   return row?.count ?? 0
 })
 
+/**
+ * Every user this person has an approved friendship with, as a set.
+ *
+ * Batched deliberately: deciding visibility for a list of people one
+ * `areFriends` call at a time is a query per row, and the shared-memory page
+ * needs the answer for every attendee at once.
+ */
+export const acceptedFriendIdsFor = createServerOnlyFn(async (userId: string) => {
+  const rows = await getDb()
+    .select({ userOneId: friendships.userOneId, userTwoId: friendships.userTwoId })
+    .from(friendships)
+    .where(
+      and(
+        eq(friendships.status, 'accepted'),
+        or(eq(friendships.userOneId, userId), eq(friendships.userTwoId, userId)),
+      ),
+    )
+  return new Set(rows.map((row) => (row.userOneId === userId ? row.userTwoId : row.userOneId)))
+})
+
 export const findPersonByHandle = createServerOnlyFn(async (viewerId: string, handle: string) =>
   getDb()
     .select({ id: user.id, name: user.name, handle: user.handle })

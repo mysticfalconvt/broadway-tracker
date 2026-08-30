@@ -2225,3 +2225,199 @@ a.recent-entry:hover h3,
 .production-run {
   white-space: nowrap;
 }
+
+/* Outing detail: the night, what you thought, who else was there, and what only
+   you can see — each in its own block rather than stacked in one column. */
+.outing-place a,
+.outing-hint a {
+  color: inherit;
+}
+.outing-attendees {
+  margin-top: 0.4rem;
+}
+.outing-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 0.6fr);
+  gap: clamp(2rem, 5vw, 3.5rem);
+  padding: 3rem 0 4rem;
+  align-items: start;
+}
+.outing-main {
+  display: grid;
+  gap: 2rem;
+}
+.outing-block {
+  display: grid;
+  gap: 0.6rem;
+}
+.outing-block blockquote {
+  margin: 0;
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1.3rem;
+  line-height: 1.45;
+}
+.outing-empty {
+  color: var(--ink-muted);
+  font-size: 0.88rem;
+}
+.outing-hint {
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+.outing-reactions {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.outing-reactions li {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.reaction-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.outing-reactions blockquote {
+  margin: 0;
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1.05rem;
+  line-height: 1.45;
+}
+.outing-aside {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.outing-aside .show-artwork {
+  min-height: 13rem;
+  border-radius: 8px;
+}
+
+/* Venue page. */
+.venue-productions,
+.venue-nights {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1.5rem 0 3rem;
+  padding: 0;
+  list-style: none;
+}
+.venue-productions a {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+}
+.venue-productions .show-artwork {
+  min-height: 5.5rem;
+  border-radius: 6px;
+}
+.venue-productions strong {
+  display: block;
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1.2rem;
+}
+.venue-productions span span {
+  display: block;
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+}
+.venue-nights a {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+}
+.venue-nights strong {
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1.1rem;
+}
+.venue-nights span {
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+}
+@media (max-width: 760px) {
+  .outing-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Editing a night, in place rather than on a separate screen. */
+.block-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.outing-edit-facts {
+  margin-top: 1rem;
+  color: color-mix(in srgb, var(--surface) 85%, transparent);
+}
+.outing-form {
+  margin: 2rem 0 0;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.outing-form > label,
+.outing-form > .backfill-pair {
+  margin-bottom: 1rem;
+}
+
+/* Adding a staging without leaving the logging flow. */
+.new-production {
+  display: grid;
+  gap: 0.85rem;
+  margin: 0.75rem 0 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--canvas);
+}
+.new-production label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+}
+.new-production input,
+.new-production select {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1rem;
+}
+.photo-visibility select {
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.75rem;
+}

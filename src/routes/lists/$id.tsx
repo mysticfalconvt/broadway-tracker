@@ -5,6 +5,7 @@ import { ShowArtwork } from '../../components/ShowArtwork'
 import {
   addShowToList,
   getListForViewer,
+  saveList,
   moveListItem,
   removeShowFromList,
 } from '../../server/list-functions'
@@ -72,6 +73,7 @@ function ListDetail() {
         <h1>{list.title}</h1>
         <p>{list.description || 'A collected shelf of shows.'}</p>
       </header>
+      {list.canEdit ? <ListSettings list={list} /> : null}
       {list.canEdit ? (
         <form className="list-add-form" onSubmit={add}>
           <label>
@@ -130,5 +132,71 @@ function ListDetail() {
         ))}
       </div>
     </main>
+  )
+}
+
+/** Renaming a list and changing who can see it, without leaving the page. */
+function ListSettings({ list }: { list: Awaited<ReturnType<typeof getListForViewer>> }) {
+  const [open, setOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = new FormData(event.currentTarget)
+    setError(null)
+    try {
+      await saveList({
+        data: {
+          id: list.id,
+          title: String(form.get('title') ?? ''),
+          description: String(form.get('description') ?? '').trim() || undefined,
+          visibility: String(form.get('visibility') ?? 'friends') as 'friends',
+        },
+      })
+      window.location.reload()
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'We could not save that.')
+    }
+  }
+
+  if (!open) {
+    return (
+      <button className="text-action" type="button" onClick={() => setOpen(true)}>
+        Rename this list or change who can see it
+      </button>
+    )
+  }
+  return (
+    <form className="settings-form outing-form" onSubmit={submit}>
+      <label>
+        Title
+        <input name="title" defaultValue={list.title} required />
+      </label>
+      <label>
+        Description <span>Optional</span>
+        <textarea name="description" rows={2} defaultValue={list.description ?? ''} />
+      </label>
+      <label>
+        Who can see it
+        <select name="visibility" defaultValue={list.visibility}>
+          <option value="private">Only me</option>
+          <option value="friends">Friends</option>
+          <option value="public">Anyone — shown without your name</option>
+        </select>
+      </label>
+      {error ? (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <div className="settings-actions">
+        <button className="button button-primary" type="submit">
+          Save
+        </button>
+        <button className="button button-quiet" type="button" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
+    </form>
   )
 }

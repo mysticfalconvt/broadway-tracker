@@ -5,7 +5,11 @@ import { VenueField } from '../../components/VenueField'
 import { formFlag, formNumber, formRequired, formText } from '../../lib/form'
 import { toLocalISODate } from '../../lib/time'
 
-import { getPublishedProductions, searchPublishedShows } from '../../server/catalog-functions'
+import {
+  addProduction,
+  getPublishedProductions,
+  searchPublishedShows,
+} from '../../server/catalog-functions'
 import { createOuting } from '../../server/outing-functions'
 
 export const Route = createFileRoute('/_protected/log')({
@@ -29,6 +33,13 @@ function LogOuting() {
   // day for much of the world for part of every day.
   const [today, setToday] = useState('')
   const [productionId, setProductionId] = useState('')
+  // Adding a staging inline: a tour stop or a local company's run is usually
+  // not in the catalog yet, and stopping to ask an administrator would end the
+  // evening's logging right there.
+  const [addingProduction, setAddingProduction] = useState(false)
+  const [newProductionName, setNewProductionName] = useState('')
+  const [newProductionType, setNewProductionType] = useState('tour')
+  const [productionMessage, setProductionMessage] = useState<string | null>(null)
   const [venue, setVenue] = useState('')
   const [city, setCity] = useState('')
   useEffect(() => setToday(toLocalISODate(new Date())), [])
@@ -128,7 +139,7 @@ function LogOuting() {
               }
             }}
           >
-            <option value="">Choose a production</option>
+            <option value="">Not sure</option>
             {productions.map((production) => (
               <option key={production.id} value={production.id}>
                 {production.name}
@@ -136,7 +147,77 @@ function LogOuting() {
               </option>
             ))}
           </select>
+          {showId ? (
+            <button
+              className="text-action"
+              type="button"
+              onClick={() => setAddingProduction((open) => !open)}
+            >
+              {addingProduction ? 'Cancel' : 'Not listed? Add a production'}
+            </button>
+          ) : null}
         </label>
+        {addingProduction ? (
+          <div className="new-production">
+            <label>
+              What was it called?
+              <input
+                value={newProductionName}
+                placeholder="First National Tour"
+                onChange={(event) => setNewProductionName(event.target.value)}
+              />
+              <span>A staging, not a place — the same tour in two cities is one production.</span>
+            </label>
+            <label>
+              Kind
+              <select
+                value={newProductionType}
+                onChange={(event) => setNewProductionType(event.target.value)}
+              >
+                <option value="broadway">Broadway</option>
+                <option value="off_broadway">Off-Broadway</option>
+                <option value="tour">Touring</option>
+                <option value="regional">Regional</option>
+                <option value="local">Local or community</option>
+                <option value="other">Something else</option>
+              </select>
+            </label>
+            <button
+              className="button button-quiet"
+              type="button"
+              disabled={!newProductionName.trim()}
+              onClick={async () => {
+                setProductionMessage(null)
+                try {
+                  const result = await addProduction({
+                    data: {
+                      showId,
+                      name: newProductionName,
+                      productionType: newProductionType as 'tour',
+                      venue: venue || undefined,
+                      city: city || undefined,
+                    },
+                  })
+                  const rows = await getPublishedProductions({ data: { showId } })
+                  setProductions(rows)
+                  setProductionId(result.id)
+                  setAddingProduction(false)
+                  setNewProductionName('')
+                  setProductionMessage(
+                    result.created ? 'Production added.' : 'That production was already recorded.',
+                  )
+                } catch (caughtError) {
+                  setProductionMessage(
+                    caughtError instanceof Error ? caughtError.message : 'We could not add that.',
+                  )
+                }
+              }}
+            >
+              Add it
+            </button>
+          </div>
+        ) : null}
+        {productionMessage ? <p className="settings-note">{productionMessage}</p> : null}
         <fieldset>
           <legend>When did you see it?</legend>
           <label>

@@ -57,6 +57,13 @@
       "when": 1788001023565,
       "tag": "0007_volatile_polaris",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788049570608,
+      "tag": "0008_lucky_dagger",
+      "breakpoints": true
     }
   ]
 }

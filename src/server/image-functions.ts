@@ -5,6 +5,7 @@ import { and, desc, eq, inArray } from 'drizzle-orm'
 import { getDb } from './db/client'
 import { showImages, shows, user } from './db/schema'
 import { areFriends } from './friend-functions'
+import { defaultVisibilityFor } from './visibility'
 import { inspectImage } from './image-validation'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { buildObjectKey, deleteImage, putImage } from './storage'
@@ -126,7 +127,7 @@ export const addShowPhoto = createServerOnlyFn(
     userId: string,
     showId: string,
     bytes: Uint8Array,
-    visibility: 'private' | 'friends' | 'public',
+    visibility?: 'private' | 'friends' | 'public',
   ) => {
     const info = inspectImage(bytes)
     const db = getDb()
@@ -141,7 +142,15 @@ export const addShowPhoto = createServerOnlyFn(
     await putImage(key, bytes, info.format)
     const [row] = await db
       .insert(showImages)
-      .values({ showId, uploadedByUserId: userId, objectKey: key, visibility })
+      .values({
+        showId,
+        uploadedByUserId: userId,
+        objectKey: key,
+        // Follows the profile like everything else. Offering it publicly still
+        // means friends first and everyone only after review, so an inherited
+        // public setting cannot put a photograph straight in front of strangers.
+        visibility: visibility ?? (await defaultVisibilityFor(userId)),
+      })
       .returning({ id: showImages.id, objectKey: showImages.objectKey })
     if (!row) throw new Error('Unable to save that photo.')
     return row
@@ -343,3 +352,46 @@ export const applyViewerCovers = createServerOnlyFn(
     return rows.map((row) => ({ ...row, coverImageKey: mine.get(row.id) ?? row.coverImageKey }))
   },
 )
+
+/**
+ * Changes who can see a contributed photograph.
+ *
+ * Offering one publicly sends it back for review, even if it was approved
+ * before: what an administrator agreed to publish was the photograph at the
+ * setting it had, and re-opening that decision is the point of the queue.
+ */
+export const setShowPhotoVisibility = createServerOnlyFn(
+  async (userId: string, id: string, visibility: 'private' | 'friends' | 'public') => {
+    const db = getDb()
+    const [photo] = await db
+      .select({ uploadedByUserId: showImages.uploadedByUserId, current: showImages.visibility })
+      .from(showImages)
+      .where(eq(showImages.id, id))
+      .limit(1)
+    if (!photo) throw new Error('That photograph is not here.')
+    if (photo.uploadedByUserId !== userId) throw new Error('Forbidden')
+
+    const becomingPublic = visibility === 'public' && photo.current !== 'public'
+    await db
+      .update(showImages)
+      .set({
+        visibility,
+        ...(becomingPublic
+          ? { reviewStatus: 'pending' as const, reviewedByUserId: null, reviewedAt: null }
+          : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(showImages.id, id))
+  },
+)
+
+export const changePhotoVisibility = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      id: z.string().uuid(),
+      visibility: z.enum(['private', 'friends', 'public']),
+    }),
+  )
+  .handler(async ({ data }) =>
+    setShowPhotoVisibility((await requireSession()).user.id, data.id, data.visibility),
+  )

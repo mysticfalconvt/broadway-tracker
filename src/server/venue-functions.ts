@@ -1,13 +1,13 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
-import { and, asc, eq, ilike, ne, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, ne, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { tidyPlace, venueKey } from '../lib/place'
 import { auth } from './auth'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { getDb } from './db/client'
-import { outings, productions, venues } from './db/schema'
+import { outingAttendees, outings, productions, shows, venues } from './db/schema'
 
 async function requireSession() {
   const session = await auth.api.getSession({ headers: getRequestHeaders() })
@@ -181,3 +181,63 @@ export const saveVenue = createServerFn({ method: 'POST' })
       data.country || null,
     ),
   )
+
+/**
+ * A venue and everything the catalog knows happened there.
+ *
+ * Productions are catalog facts, so anyone may see them. The performances are
+ * only the reader's own: another person's night out is theirs to share, and
+ * this page must not become a way to see who was where.
+ */
+export const venueWithHistory = createServerOnlyFn(
+  async (viewerId: string | null, venueId: string) => {
+    const db = getDb()
+    const [venue] = await db.select().from(venues).where(eq(venues.id, venueId)).limit(1)
+    if (!venue) throw new Error('That venue is not in the catalog.')
+
+    const staged = await db
+      .select({
+        productionId: productions.id,
+        productionName: productions.name,
+        productionType: productions.productionType,
+        openedOn: productions.openedOn,
+        closedOn: productions.closedOn,
+        showTitle: shows.title,
+        showSlug: shows.slug,
+        showType: shows.type,
+        coverImageKey: shows.coverImageKey,
+      })
+      .from(productions)
+      .innerJoin(shows, eq(productions.showId, shows.id))
+      .where(and(eq(productions.venueId, venueId), eq(shows.catalogStatus, 'published')))
+      .orderBy(asc(productions.openedOn), asc(shows.title))
+
+    const yourNights = viewerId
+      ? await db
+          .select({
+            id: outings.id,
+            datePrecision: outings.datePrecision,
+            occurredOn: outings.occurredOn,
+            occurredMonth: outings.occurredMonth,
+            occurredYear: outings.occurredYear,
+            approximateDate: outings.approximateDate,
+            showTitle: shows.title,
+            showSlug: shows.slug,
+          })
+          .from(outingAttendees)
+          .innerJoin(outings, eq(outingAttendees.outingId, outings.id))
+          .innerJoin(shows, eq(outings.showId, shows.id))
+          .where(and(eq(outingAttendees.userId, viewerId), eq(outings.venueId, venueId)))
+          .orderBy(desc(outings.occurredOn))
+      : []
+
+    return { venue, staged, yourNights }
+  },
+)
+
+export const getVenue = createServerFn({ method: 'GET' })
+  .validator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const session = await auth.api.getSession({ headers: getRequestHeaders() })
+    return venueWithHistory(session?.user.id ?? null, data.id)
+  })

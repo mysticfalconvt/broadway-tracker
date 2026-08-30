@@ -69,7 +69,7 @@ export const auth = betterAuth({
     customSyntheticUser: ({ coreFields, id }) => ({
       ...coreFields,
       handle: generateHandle(coreFields.name),
-      profileVisibility: 'friends',
+      profileVisibility: 'public',
       role: roleFor(coreFields.email, 'member', process.env.ADMIN_EMAILS) ?? 'member',
       id,
     }),

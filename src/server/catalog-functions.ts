@@ -450,3 +450,100 @@ export const mergeShowAsAdmin = createServerOnlyFn(
     })
   },
 )
+
+/**
+ * Finds or creates a production of a show, for a member logging a night.
+ *
+ * A production is the *staging* — Original Broadway, First National Tour, a
+ * local company's summer run — not a place. A tour plays many venues, so the
+ * venue belongs to the performance, not here. Matching is therefore on the show
+ * and the name, which is what makes "I saw the tour in Montreal" and "I saw the
+ * tour in Toronto" the same production.
+ *
+ * Open to members deliberately, like venues: an administrator merging the
+ * occasional duplicate is a far smaller cost than every tour stop needing
+ * review before somebody can record their own evening.
+ */
+export const findOrCreateProduction = createServerOnlyFn(
+  async (
+    userId: string,
+    showId: string,
+    name: string,
+    productionType: z.infer<typeof productionInput>['productionType'],
+    venue?: string | null,
+    city?: string | null,
+  ) => {
+    const cleanName = name.trim().replace(/\s+/g, ' ')
+    if (!cleanName) throw new Error('A production needs a name.')
+
+    const db = getDb()
+    const [show] = await db
+      .select({ id: shows.id })
+      .from(shows)
+      .where(and(eq(shows.id, showId), eq(shows.catalogStatus, 'published')))
+      .limit(1)
+    if (!show) throw new Error('Choose a published show from the catalog.')
+
+    // Compare the way venues do, so "National Tour" and "national tour" agree.
+    const wanted = normalizeProductionName(cleanName)
+    const existing = await db
+      .select({ id: productions.id, name: productions.name })
+      .from(productions)
+      .where(eq(productions.showId, showId))
+    const match = existing.find((row) => normalizeProductionName(row.name) === wanted)
+    if (match) return { id: match.id, created: false }
+
+    const linkedVenue = venue
+      ? await (await import('./venue-functions')).findOrCreateVenue(userId, venue, city)
+      : null
+    const [created] = await db
+      .insert(productions)
+      .values({
+        showId,
+        name: cleanName,
+        productionType,
+        venueId: linkedVenue?.id ?? null,
+        venue: venue || null,
+        city: city || null,
+      })
+      .returning({ id: productions.id })
+    if (!created) throw new Error('Unable to record that production.')
+    return { id: created.id, created: true }
+  },
+)
+
+/** Ignores case, punctuation, and the words that appear on nearly every staging. */
+export function normalizeProductionName(value: string) {
+  const noise = new Set(['the', 'a', 'production', 'company', 'run'])
+  return value
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter((word) => word && !noise.has(word))
+    .join(' ')
+}
+
+export const addProduction = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      showId: z.string().uuid(),
+      name: z.string().trim().min(1).max(200),
+      productionType: z.enum(['broadway', 'off_broadway', 'tour', 'regional', 'local', 'other']),
+      venue: z.string().trim().max(200).optional(),
+      city: z.string().trim().max(120).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const session = await requireSession()
+    return findOrCreateProduction(
+      session.user.id,
+      data.showId,
+      data.name,
+      data.productionType,
+      data.venue,
+      data.city,
+    )
+  })

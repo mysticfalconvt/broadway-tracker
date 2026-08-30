@@ -6,7 +6,7 @@ import { ShowArtwork } from '../../components/ShowArtwork'
 import { getSession } from '../../server/auth-functions'
 import { getPublishedProductions, getPublishedShow } from '../../server/catalog-functions'
 import { saveLibraryEntry } from '../../server/library-functions'
-import { deleteShowPhoto, getShowPhotos } from '../../server/image-functions'
+import { changePhotoVisibility, deleteShowPhoto, getShowPhotos } from '../../server/image-functions'
 import { getMyOutingsForShow } from '../../server/outing-functions'
 import { formatFuzzyDate } from '../../lib/fuzzy-date'
 
@@ -276,13 +276,31 @@ function PhotoGallery({
                   <span className="photo-pending">Not approved · only you can see this</span>
                 ) : null}
                 {photo.isOwn ? (
-                  <button
-                    className="text-action"
-                    type="button"
-                    onClick={() => void remove(photo.id)}
-                  >
-                    Remove
-                  </button>
+                  <>
+                    <label className="photo-visibility">
+                      <span className="sr-only">Who can see this photograph</span>
+                      <select
+                        defaultValue={photo.visibility}
+                        onChange={async (event) => {
+                          await changePhotoVisibility({
+                            data: { id: photo.id, visibility: event.target.value as 'friends' },
+                          })
+                          window.location.reload()
+                        }}
+                      >
+                        <option value="private">Only me</option>
+                        <option value="friends">Friends</option>
+                        <option value="public">Everyone — after review</option>
+                      </select>
+                    </label>
+                    <button
+                      className="text-action"
+                      type="button"
+                      onClick={() => void remove(photo.id)}
+                    >
+                      Remove
+                    </button>
+                  </>
                 ) : null}
               </div>
             </li>
