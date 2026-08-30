@@ -22,10 +22,36 @@ async function drifted(overrides = {}) {
   const member = await makeUser({ profileVisibility: 'public' })
   await db
     .update(user)
-    .set({ emailVerified: true, lastActiveAt: daysBefore(60), ...overrides })
+    .set({
+      emailVerified: true,
+      // Stated, not inherited: these assertions depend on the window, so the
+      // cadence must not change underneath them when the default does.
+      digestCadence: 'monthly',
+      lastActiveAt: daysBefore(60),
+      ...overrides,
+    })
     .where(eq(user.id, member.id))
   return member
 }
+
+describe('the weekly window', () => {
+  it('is seven days, not thirty', async () => {
+    // The two cadences differ only by their window, and a test that inherits
+    // the default cadence is silently testing whichever one that happens to be.
+    const weekly = await drifted({ digestCadence: 'weekly', lastActiveAt: daysBefore(10) })
+    const show = await makeShow({ title: 'Six', slug: 'six' })
+    await createOutingForUser(weekly.id, {
+      showId: show.id,
+      datePrecision: 'exact',
+      // Twenty days out: inside a monthly window, outside a weekly one.
+      occurredOn: '2019-06-21',
+      attendeeIds: [],
+      favorite: false,
+    })
+    expect((await digestFor(weekly.id, 'weekly', NOW))?.anniversaries).toHaveLength(0)
+    expect((await digestFor(weekly.id, 'monthly', NOW))?.anniversaries).toHaveLength(1)
+  })
+})
 
 describe('who is written to', () => {
   it('somebody who has been away longer than their own window', async () => {
@@ -213,9 +239,10 @@ describe('stopping them', () => {
 
   it('does nothing for a token that means nothing', async () => {
     const member = await drifted()
+    const [before] = await db.select().from(user).where(eq(user.id, member.id))
     expect(await stopDigestsFor('00000000-0000-0000-0000-000000000000')).toBe(false)
     const [after] = await db.select().from(user).where(eq(user.id, member.id))
-    expect(after?.digestCadence).toBe('monthly')
+    expect(after?.digestCadence).toBe(before?.digestCadence)
   })
 
   it('gives everybody a token of their own', async () => {
