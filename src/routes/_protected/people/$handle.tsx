@@ -187,24 +187,20 @@ function FriendOuting({
 
   return (
     <li>
-      <Link params={{ id: outing.id }} to="/outings/$id">
+      {/* The whole card is the link. A separate button next to it went to the
+          same place, and took the room three of these now sit in. */}
+      <Link className="friend-outing" params={{ id: outing.id }} to="/outings/$id">
         <ShowArtwork
           coverImageKey={outing.coverImageKey}
           title={outing.showTitle}
           type={outing.showType}
         />
-      </Link>
-      <div className="friend-outing-body">
-        <h3>
-          <Link params={{ id: outing.id }} to="/outings/$id">
-            {outing.showTitle}
-          </Link>
-        </h3>
-        <p className="friend-outing-facts">{[when, where].filter(Boolean).join(' · ')}</p>
-        {outing.sharedNotes ? <p className="friend-outing-note">{outing.sharedNotes}</p> : null}
-      </div>
-      <Link className="button button-quiet" params={{ id: outing.id }} to="/outings/$id">
-        {outing.alreadyThere ? 'You were there' : 'See the night'}
+        <div className="friend-outing-body">
+          <h3>{outing.showTitle}</h3>
+          <p className="friend-outing-facts">{[when, where].filter(Boolean).join(' · ')}</p>
+          {outing.sharedNotes ? <p className="friend-outing-note">{outing.sharedNotes}</p> : null}
+          {outing.alreadyThere ? <p className="friend-outing-flag">You were there</p> : null}
+        </div>
       </Link>
     </li>
   )

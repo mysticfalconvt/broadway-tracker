@@ -2612,50 +2612,58 @@ a.recent-entry:hover h3,
   font-size: 1rem;
 }
 
-/* A friend's nights, with the offer to join one. */
+/* A friend's nights. The whole card is the link. */
 .friend-outings {
   display: grid;
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 1rem;
   margin: 1.5rem 0 0;
   padding: 0;
   list-style: none;
 }
-.friend-outings li {
+.friend-outing {
   display: grid;
-  grid-template-columns: 3.5rem 1fr auto;
-  gap: 1rem;
-  align-items: center;
-  padding: 0.9rem 1.1rem;
+  grid-template-columns: 4rem 1fr;
+  gap: 0.9rem;
+  height: 100%;
+  padding: 0.9rem;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface);
+  color: inherit;
+  text-decoration: none;
 }
-.friend-outings li > a:first-child {
-  display: block;
-  width: 3.5rem;
+.friend-outing:hover {
+  border-color: var(--ink-muted);
+}
+.friend-outing .show-artwork {
+  min-height: 5.5rem;
+  border-radius: 6px;
+}
+.friend-outing-body {
+  min-width: 0;
 }
 .friend-outing-body h3 {
   margin: 0;
   font-family: Newsreader, ui-serif, Georgia, serif;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
+  line-height: 1.25;
 }
 .friend-outing-facts {
-  margin: 0.2rem 0 0;
+  margin: 0.25rem 0 0;
   color: var(--ink-muted);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
 }
 .friend-outing-note {
-  margin: 0.4rem 0 0;
-  font-size: 0.88rem;
+  margin: 0.45rem 0 0;
+  font-size: 0.85rem;
 }
-@media (max-width: 34rem) {
-  .friend-outings li {
-    grid-template-columns: 3rem 1fr;
-  }
-  .friend-outings li > :last-child {
-    grid-column: 1 / -1;
-    justify-self: start;
-  }
+.friend-outing-flag {
+  margin: 0.5rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 /* A visitor's one action on somebody else's night. */
