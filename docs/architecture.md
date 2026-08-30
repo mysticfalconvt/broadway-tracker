@@ -18,9 +18,17 @@ Visibility is an authorization decision on the server, never merely a client-sid
 
 - `private`: only the owner.
 - `friends`: owner plus an accepted friendship.
-- `public`: reserved for future public-facing profiles; do not expose by default.
+- `public`: readable by anybody, including signed-out visitors.
 
-All newly created user content defaults to `private`.
+**Public is more open than friends, not a different axis.** A query matching `friends` exactly hides
+public content from the very people it was shared with. Use `inArray(column, ['friends', 'public'])`.
+
+New content follows the author's profile setting rather than a fixed constant, and changing that
+setting moves everything still following it. Anything set explicitly on its own item stays put.
+
+Public surfaces are anonymous: no name, no handle, and an opaque account id in URLs. A published
+piece is the deliberate exception — it carries the byline its author chose for it, and never links
+back to the profile.
 
 ## Catalog moderation
 
@@ -28,16 +36,23 @@ Anyone signed in may submit a missing show. New submissions begin as `pending` a
 
 ## Authentication
 
-Better Auth will own `user`, `session`, `account`, and `verification` tables. The application must:
+Better Auth owns `user`, `session`, `account`, and `verification`. Verification is required for
+password accounts, mail goes through SMTP, and Google OAuth is live.
 
-- Require verification for password-created accounts.
-- Send verification and password-reset messages through configured SMTP.
-- Support Google OAuth using production callback URLs.
-- Require an explicit, verified identity before linking an existing password account to a Google account.
+`src/server/session.ts` is the only place that asks Better Auth who the caller is. Read-only
+impersonation for administrators is enforced there, so any code resolving a session another way
+opts out of it silently.
+
+Better Auth applies its own `additionalFields.defaultValue` and it wins over the column default, so
+the schema, the auth config, and the synthetic-user hook must agree. `tests/auth-config.test.ts`
+fails when they drift.
 
 ## Object storage
 
-RustFS is the object store. The app will issue short-lived presigned upload and read URLs rather than proxying image bytes through the Node process. Buckets remain private by default. Public show-art images can be introduced later only if that is an intentional policy.
+RustFS is the object store, and the bucket has **no public access at all**. Both directions proxy
+through the application: the browser never talks to the bucket and no presigned URLs are issued.
+Object keys are generated server-side, and an upload's type is decided by its magic bytes rather
+than by what the client claimed.
 
 ## Deployment
 

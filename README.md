@@ -1,67 +1,102 @@
 # Broadway Tracker
 
-A private-by-default personal theatre library for keeping track of the Broadway, touring, regional, and local shows you love.
+A personal theatre journal and shared archive, for the Broadway, touring,
+regional, and local shows you have seen — and the nights you shared with the
+people you saw them with.
 
-## Current foundation
+Live at [broadway.rboskind.com](https://broadway.rboskind.com).
 
-- TanStack Start / React / TypeScript server-rendered application
-- Postgres + Drizzle schema and migrations
-- Better Auth dependency reserved for email/password, email verification, password reset, and Google OAuth
-- Core data model for shows, productions, personal library entries, performance logs, lists, and approved friendships
-- Coolify/Nixpacks deployment configuration with migrations on app startup
-- `GET /api/health` verifies the database connection for Coolify health checks
+## What it does
 
-## Planned implementation order
+- **A show, a production, a night.** The work, a particular staging of it, and
+  each individual time you were in the room. Dates can be exact, a month, a
+  year, or "some time around then", because a memory from 1998 is still worth
+  keeping.
+- **Shared nights.** An outing has attendees. A friend can say *I was there too*
+  and join the same evening rather than making a second record of it.
+- **Cast.** Who was in a production, and who you actually saw — including the
+  night an understudy went on, which you can correct.
+- **Local and school theatre.** A community company's own revue or a school's
+  staging is recorded without going through catalog review, and two families
+  from the same town converge on one record.
+- **Writing.** Reviews, and pieces longer than a review, attached to the show or
+  theatre they concern.
+- **A map** of everywhere you have been, and where friends have been.
+- **Photographs**, contributed per show, private unless offered publicly.
 
-1. Configure Better Auth and SMTP email verification/password reset.
-2. Add Google OAuth once the production hostname is known.
-3. Build private library, show search, and quick show entry.
-4. Build admin review for catalog submissions.
-5. Build approved friend requests and friends-only sharing.
-6. Add direct-to-RustFS image upload when user-generated images are introduced.
+## Sharing
 
-## Local development
+One setting on your profile governs your shows, nights, lists, and reviews, and
+changing it brings existing content with it. Anything you set on its own item
+stays where you put it.
+
+Public pages are **anonymous**: no name, no handle, and an opaque id in the URL.
+The exception is a published piece, which carries whatever byline its author
+chose and does not link back to their profile.
+
+## Running it
 
 ```sh
 cp .env.example .env
 pnpm install
-pnpm db:up
+pnpm db:up        # development Postgres, bound to 127.0.0.1 only
 pnpm db:migrate
 pnpm dev
 ```
 
-`pnpm db:up` starts the development-only Postgres container from `compose.dev.yml`. The default `DATABASE_URL` in `.env.example` matches it. The container only listens on `127.0.0.1`, so it is not exposed to the LAN.
-
-`DATABASE_URL` is required to run the health endpoint or any database-backed route. The initial landing page itself can render without it.
-
-### Developing from another device
-
-**Recommended: SSH tunnel.** Keep Vite and Postgres private on the development server, then run this on the device where you use the browser:
+`pnpm dev:lan` binds to the LAN for testing on a phone. Do not expose the Vite
+dev server to the internet; for remote work, tunnel instead:
 
 ```sh
-ssh -L 3000:127.0.0.1:3000 rboskind@YOUR_DEVELOPMENT_SERVER
+ssh -L 3000:127.0.0.1:3000 you@your-dev-server
 ```
 
-Start `pnpm dev` on the development server and visit [http://localhost:3000](http://localhost:3000) on the other device. Zed can edit the remote project over SSH; the tunnel is only for browser access.
+### Checks
 
-For trusted-LAN testing only, run `pnpm dev:lan` and browse to `http://SERVER_LAN_IP:3000`. Do not expose Vite’s development server to the public internet.
+```sh
+pnpm test        # vitest, against an isolated broadway_tracker_test database
+pnpm lint        # biome
+pnpm typecheck   # tsc --noEmit
+```
 
-## Deployment in Coolify
+## Deployment
 
-1. Create a Git repository named `broadway-tracker` and add it as a Coolify application.
-2. Create or attach a Coolify Postgres resource and set `DATABASE_URL`.
-3. Add the required production secrets from `.env.example`.
-4. Set the public app URL as `BETTER_AUTH_URL`.
-5. Configure Coolify’s health check as `GET /api/health`.
+Coolify with Nixpacks. `pnpm start` applies pending migrations and then boots,
+so a failed migration stops the app rather than serving it against a schema it
+does not match. Health check is `GET /api/health`, which verifies the database.
 
-Nixpacks uses `nixpacks.toml` to pin a compatible Node/pnpm runtime. The startup command applies pending migrations before launching the server.
+Required environment: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`,
+`ADMIN_EMAILS`, the `SMTP_*` set, the `S3_*` set, and `DIGEST_SECRET`. See
+`.env.example`; everything there is read by the code.
 
-## Object storage
+**Scheduled letters.** `POST /api/digest` with
+`authorization: Bearer $DIGEST_SECRET` sends what is due — nothing at all is on
+a timer inside the app. A daily cron is right; each member's own window decides
+whether they are due. Add `?dryRun=1` to assemble without sending.
 
-Use RustFS through its S3-compatible API rather than an application volume. Store object keys in Postgres and upload from the browser with short-lived presigned URLs. This keeps the deployed application stateless and makes image backup and future scaling safer.
+## Images
 
-## Privacy rules
+Object storage is RustFS over the S3 API, and the bucket has **no public
+access**. Uploads and reads both proxy through the backend: the browser never
+talks to the bucket, and there are no presigned URLs. Keys are generated
+server-side and uploads are checked by magic bytes rather than trusting the
+declared type.
 
-- Profiles, ratings, reviews, lists, and library entries default to `private`.
-- `friends` visibility is only available to approved, bidirectional friendships.
-- A submitted catalog show is `pending` until an administrator publishes it.
+## Backups
+
+Postgres is dumped on a schedule by Coolify, **onto the same host**, and the
+bucket is not backed up at all. Both gaps are real and written up in
+[`docs/backups.md`](docs/backups.md), along with `scripts/verify-restore.mjs`,
+which checks that a restored copy is complete, current, and actually holds
+data — the failure that looks most like success.
+
+## Documentation
+
+| | |
+| --- | --- |
+| [`CLAUDE.md`](CLAUDE.md) | Conventions and traps. Read before changing code. |
+| [`docs/architecture.md`](docs/architecture.md) | The model and where authorization lives |
+| [`docs/implementation-plan.md`](docs/implementation-plan.md) | The running record of what was built and why |
+| [`docs/catalog-import.md`](docs/catalog-import.md) | The bulk import format, written to hand to a language model |
+| [`docs/backups.md`](docs/backups.md) | What is protected, what is not, and how to prove a restore |
+| [`docs/writing-and-the-front-page.md`](docs/writing-and-the-front-page.md) | Why the home page is composed rather than a feed |
