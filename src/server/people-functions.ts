@@ -3,8 +3,7 @@ import { and, asc, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { currentSession, requireSession } from './session'
 
-import { decodeEntities } from '../lib/entities'
-import { normalizePersonName, tidyPersonName } from '../lib/person'
+import { normalizePersonName, tidyPersonName, tidyRole } from '../lib/person'
 import { findSuspectPairs } from '../lib/similarity'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { getDb } from './db/client'
@@ -96,7 +95,7 @@ export const addCasting = createServerOnlyFn(
     const person = await findOrCreatePerson(userId, data.personName)
     // Decoded for the same reason names are: a role read off a web page
     // arrives as "Johnny Bevan &amp; Others" and is otherwise stored that way.
-    const role = decodeEntities(data.role).trim().replace(/\s+/g, ' ')
+    const role = tidyRole(data.role)
 
     // The same person in the same role is one casting, however many people record it.
     const existing = await db
@@ -318,7 +317,7 @@ export const updateCasting = createServerOnlyFn(
     },
   ) => {
     await mayCorrectCasting(actor, id)
-    const role = decodeEntities(data.role).trim().replace(/\s+/g, ' ')
+    const role = tidyRole(data.role)
     if (!role) throw new Error('A casting needs a role.')
 
     const [updated] = await getDb()
@@ -600,7 +599,10 @@ export const recordSeenPerformer = createServerOnlyFn(
     const person = await findOrCreatePerson(userId, personName)
     await db
       .insert(seenPerformers)
-      .values({ outingId, userId, personId: person.id, role: role?.trim() || null })
+      // Decoded like every other role. Without this a cover recorded as
+      // "Johnny Bevan &amp; Others" never matches the casting it supersedes,
+      // and the billed performer goes on being offered as a guess.
+      .values({ outingId, userId, personId: person.id, role: role ? tidyRole(role) || null : null })
       .onConflictDoNothing()
     return { personId: person.id }
   },

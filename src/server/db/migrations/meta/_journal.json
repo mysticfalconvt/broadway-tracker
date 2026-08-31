@@ -169,6 +169,13 @@
       "when": 1788128924028,
       "tag": "0023_decode_stored_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1788128925028,
+      "tag": "0024_decode_recorded_roles",
+      "breakpoints": true
     }
   ]
 }

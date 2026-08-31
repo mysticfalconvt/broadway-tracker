@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { currentSession, requireSession } from './session'
 
 import { localTitleKey } from '../lib/show'
+import { decodeEntities } from '../lib/entities'
 import { getDb } from './db/client'
 import {
   libraryEntries,
@@ -68,7 +69,11 @@ export const searchCatalog = createServerOnlyFn(async (rawQuery: string) => {
  */
 export const searchCatalogFor = createServerOnlyFn(
   async (viewerId: string | null, rawQuery: string) => {
-    const query = rawQuery.replace(/[%_\\]/g, '\\$&')
+    // Decoded before matching. A caller that read "&amp; Juliet" off a page —
+    // or out of an earlier answer of ours — searches for it verbatim and finds
+    // nothing, while the title sits in the catalog spelled correctly. The
+    // search should be forgiving of the encoding, not the caller.
+    const query = decodeEntities(rawQuery).replace(/[%_\\]/g, '\\$&')
     const visible = viewerId
       ? or(
           eq(shows.catalogStatus, 'published'),
@@ -170,6 +175,28 @@ export const localProductionsForShow = createServerOnlyFn(async (showId: string)
     .leftJoin(venues, eq(productions.venueId, venues.id))
     .where(eq(productions.showId, showId))
     .orderBy(asc(productions.name)),
+)
+
+/**
+ * Stagings of a show, as a particular person may see them.
+ *
+ * A pending submission's productions were invisible to everybody, including the
+ * member who created them — so a show awaiting review had no discoverable
+ * production id, and nothing could be added to it without one. The only way
+ * anybody got hold of one was a create call happening to return it.
+ */
+export const productionsForShowAndViewer = createServerOnlyFn(
+  async (viewerId: string | null, showId: string) => {
+    const [show] = await getDb()
+      .select({ catalogStatus: shows.catalogStatus, submittedByUserId: shows.submittedByUserId })
+      .from(shows)
+      .where(eq(shows.id, showId))
+      .limit(1)
+    if (!show) return []
+    const mine = show.catalogStatus === 'pending' && show.submittedByUserId === viewerId
+    if (show.catalogStatus !== 'published' && show.catalogStatus !== 'local' && !mine) return []
+    return publishedProductionsForShow(showId)
+  },
 )
 
 export const publishedProductionsForShow = createServerOnlyFn(async (showId: string) =>
@@ -732,7 +759,44 @@ export const findOrCreateProduction = createServerOnlyFn(
       .from(productions)
       .where(eq(productions.showId, showId))
     const match = existing.find((row) => normalizeProductionName(row.name) === wanted)
-    if (match) return { id: match.id, created: false }
+    if (match) {
+      /**
+       * Fill what is blank, and say so.
+       *
+       * This used to return the match and drop everything else on the floor:
+       * somebody passing a theatre for a production recorded without one got
+       * `created: false` and plain success, and the theatre was gone. The
+       * window to give a staging its venue then closed the moment the show was
+       * published, because the other path that could set it refuses a published
+       * show — two routes each pointing at the other.
+       *
+       * Blanks only. A venue already on record was put there by somebody.
+       */
+      const [current] = await db
+        .select({ venueId: productions.venueId, venue: productions.venue, city: productions.city })
+        .from(productions)
+        .where(eq(productions.id, match.id))
+        .limit(1)
+
+      const wantsVenue = Boolean(venue) && !current?.venueId && !current?.venue
+      if (!wantsVenue && !(city && !current?.city)) {
+        return { id: match.id, created: false, filled: false as const }
+      }
+
+      const linked = wantsVenue
+        ? await (await import('./venue-functions')).findOrCreateVenue(userId, venue!, city)
+        : null
+      await db
+        .update(productions)
+        .set({
+          venueId: linked?.id ?? current?.venueId ?? null,
+          venue: current?.venue ?? venue ?? null,
+          city: current?.city ?? city ?? null,
+          updatedAt: new Date(),
+        })
+        .where(eq(productions.id, match.id))
+      return { id: match.id, created: false, filled: true as const }
+    }
 
     const linkedVenue = venue
       ? await (await import('./venue-functions')).findOrCreateVenue(userId, venue, city)
@@ -749,7 +813,7 @@ export const findOrCreateProduction = createServerOnlyFn(
       })
       .returning({ id: productions.id })
     if (!created) throw new Error('Unable to record that production.')
-    return { id: created.id, created: true }
+    return { id: created.id, created: true, filled: false as const }
   },
 )
 

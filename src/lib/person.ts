@@ -29,3 +29,21 @@ export function tidyPersonName(value: string): string {
   // and collapsing whitespace around an entity that is still text does nothing.
   return decodeEntities(value).trim().replace(/\s+/g, ' ')
 }
+
+/**
+ * A role, tidied the one way.
+ *
+ * Roles are written from three places — a form, a casting, somebody saying who
+ * they actually saw — and they are compared against each other to work out
+ * which billed performer a cover supersedes. A role decoded in one place and
+ * not another does not match itself, so the guess it was meant to replace goes
+ * on being offered.
+ */
+export function tidyRole(value: string): string {
+  return decodeEntities(value).trim().replace(/\s+/g, ' ')
+}
+
+/** For comparing two roles that were typed by different people. */
+export function normalizeRole(value: string): string {
+  return tidyRole(value).toLowerCase()
+}

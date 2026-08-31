@@ -216,3 +216,53 @@ describe('fixing what you entered yourself', () => {
     expect(await db.select().from(seenPerformers)).toHaveLength(1)
   })
 })
+
+describe('a cover recorded from a web page', () => {
+  it('decodes the role, so it matches the casting it supersedes', async () => {
+    // Reported from real use: the casting path decoded and this one did not,
+    // so "Johnny Bevan &amp; Others" never matched "Johnny Bevan & Others" and
+    // the billed performer went on being offered as a guess.
+    const { outingForViewer } = await import('../src/server/outing-functions')
+    const member = await makeUser()
+    const show = await makeShow()
+    const production = await findOrCreateProduction(member.id, show.id, 'Broadway', 'broadway')
+    await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Amanda Jill Robinson',
+      role: 'Johnny Bevan &amp; Others',
+      kind: 'performer',
+      isPrincipal: true,
+    })
+    const night = await createOutingForUser(member.id, {
+      showId: show.id,
+      productionId: production.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-08-11',
+      attendeeIds: [],
+      favorite: false,
+    })
+
+    await recordSeenPerformer(member.id, night.id, 'Allison Guinn', 'Johnny Bevan &amp; Others')
+
+    const [recorded] = await db.select().from(seenPerformers)
+    expect(recorded?.role).toBe('Johnny Bevan & Others')
+
+    const detail = await outingForViewer(member.id, night.id)
+    expect(detail.seenCast.map((one) => one.name)).toEqual(['Allison Guinn'])
+    // The billed performer is gone from the guess, which was the whole point.
+    expect(detail.likelyCast).toHaveLength(0)
+  })
+})
+
+describe('searching with a string that came off a web page', () => {
+  it('finds a title whichever way the ampersand is written', async () => {
+    const { searchCatalogFor } = await import('../src/server/catalog-functions')
+    const member = await makeUser()
+    await makeShow({ title: '& Juliet', slug: 'and-juliet' })
+
+    expect(await searchCatalogFor(member.id, '& Juliet')).toHaveLength(1)
+    // What a caller holding an escaped copy of the title actually sends.
+    expect(await searchCatalogFor(member.id, '&amp; Juliet')).toHaveLength(1)
+    expect(await searchCatalogFor(member.id, 'Juliet')).toHaveLength(1)
+  })
+})

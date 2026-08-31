@@ -1,5 +1,7 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { and, eq, inArray, or, sql } from 'drizzle-orm'
+
+import { normalizeRole } from '../lib/person'
+import { and, desc, eq, inArray, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { requireSession } from './session'
 
@@ -317,8 +319,10 @@ export const outingForViewer = createServerOnlyFn(async (viewerId: string, outin
   // the inference then punished the one act the feature exists for, and left a
   // twelve-person company showing one name.
   const seenCast = attendance ? await seenPerformersFor(session.user.id, data.id) : []
+  // Compared through the same normaliser both sides were written with. Two
+  // people typing the same track will not match on a raw string.
   const spokenFor = new Set(
-    seenCast.filter((row) => row.role).map((row) => row.role!.toLowerCase()),
+    seenCast.filter((row) => row.role).map((row) => normalizeRole(row.role!)),
   )
   const alreadyNamed = new Set(seenCast.map((row) => row.personId))
   const likelyCast =
@@ -326,7 +330,7 @@ export const outingForViewer = createServerOnlyFn(async (viewerId: string, outin
     attendance && outing.productionId && outing.datePrecision === 'exact'
       ? (await likelyCastOn(outing.productionId, outing.occurredOn)).filter(
           (member) =>
-            !spokenFor.has(member.role.toLowerCase()) && !alreadyNamed.has(member.personId),
+            !spokenFor.has(normalizeRole(member.role)) && !alreadyNamed.has(member.personId),
         )
       : []
 
@@ -372,6 +376,57 @@ export const outingForViewer = createServerOnlyFn(async (viewerId: string, outin
     }),
   }
 })
+
+/**
+ * A whole journal, a page at a time.
+ *
+ * The only way to enumerate nights was by year, and that path cannot see all of
+ * them: a night recorded as "some time in the nineties" has no year to match,
+ * so it is invisible to the one query that could count it. Answering "how many
+ * shows have I tracked" took forty-four calls and still missed those.
+ */
+export const nightsForUser = createServerOnlyFn(
+  async (viewerId: string, limit = 50, offset = 0) => {
+    const rows = await getDb()
+      .select({
+        outingId: outings.id,
+        showId: outings.showId,
+        showTitle: shows.title,
+        productionId: outings.productionId,
+        datePrecision: outings.datePrecision,
+        occurredOn: outings.occurredOn,
+        occurredMonth: outings.occurredMonth,
+        occurredYear: outings.occurredYear,
+        approximateDate: outings.approximateDate,
+        venue: sql<string | null>`coalesce(${venues.name}, ${outings.venue})`,
+        city: sql<string | null>`coalesce(${venues.city}, ${outings.city})`,
+      })
+      .from(outingAttendees)
+      .innerJoin(outings, eq(outingAttendees.outingId, outings.id))
+      .innerJoin(shows, eq(outings.showId, shows.id))
+      .leftJoin(venues, eq(outings.venueId, venues.id))
+      .where(eq(outingAttendees.userId, viewerId))
+      // Undated nights sort last rather than being dropped, which is the whole
+      // point of having this at all.
+      .orderBy(desc(outings.occurredOn), desc(outings.occurredYear), desc(outings.createdAt))
+      .limit(limit)
+      .offset(offset)
+
+    const [counted] = await getDb()
+      .select({ total: sql<number>`count(*)::int` })
+      .from(outingAttendees)
+      .where(eq(outingAttendees.userId, viewerId))
+
+    const total = counted?.total ?? 0
+    return {
+      nights: rows,
+      total,
+      // Handed back rather than left to be worked out, so a caller cannot
+      // page past the end or stop one short.
+      nextAfter: offset + rows.length < total ? offset + rows.length : null,
+    }
+  },
+)
 
 export const outingsForUserAndShow = createServerOnlyFn(async (viewerId: string, showId: string) =>
   getDb()

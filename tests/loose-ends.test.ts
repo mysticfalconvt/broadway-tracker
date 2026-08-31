@@ -274,3 +274,73 @@ describe('an understudy going on', () => {
     expect(after.likelyCast.map((one) => one.name)).not.toContain('Julia Knitel')
   })
 })
+
+describe('a whole journal, countable', () => {
+  it('includes nights no year lookup can ever see', async () => {
+    // The reason this exists: a night recorded as "some time in the nineties"
+    // has no year to match, so the only enumeration path was blind to it.
+    const { nightsForUser } = await import('../src/server/outing-functions')
+    const member = await makeUser()
+    const a = await makeShow()
+    const b = await makeShow()
+    await createOutingForUser(member.id, {
+      showId: a.id,
+      datePrecision: 'exact',
+      occurredOn: '2020-02-27',
+      attendeeIds: [],
+      favorite: false,
+    })
+    await createOutingForUser(member.id, {
+      showId: b.id,
+      datePrecision: 'approximate',
+      approximateDate: 'some time in the nineties',
+      attendeeIds: [],
+      favorite: false,
+    })
+
+    const page = await nightsForUser(member.id, 50, 0)
+    expect(page.total).toBe(2)
+    expect(page.nights).toHaveLength(2)
+    expect(page.nextAfter).toBeNull()
+  })
+
+  it('pages without dropping or repeating one', async () => {
+    const { nightsForUser } = await import('../src/server/outing-functions')
+    const member = await makeUser()
+    for (let n = 0; n < 5; n++) {
+      const show = await makeShow()
+      await createOutingForUser(member.id, {
+        showId: show.id,
+        datePrecision: 'year',
+        occurredYear: 2000 + n,
+        attendeeIds: [],
+        favorite: false,
+      })
+    }
+    const first = await nightsForUser(member.id, 2, 0)
+    expect(first.nights).toHaveLength(2)
+    expect(first.nextAfter).toBe(2)
+
+    const second = await nightsForUser(member.id, 2, first.nextAfter!)
+    const third = await nightsForUser(member.id, 2, second.nextAfter!)
+    expect(third.nextAfter).toBeNull()
+
+    const seen = [...first.nights, ...second.nights, ...third.nights].map((n) => n.outingId)
+    expect(new Set(seen).size).toBe(5)
+  })
+
+  it('shows only your own nights', async () => {
+    const { nightsForUser } = await import('../src/server/outing-functions')
+    const member = await makeUser()
+    const stranger = await makeUser()
+    const show = await makeShow()
+    await createOutingForUser(stranger.id, {
+      showId: show.id,
+      datePrecision: 'year',
+      occurredYear: 2020,
+      attendeeIds: [],
+      favorite: false,
+    })
+    expect((await nightsForUser(member.id, 50, 0)).total).toBe(0)
+  })
+})

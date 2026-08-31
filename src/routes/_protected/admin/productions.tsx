@@ -9,6 +9,7 @@ import {
   getPublishedShowsForAdmin,
   saveProduction,
 } from '../../../server/catalog-functions'
+import { getVenuesForAdmin } from '../../../server/venue-functions'
 
 export const Route = createFileRoute('/_protected/admin/productions')({
   beforeLoad: ({ context }) => {
@@ -20,6 +21,9 @@ export const Route = createFileRoute('/_protected/admin/productions')({
     // recorded yet" for a moment, on a screen whose whole job is fixing what
     // was just recorded, is worse than a slightly later first paint.
     recent: await getRecentProductions({ data: {} }),
+    // Every theatre already on record, so a staging can be attached to one
+    // rather than described again in slightly different words.
+    venues: await getVenuesForAdmin(),
   }),
   component: ProductionAdmin,
 })
@@ -116,7 +120,7 @@ type EditableProduction = {
 }
 
 function ProductionAdmin() {
-  const { shows, recent: initialRecent } = Route.useLoaderData()
+  const { shows, recent: initialRecent, venues } = Route.useLoaderData()
   const [showId, setShowId] = useState(shows[0]?.id ?? '')
   const [productions, setProductions] = useState<Production[]>([])
   // What just landed, whichever show it belongs to. After an import an
@@ -200,6 +204,7 @@ function ProductionAdmin() {
                 {editing === row.id ? (
                   <ProductionForm
                     onSaved={refresh}
+                    venues={venues}
                     production={{
                       id: row.id,
                       name: row.name,
@@ -236,13 +241,14 @@ function ProductionAdmin() {
               ))}
             </select>
           </label>
-          <ProductionForm showId={showId} onSaved={refresh} />
+          <ProductionForm showId={showId} onSaved={refresh} venues={venues} />
           <section className="production-list" aria-label="Existing productions">
             {productions.map((production) => (
               <ProductionForm
                 key={production.id}
                 showId={showId}
                 production={production}
+                venues={venues}
                 onSaved={refresh}
               />
             ))}
@@ -262,10 +268,12 @@ function ProductionForm({
   showId,
   production,
   onSaved,
+  venues,
 }: {
   showId: string
   production?: EditableProduction
   onSaved: () => void
+  venues: Awaited<ReturnType<typeof getVenuesForAdmin>>
 }) {
   const [error, setError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
@@ -326,6 +334,35 @@ function ProductionForm({
             <option value="regional">Regional</option>
             <option value="local">Local</option>
             <option value="other">Other</option>
+          </select>
+        </label>
+        {/*
+          A theatre is matched on its name *and* its town, so typing a name that
+          is one word off — or right but with the city left blank — does not
+          find the saved record, it makes a second one. Choosing from what is
+          already there fills both fields at once and cannot fork them.
+        */}
+        <label>
+          Saved theatre
+          <select
+            onChange={(event) => {
+              const chosen = venues.find((one) => one.id === event.target.value)
+              if (!chosen) return
+              const form = event.target.form
+              if (!form) return
+              ;(form.elements.namedItem('venue') as HTMLInputElement).value = chosen.name
+              ;(form.elements.namedItem('city') as HTMLInputElement).value = chosen.city ?? ''
+              ;(form.elements.namedItem('country') as HTMLInputElement).value = chosen.country ?? ''
+            }}
+            value=""
+          >
+            <option value="">Choose one, or type a new theatre below</option>
+            {venues.map((one) => (
+              <option key={one.id} value={one.id}>
+                {one.name}
+                {one.city ? ` — ${one.city}` : ''}
+              </option>
+            ))}
           </select>
         </label>
         <label>

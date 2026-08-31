@@ -57,8 +57,8 @@ describe('what the model is told it can do', () => {
     // is measured, because that is all the local model is ever offered — an
     // agent holding somebody's key is a better model with a longer attention
     // span, and the writing tools are its problem, not the house model's.
-    expect(toolDescriptions()).toHaveLength(10)
-    expect(TOOLS.length).toBeLessThanOrEqual(20)
+    expect(toolDescriptions()).toHaveLength(11)
+    expect(TOOLS.length).toBeLessThanOrEqual(22)
   })
 })
 

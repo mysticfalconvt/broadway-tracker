@@ -97,11 +97,12 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
     name: 'productions_of',
     description:
       'Every recorded staging of a show, with its theatre and the dates it ran. Use this ' +
-      'to work out which staging somebody means when a show has toured or been revived.',
+      'to work out which staging somebody means when a show has toured or been revived. ' +
+      'Includes stagings of your own submissions while they await review.',
     parameters: z.object({ showId: z.string().uuid() }),
-    run: async (_actorId, { showId }) => {
-      const { publishedProductionsForShow } = await import('./catalog-functions')
-      return await publishedProductionsForShow(showId)
+    run: async (actorId, { showId }) => {
+      const { productionsForShowAndViewer } = await import('./catalog-functions')
+      return await productionsForShowAndViewer(actorId, showId)
     },
   }),
 
@@ -150,13 +151,30 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
   tool({
     name: 'my_nights_around',
     description:
-      'Other nights this person logged near a given year, whatever the show. This is how ' +
-      '"it was the same trip as..." gets resolved, and it is something no search engine ' +
-      'could answer.',
+      'Other nights this person logged within a year either side of the one given, whatever ' +
+      'the show. This is how "it was the same trip as..." gets resolved, and it is something ' +
+      'no search engine could answer. For the whole journal, use my_nights.',
     parameters: z.object({ year: z.number().int().min(1800).max(2200) }),
     run: async (actorId, { year }) => {
       const { outingsNearYear } = await import('./narrowing')
       return await outingsNearYear(actorId, year)
+    },
+  }),
+
+  tool({
+    name: 'my_nights',
+    description:
+      'Every night this person has logged, newest first, a page at a time. This is the way ' +
+      'to count or survey a journal: nights recorded without a date cannot appear in any ' +
+      'year-based lookup, so my_nights_around can never see all of them. Pass the `after` ' +
+      'value from a previous page to continue.',
+    parameters: z.object({
+      limit: z.number().int().min(1).max(100).default(50),
+      after: z.number().int().min(0).default(0).describe('How many to skip. 0 for the first page.'),
+    }),
+    run: async (actorId, { limit, after }) => {
+      const { nightsForUser } = await import('./outing-functions')
+      return await nightsForUser(actorId, limit, after)
     },
   }),
 
@@ -318,11 +336,14 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
         .limit(1)
       if (!night) throw new Error('That is not a night you were at.')
 
+      const { normalizeRole } = await import('../lib/person')
       const recorded = await seenPerformersFor(actorId, outingId)
-      const spokenFor = new Set(recorded.filter((r) => r.role).map((r) => r.role!.toLowerCase()))
+      const spokenFor = new Set(recorded.filter((r) => r.role).map((r) => normalizeRole(r.role!)))
+      const namedAlready = new Set(recorded.map((r) => r.personId))
       const likely = night.productionId
         ? (await likelyCastOn(night.productionId, night.occurredOn)).filter(
-            (member) => !spokenFor.has(member.role.toLowerCase()),
+            (member) =>
+              !spokenFor.has(normalizeRole(member.role)) && !namedAlready.has(member.personId),
           )
         : []
       return { recorded, stillInferred: likely }
@@ -352,6 +373,19 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
     run: async (actorId, { outingId, personName, role }) => {
       const { recordSeenPerformer } = await import('./people-functions')
       return await recordSeenPerformer(actorId, outingId, personName, role)
+    },
+  }),
+
+  tool({
+    name: 'forget_who_i_saw',
+    description:
+      'Undo a record of who this person saw, when it was entered wrongly. Falls back to the ' +
+      'app’s own guess for that role. Only touches their own record of their own night.',
+    writes: true,
+    parameters: z.object({ outingId: z.string().uuid(), personId: z.string().uuid() }),
+    run: async (actorId, { outingId, personId }) => {
+      const { removeSeenPerformer } = await import('./people-functions')
+      return await removeSeenPerformer(actorId, outingId, personId)
     },
   }),
 

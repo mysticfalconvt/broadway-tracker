@@ -191,3 +191,59 @@ describe('finding a production after an import', () => {
     await expect(recentProductionsForAdmin(actor(member))).rejects.toThrow('Forbidden')
   })
 })
+
+describe('naming a staging that is already there', () => {
+  it('fills in a theatre it was missing, instead of dropping it', async () => {
+    // Reported from real use: passing a venue for a production recorded without
+    // one returned plain success and threw the venue away. The window to set it
+    // then closed at publish, because the other path that could refuses a
+    // published show — two routes each pointing at the other.
+    const member = await makeUser()
+    const show = await makeShow()
+    const first = await findOrCreateProduction(member.id, show.id, 'Original Broadway', 'broadway')
+    expect(first.created).toBe(true)
+
+    const again = await findOrCreateProduction(
+      member.id,
+      show.id,
+      'Original Broadway',
+      'broadway',
+      'August Wilson Theatre',
+      'New York',
+    )
+    expect(again.id).toBe(first.id)
+    expect(again.created).toBe(false)
+    expect(again.filled).toBe(true)
+
+    const [row] = await db.select().from(productions).where(eq(productions.id, first.id))
+    expect(row?.venue).toBe('August Wilson Theatre')
+    expect(row?.city).toBe('New York')
+    // Linked to the shared record, not just typed in, so it reaches the map.
+    expect(row?.venueId).not.toBeNull()
+  })
+
+  it('will not overwrite a theatre already on record', async () => {
+    const member = await makeUser()
+    const show = await makeShow()
+    const first = await findOrCreateProduction(
+      member.id,
+      show.id,
+      'Original Broadway',
+      'broadway',
+      'August Wilson Theatre',
+      'New York',
+    )
+    const again = await findOrCreateProduction(
+      member.id,
+      show.id,
+      'Original Broadway',
+      'broadway',
+      'Somewhere Else',
+      'Chicago',
+    )
+    expect(again.filled).toBe(false)
+
+    const [row] = await db.select().from(productions).where(eq(productions.id, first.id))
+    expect(row?.venue).toBe('August Wilson Theatre')
+  })
+})

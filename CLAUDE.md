@@ -166,5 +166,8 @@ before changing it:
 `likelyCastOn` infers from casting dates, which cannot know an understudy went
 on. `seen_performers` is the override, and it is **per role**, not per night:
 recording one cover supersedes that role and leaves the rest of the inference
-standing. It used to replace the whole night's guess, which punished the single
+standing. Roles are compared through `normalizeRole`, never as raw strings:
+they are written from three places and one of them decoded entities while the
+others did not, so a cover recorded as `Johnny Bevan &amp; Others` matched
+nothing and the billed performer went on being offered. It used to replace the whole night's guess, which punished the single
 commonest correction by reducing a twelve-person company to one name.
