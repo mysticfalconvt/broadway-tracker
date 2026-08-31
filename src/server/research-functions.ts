@@ -39,7 +39,7 @@ Return JSON of this exact shape:
       "country": "string",
       "openedOn": "YYYY-MM-DD",
       "closedOn": "YYYY-MM-DD or null if still running",
-      "source": "the URL you took the run and cast dates from",
+      "sourceNote": "the URL you took the run and cast dates from",
       "cast": [{
         "name": "string",
         "role": "the character, or the job for creatives",
@@ -99,6 +99,10 @@ const researched = z.strictObject({
               country: z.string().trim().max(120).nullish(),
               openedOn: z.string().date().nullish(),
               closedOn: z.string().date().nullish(),
+              // Called `sourceNote` by add_production and add_casting, and
+              // `source` here. Strict checking turned that inconsistency from
+              // a silently ignored key into a rejection, so both are taken.
+              sourceNote: z.string().trim().max(500).nullish(),
               source: z.string().trim().max(500).nullish(),
               cast: z
                 .array(
@@ -303,7 +307,7 @@ export const acceptResearch = createServerOnlyFn(async (actorId: string, json: s
         openedOn: existing?.openedOn ?? production.openedOn ?? null,
         closedOn: existing?.closedOn ?? production.closedOn ?? null,
         source: 'research',
-        sourceNote: production.source ?? null,
+        sourceNote: production.sourceNote ?? production.source ?? null,
       })
       .where(eq(productions.id, made.id))
 
@@ -325,7 +329,7 @@ export const acceptResearch = createServerOnlyFn(async (actorId: string, json: s
           endedOn: member.endedOn ?? undefined,
           replacementOrder: member.kind === 'performer' ? nth : undefined,
         },
-        { source: 'research', sourceNote: production.source ?? null },
+        { source: 'research', sourceNote: production.sourceNote ?? production.source ?? null },
       )
       castingsAdded += 1
     }

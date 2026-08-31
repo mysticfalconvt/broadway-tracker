@@ -155,16 +155,21 @@ export const castForProduction = createServerOnlyFn(async (productionId: string)
  * is returned alongside, so a page can say what the guess was based on.
  */
 /**
- * Who was certainly on stage across a whole span of days.
+ * Who was on stage across a span of days, and how sure that is.
  *
- * "Certainly" is the bar, and it is why this takes a range: somebody is
- * returned only if their tenure covers every day of it. A company intact
- * through the whole of August 2007 is as sure a thing as one intact on the
- * 16th, and a performer who left mid-month is not a guess worth offering.
+ * Two buckets, never mixed. Somebody whose tenure covers every day of the
+ * window was certainly there. Somebody whose tenure covers part of it might
+ * have been, and saying so is not the same as saying they were.
+ *
+ * Only returning the certain ones was worse than it sounds. Asked about a night
+ * in December 2006, the app dropped Tony Danza — who joined on the 19th — and
+ * he is the one performer who could date the night at all. The person most
+ * worth mentioning is exactly the one a whole-window rule discards, because
+ * joining mid-month is what makes somebody a landmark in a run.
  */
-export const likelyCastBetween = createServerOnlyFn(
-  async (productionId: string, from: string, to: string) =>
-    getDb()
+export const castAcross = createServerOnlyFn(
+  async (productionId: string, from: string, to: string) => {
+    const rows = await getDb()
       .select({
         personId: people.id,
         name: people.name,
@@ -172,6 +177,8 @@ export const likelyCastBetween = createServerOnlyFn(
         kind: castings.kind,
         isPrincipal: castings.isPrincipal,
         source: castings.source,
+        startedOn: castings.startedOn,
+        endedOn: castings.endedOn,
       })
       .from(castings)
       .innerJoin(people, eq(castings.personId, people.id))
@@ -181,12 +188,28 @@ export const likelyCastBetween = createServerOnlyFn(
           // Performers only: "who you probably saw" means who was on stage. A
           // director held the role all run and was not in front of you.
           eq(castings.kind, 'performer'),
-          // Covers the whole window, not merely overlaps it.
-          or(isNull(castings.startedOn), sql`${castings.startedOn} <= ${from}`),
-          or(isNull(castings.endedOn), sql`${castings.endedOn} >= ${to}`),
+          // Overlaps the window at all. Splitting happens below, where the
+          // difference between "was there" and "may have been" can be said.
+          or(isNull(castings.startedOn), sql`${castings.startedOn} <= ${to}`),
+          or(isNull(castings.endedOn), sql`${castings.endedOn} >= ${from}`),
         ),
       )
-      .orderBy(desc(castings.isPrincipal), asc(people.name)),
+      .orderBy(desc(castings.isPrincipal), asc(people.name))
+
+    const coversAll = (row: (typeof rows)[number]) =>
+      (!row.startedOn || row.startedOn <= from) && (!row.endedOn || row.endedOn >= to)
+
+    return {
+      certain: rows.filter(coversAll),
+      possible: rows.filter((row) => !coversAll(row)),
+    }
+  },
+)
+
+/** Just the sure ones, for callers that only want those. */
+export const likelyCastBetween = createServerOnlyFn(
+  async (productionId: string, from: string, to: string) =>
+    (await castAcross(productionId, from, to)).certain,
 )
 
 export const likelyCastOn = createServerOnlyFn(

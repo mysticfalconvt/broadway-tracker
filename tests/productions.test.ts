@@ -213,7 +213,7 @@ describe('naming a staging that is already there', () => {
     )
     expect(again.id).toBe(first.id)
     expect(again.created).toBe(false)
-    expect(again.filled).toBe(true)
+    expect(again.filled).toEqual(['venueId', 'venue', 'city'])
 
     const [row] = await db.select().from(productions).where(eq(productions.id, first.id))
     expect(row?.venue).toBe('August Wilson Theatre')
@@ -241,9 +241,108 @@ describe('naming a staging that is already there', () => {
       'Somewhere Else',
       'Chicago',
     )
-    expect(again.filled).toBe(false)
+    expect(again.filled).toEqual([])
 
     const [row] = await db.select().from(productions).where(eq(productions.id, first.id))
     expect(row?.venue).toBe('August Wilson Theatre')
+  })
+})
+
+describe('a production that names a theatre but is not linked to one', () => {
+  it('gets joined to the shared venue record', async () => {
+    // What every row created before venues existed looks like, and what Mean
+    // Girls looked like: a name in free text, no link, so it never reached the
+    // map and no venue lookup could find the night.
+    const member = await makeUser()
+    const show = await makeShow()
+    const made = await findOrCreateProduction(
+      member.id,
+      show.id,
+      'Original Broadway',
+      'broadway',
+      'August Wilson Theatre',
+      'New York',
+    )
+    await db.update(productions).set({ venueId: null }).where(eq(productions.id, made.id))
+
+    const again = await findOrCreateProduction(
+      member.id,
+      show.id,
+      'Original Broadway',
+      'broadway',
+      'August Wilson Theatre',
+      'New York',
+    )
+    expect(again.filled).toEqual(['venueId'])
+
+    const [row] = await db.select().from(productions).where(eq(productions.id, made.id))
+    expect(row?.venueId).not.toBeNull()
+  })
+
+  it('links using the name already on the record, when none is passed', async () => {
+    const member = await makeUser()
+    const show = await makeShow()
+    const made = await findOrCreateProduction(
+      member.id,
+      show.id,
+      'Original Broadway',
+      'broadway',
+      'August Wilson Theatre',
+      'New York',
+    )
+    await db.update(productions).set({ venueId: null }).where(eq(productions.id, made.id))
+
+    const again = await findOrCreateProduction(member.id, show.id, 'Original Broadway', 'broadway')
+    expect(again.filled).toEqual(['venueId'])
+  })
+
+  it('says nothing was filled when nothing was', async () => {
+    const member = await makeUser()
+    const show = await makeShow()
+    await findOrCreateProduction(
+      member.id,
+      show.id,
+      'Original Broadway',
+      'broadway',
+      'August Wilson Theatre',
+      'New York',
+    )
+    const again = await findOrCreateProduction(
+      member.id,
+      show.id,
+      'Original Broadway',
+      'broadway',
+      'August Wilson Theatre',
+      'New York',
+    )
+    expect(again.filled).toEqual([])
+  })
+})
+
+describe('reporting what was filled', () => {
+  it('names only the fields that were actually missing', async () => {
+    // A boolean could not be acted on. Naming the fields means a caller can
+    // tell a venue that landed from a city that landed, and stop guessing.
+    const member = await makeUser()
+    const show = await makeShow()
+    await findOrCreateProduction(
+      member.id,
+      show.id,
+      'Original Broadway',
+      'broadway',
+      'August Wilson Theatre',
+    )
+
+    const again = await findOrCreateProduction(
+      member.id,
+      show.id,
+      'Original Broadway',
+      'broadway',
+      'August Wilson Theatre',
+      'New York',
+      'USA',
+    )
+    // The theatre was already there and already linked; only these were not.
+    expect(again.filled).toEqual(['city', 'country'])
   })
 })

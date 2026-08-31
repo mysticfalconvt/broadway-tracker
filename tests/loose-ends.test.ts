@@ -427,3 +427,75 @@ describe('a night remembered to the month', () => {
     expect(detail.likelyCast).toHaveLength(0)
   })
 })
+
+describe('somebody who joined partway through the window', () => {
+  it('is offered as possible rather than dropped', async () => {
+    // Asked about a night in December 2006, the app dropped Tony Danza — who
+    // joined on the 19th — and he is the one performer who could date the
+    // night at all. Joining mid-month is what makes somebody a landmark.
+    const { outingForViewer } = await import('../src/server/outing-functions')
+    const member = await makeUser()
+    const show = await makeShow()
+    const production = await findOrCreateProduction(member.id, show.id, 'Broadway', 'broadway')
+    await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Tony Danza',
+      role: 'Max Bialystock',
+      kind: 'performer',
+      isPrincipal: true,
+      startedOn: '2006-12-19',
+      endedOn: '2007-03-11',
+    })
+    await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Roger Bart',
+      role: 'Leo Bloom',
+      kind: 'performer',
+      isPrincipal: true,
+      startedOn: '2006-01-01',
+      endedOn: '2007-02-11',
+    })
+    const night = await createOutingForUser(member.id, {
+      showId: show.id,
+      productionId: production.id,
+      datePrecision: 'month',
+      occurredYear: 2006,
+      occurredMonth: 12,
+      attendeeIds: [],
+      favorite: false,
+    })
+
+    const detail = await outingForViewer(member.id, night.id)
+    // Bart held the whole of December; Danza only part of it.
+    expect(detail.likelyCast.map((one) => one.name)).toEqual(['Roger Bart'])
+    expect(detail.possibleCast.map((one) => one.name)).toEqual(['Tony Danza'])
+  })
+
+  it('keeps the two apart rather than presenting a maybe as a fact', async () => {
+    const { outingForViewer } = await import('../src/server/outing-functions')
+    const member = await makeUser()
+    const show = await makeShow()
+    const production = await findOrCreateProduction(member.id, show.id, 'Broadway', 'broadway')
+    await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Tony Danza',
+      role: 'Max Bialystock',
+      kind: 'performer',
+      isPrincipal: true,
+      startedOn: '2006-12-19',
+      endedOn: '2007-03-11',
+    })
+    const night = await createOutingForUser(member.id, {
+      showId: show.id,
+      productionId: production.id,
+      datePrecision: 'month',
+      occurredYear: 2006,
+      occurredMonth: 12,
+      attendeeIds: [],
+      favorite: false,
+    })
+    const detail = await outingForViewer(member.id, night.id)
+    expect(detail.likelyCast).toHaveLength(0)
+    expect(detail.possibleCast).toHaveLength(1)
+  })
+})

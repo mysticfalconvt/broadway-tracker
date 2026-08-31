@@ -190,6 +190,36 @@ function OutingDetail() {
             </section>
           ) : null}
 
+          {outing.possibleCast.length ? (
+            <section className="outing-block">
+              <p className="eyebrow">Might have been on</p>
+              {/*
+                Separate from the list above, and never folded into it. These
+                held the role for part of the span this night could fall in —
+                somebody who joined or left mid-month. That is weaker evidence
+                and stronger information: a performer who joined on the 19th is
+                the one name that could pin the night down.
+              */}
+              <p className="outing-hint">
+                In the cast for part of {formatFuzzyDate(outing)}, but not all of it.
+              </p>
+              <ul className="cast-list">
+                {outing.possibleCast.map((member) => (
+                  <li key={member.personId}>
+                    <Link to="/artists/$id" params={{ id: member.personId }}>
+                      <strong>{member.name}</strong>
+                      <span>
+                        {member.role}
+                        {member.startedOn ? ` · from ${member.startedOn}` : ''}
+                        {member.endedOn ? ` · until ${member.endedOn}` : ''}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
           {outing.likelyCast.length ? (
             <section className="outing-block">
               <p className="eyebrow">Who you probably saw</p>

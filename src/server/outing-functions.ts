@@ -309,7 +309,7 @@ export const outingForViewer = createServerOnlyFn(async (viewerId: string, outin
   // Only an exact date can be matched against a casting window. A year is not
   // enough to say who was on stage that night, and offering a guess from one
   // would be presenting a coin flip as a memory.
-  const { likelyCastBetween, seenPerformersFor } = await import('./people-functions')
+  const { castAcross, seenPerformersFor } = await import('./people-functions')
 
   // A recorded answer replaces the guess **for the roles it speaks to**, not
   // for the whole night.
@@ -330,14 +330,22 @@ export const outingForViewer = createServerOnlyFn(async (viewerId: string, outin
   // as one that held a single night. Requiring an exact day meant the person
   // who declined to invent one lost the cast entirely.
   const window = dateWindow(outing)
-  const likelyCast =
-    // "Who you probably saw" is addressed to somebody who was in the room.
+  // "Who you probably saw" is addressed to somebody who was in the room.
+  const across =
     attendance && outing.productionId && window
-      ? (await likelyCastBetween(outing.productionId, window.from, window.to)).filter(
-          (member) =>
-            !spokenFor.has(normalizeRole(member.role)) && !alreadyNamed.has(member.personId),
-        )
-      : []
+      ? await castAcross(outing.productionId, window.from, window.to)
+      : { certain: [], possible: [] }
+  const notAlreadySaid = (member: { role: string; personId: string }) =>
+    !spokenFor.has(normalizeRole(member.role)) && !alreadyNamed.has(member.personId)
+  const likelyCast = across.certain.filter(notAlreadySaid)
+  /**
+   * Somebody whose run overlaps part of the window but not all of it.
+   *
+   * Kept apart from the certain ones rather than dropped. A performer who
+   * joined mid-month is the single most useful name for dating a half-
+   * remembered night, and is exactly who a whole-window rule throws away.
+   */
+  const possibleCast = across.possible.filter(notAlreadySaid)
 
   const { applyViewerCovers } = await import('./image-functions')
   const [withCover] = await applyViewerCovers(
@@ -350,6 +358,7 @@ export const outingForViewer = createServerOnlyFn(async (viewerId: string, outin
     ...outing,
     showCoverImageKey: withCover?.coverImageKey ?? outing.showCoverImageKey,
     likelyCast,
+    possibleCast,
     seenCast,
     // Somebody who was there, or a friend looking in. A visitor is shown the
     // night but offered nothing to write on it.

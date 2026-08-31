@@ -179,7 +179,10 @@ standing. It works from a **window**, not a day: `dateWindow` turns "August
 2007" into its real first and last day, and a performer is offered only if their
 tenure covers every day of it. Requiring an exact date meant the app told people
 never to record a guessed one and then silently withheld the cast from everybody
-who listened. Roles are compared through `normalizeRole`, never as raw strings:
+who listened. Anyone overlapping only *part* of the window comes back separately
+as **possible**, never folded in: somebody who joined mid-month is weaker
+evidence and stronger information, and is precisely who a whole-window rule
+throws away. Roles are compared through `normalizeRole`, never as raw strings:
 they are written from three places and one of them decoded entities while the
 others did not, so a cover recorded as `Johnny Bevan &amp; Others` matched
 nothing and the billed performer went on being offered. It used to replace the whole night's guess, which punished the single

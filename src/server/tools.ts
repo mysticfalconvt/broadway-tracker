@@ -320,15 +320,17 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
     name: 'who_was_probably_on',
     description:
       'For one of this person’s own nights: who the catalog works out was on stage, and who ' +
-      'they have already said they saw. Use before record_who_i_saw so a name is not ' +
-      'recorded twice, and to find out whether the app is about to tell them they saw the ' +
-      'wrong person.',
+      'they have already said they saw. `stillInferred` held the role for every day the ' +
+      'night could have been; `possiblyOn` overlaps only part of it — somebody who joined ' +
+      'or left mid-window, which is often the best clue for pinning the date down. Use ' +
+      'before record_who_i_saw so a name is not recorded twice, and to find out whether the ' +
+      'app is about to tell them they saw the wrong person.',
     parameters: z.object({ outingId: z.string().uuid() }),
     run: async (actorId, { outingId }) => {
       const { getDb } = await import('./db/client')
       const { outingAttendees, outings } = await import('./db/schema')
       const { and, eq } = await import('drizzle-orm')
-      const { likelyCastBetween, seenPerformersFor } = await import('./people-functions')
+      const { castAcross, seenPerformersFor } = await import('./people-functions')
       const { dateWindow } = await import('../lib/fuzzy-date')
 
       const [night] = await getDb()
@@ -350,18 +352,21 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
       const spokenFor = new Set(recorded.filter((r) => r.role).map((r) => normalizeRole(r.role!)))
       const namedAlready = new Set(recorded.map((r) => r.personId))
       const window = dateWindow(night)
-      const likely =
+      const across =
         night.productionId && window
-          ? (await likelyCastBetween(night.productionId, window.from, window.to)).filter(
-              (member) =>
-                !spokenFor.has(normalizeRole(member.role)) && !namedAlready.has(member.personId),
-            )
-          : []
+          ? await castAcross(night.productionId, window.from, window.to)
+          : { certain: [], possible: [] }
+      const unsaid = (member: { role: string; personId: string }) =>
+        !spokenFor.has(normalizeRole(member.role)) && !namedAlready.has(member.personId)
       // Said plainly, because an empty list used to be indistinguishable from
       // "no cast recorded" and there was no way to tell which had happened.
       return {
         recorded,
-        stillInferred: likely,
+        stillInferred: across.certain.filter(unsaid),
+        // Overlapping part of the window but not all of it. Somebody who joined
+        // mid-month is the best clue there is for pinning a vague night down,
+        // and a whole-window rule is exactly what throws them away.
+        possiblyOn: across.possible.filter(unsaid),
         inferredAcross: window,
         why: window ? null : 'This night has no date precise enough to match against a cast list.',
       }

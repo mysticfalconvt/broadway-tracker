@@ -784,14 +784,34 @@ export const findOrCreateProduction = createServerOnlyFn(
         .where(eq(productions.id, match.id))
         .limit(1)
 
-      const wantsVenue = Boolean(venue) && !current?.venueId && !current?.venue
-      const wantsCountry = Boolean(country) && !current?.country
-      if (!wantsVenue && !(city && !current?.city) && !wantsCountry) {
-        return { id: match.id, created: false, filled: false as const }
+      /**
+       * What is actually missing, named one field at a time.
+       *
+       * A boolean could not be trusted and could not be acted on: it said
+       * "false" for a call that wrote a venue, and "true" for one that filled a
+       * city, so a caller could not tell what had happened either way.
+       *
+       * The linking case matters most. A production can hold a theatre's name
+       * as free text and no link to the shared venue record — that is what
+       * every row created before venues existed looks like — and the old test
+       * skipped those entirely, so they could never be joined up and never
+       * reached the map.
+       */
+      const needsLink = Boolean(venue || current?.venue) && !current?.venueId
+      const needsVenueText = Boolean(venue) && !current?.venue
+      const needsCity = Boolean(city) && !current?.city
+      const needsCountry = Boolean(country) && !current?.country
+      if (!needsLink && !needsVenueText && !needsCity && !needsCountry) {
+        return { id: match.id, created: false, filled: [] as string[] }
       }
 
-      const linked = wantsVenue
-        ? await (await import('./venue-functions')).findOrCreateVenue(userId, venue!, city, country)
+      const linked = needsLink
+        ? await (await import('./venue-functions')).findOrCreateVenue(
+            userId,
+            (venue ?? current?.venue)!,
+            city ?? current?.city,
+            country ?? current?.country,
+          )
         : null
       await db
         .update(productions)
@@ -803,7 +823,14 @@ export const findOrCreateProduction = createServerOnlyFn(
           updatedAt: new Date(),
         })
         .where(eq(productions.id, match.id))
-      return { id: match.id, created: false, filled: true as const }
+
+      const filled = [
+        needsLink && linked ? 'venueId' : null,
+        needsVenueText ? 'venue' : null,
+        needsCity ? 'city' : null,
+        needsCountry ? 'country' : null,
+      ].filter((one): one is string => one !== null)
+      return { id: match.id, created: false, filled }
     }
 
     const linkedVenue = venue
@@ -822,7 +849,7 @@ export const findOrCreateProduction = createServerOnlyFn(
       })
       .returning({ id: productions.id })
     if (!created) throw new Error('Unable to record that production.')
-    return { id: created.id, created: true, filled: false as const }
+    return { id: created.id, created: true, filled: [] as string[] }
   },
 )
 

@@ -187,3 +187,54 @@ describe('a second attempt at the same show', () => {
     await expect(acceptResearch(member.id, wrong)).rejects.toThrow(/shows\.0\.productions/)
   })
 })
+
+describe('the field that names where a fact came from', () => {
+  it('is accepted under either name the tools use', async () => {
+    // add_production and add_casting call it sourceNote; this path called it
+    // source. Strict checking turned that inconsistency from a silently
+    // ignored key into a rejection that broke every create.
+    const member = await makeUser()
+    const withNote = JSON.stringify({
+      shows: [
+        {
+          title: 'Hairspray',
+          type: 'musical',
+          productions: [
+            {
+              name: 'Original Broadway',
+              productionType: 'broadway',
+              sourceNote: 'https://en.wikipedia.org/wiki/Hairspray',
+            },
+          ],
+        },
+      ],
+    })
+    const added = await acceptResearch(member.id, withNote)
+    expect(added.productions).toBe(1)
+
+    const [row] = await db.select().from(productions).where(eq(productions.showId, added.showId))
+    expect(row?.sourceNote).toContain('wikipedia.org')
+  })
+
+  it('still takes the older name', async () => {
+    const member = await makeUser()
+    const older = JSON.stringify({
+      shows: [
+        {
+          title: 'Mary Poppins',
+          type: 'musical',
+          productions: [
+            {
+              name: 'Original Broadway',
+              productionType: 'broadway',
+              source: 'https://en.wikipedia.org/wiki/Mary_Poppins',
+            },
+          ],
+        },
+      ],
+    })
+    const added = await acceptResearch(member.id, older)
+    const [row] = await db.select().from(productions).where(eq(productions.showId, added.showId))
+    expect(row?.sourceNote).toContain('wikipedia.org')
+  })
+})
