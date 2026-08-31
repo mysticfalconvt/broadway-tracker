@@ -3521,30 +3521,80 @@ a.recent-entry:hover h3,
   font-weight: 400;
 }
 
-.joined-block {
-  margin-bottom: 2rem;
+.discover-tabs {
+  display: flex;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--rule);
 }
-.joined-block h2 {
-  margin: 0 0 0.75rem;
+.discover-tabs a {
+  padding: 0 0 0.6rem;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+.discover-tabs a.is-current {
+  border-bottom-color: var(--oxblood);
+  color: var(--ink);
+}
+.joined section {
+  margin-bottom: 2.25rem;
+}
+.joined h2 {
+  margin: 0 0 0.9rem;
+  font-size: 1rem;
+  font-weight: 650;
+}
+/*
+  Each card is one small story, so they sit apart rather than running together
+  as a list. Wide enough for a title and a few lines under it, and as many
+  across as the window allows.
+*/
+.joined-cards {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+}
+.joined-card {
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.joined-card-name {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--ink);
+  font-family: Newsreader, ui-serif, Georgia, serif;
   font-size: 1.05rem;
+  text-decoration: none;
 }
-.joined-list {
+a.joined-card-name:hover {
+  text-decoration: underline;
+}
+.joined-card ul {
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.joined-list li {
-  padding: 0.6rem 0;
-  border-bottom: 1px solid var(--rule);
-}
-.joined-list strong {
-  display: block;
-  font-family: Newsreader, ui-serif, Georgia, serif;
-  font-size: 1rem;
-}
-.joined-list span {
-  display: block;
-  margin-top: 0.15rem;
+.joined-card li {
   color: var(--ink-muted);
-  font-size: 0.82rem;
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+.joined-card li a {
+  color: var(--ink);
+}
+.joined-card li span {
+  color: var(--ink-muted);
+}
+.joined-card-aside {
+  margin: 0.5rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--rule);
+  color: var(--ink-muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
 }

@@ -246,7 +246,8 @@ describe('shows seen again, and parts recast', () => {
     await night(member.id, show.id, production.id, '2004-09-01')
 
     // Seen twice, same person both times. Nothing came round again.
-    expect((await connectionsFor(member.id)).roles).toHaveLength(0)
+    const found = await connectionsFor(member.id)
+    expect(found.shows[0]?.recast).toHaveLength(0)
   })
 
   it('notices two people in one part', async () => {
@@ -274,10 +275,13 @@ describe('shows seen again, and parts recast', () => {
     await night(member.id, show.id, production.id, '2004-06-01')
     await night(member.id, show.id, production.id, '2005-06-01')
 
+    // A detail of the show, not a finding of its own: alone it was mostly a
+    // whole company arriving dressed up as a discovery.
     const found = await connectionsFor(member.id)
-    expect(found.roles).toHaveLength(1)
-    expect(found.roles[0]?.role).toBe('Elphaba')
-    expect(found.roles[0]?.people.sort()).toEqual(['Idina Menzel', 'Shoshana Bean'])
+    expect(found.shows).toHaveLength(1)
+    expect(found.shows[0]?.recast).toHaveLength(1)
+    expect(found.shows[0]?.recast[0]?.role).toBe('Elphaba')
+    expect(found.shows[0]?.recast[0]?.people.sort()).toEqual(['Idina Menzel', 'Shoshana Bean'])
   })
 })
 
@@ -285,6 +289,6 @@ describe('somebody with nothing yet', () => {
   it('comes back empty rather than failing', async () => {
     const member = await makeUser()
     const found = await connectionsFor(member.id)
-    expect(found).toEqual({ performers: [], venues: [], shows: [], roles: [] })
+    expect(found).toEqual({ performers: [], venues: [], shows: [] })
   })
 })

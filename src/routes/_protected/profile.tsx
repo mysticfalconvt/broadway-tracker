@@ -84,7 +84,7 @@ function Profile() {
           <strong>Where your friends have been</strong>
           <span>Their nights out, newest first</span>
         </Link>
-        <Link to="/connections">
+        <Link search={{ view: 'yours' }} to="/discover">
           <strong>Things that came round again</strong>
           <span>The same faces, theatres and shows, years apart</span>
         </Link>

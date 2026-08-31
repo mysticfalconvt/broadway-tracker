@@ -65,7 +65,7 @@ export const connectionsFor = createServerOnlyFn(async (viewerId: string) => {
     .where(eq(outingAttendees.userId, viewerId))
 
   if (nights.length === 0) {
-    return { performers: [], venues: [], shows: [], roles: [] }
+    return { performers: [], venues: [], shows: [] }
   }
 
   const outingIds = nights.map((night) => night.outingId)
@@ -222,33 +222,42 @@ export const connectionsFor = createServerOnlyFn(async (viewerId: string) => {
     })
     byShow.set(night.showId, entry)
   }
-  const seenAgain = [...byShow.values()]
-    .filter((entry) => entry.times.length > 1)
-    .map((entry) => ({
+  /**
+   * Parts that changed hands between one visit and the next.
+   *
+   * A detail of a show seen twice, not a finding of its own. Listed alone it
+   * was mostly noise: see a long-running show two years apart and every
+   * principal has changed, so a whole company arrives dressed up as a
+   * discovery. Sitting on the card for that show it is what it actually is —
+   * what was different the second time.
+   */
+  const recastByShow = new Map<string, { role: string; people: string[] }[]>()
+  for (const showId of byShow.keys()) {
+    const parts = new Map<string, { role: string; people: Map<string, string> }>()
+    for (const night of nights.filter((one) => one.showId === showId)) {
+      for (const seen of onThisNight(night)) {
+        if (!seen.role) continue
+        const key = normalizeRole(seen.role)
+        const entry = parts.get(key) ?? { role: seen.role, people: new Map() }
+        entry.people.set(seen.personId, seen.name)
+        parts.set(key, entry)
+      }
+    }
+    const changed = [...parts.values()]
+      .filter((entry) => entry.people.size > 1)
+      .map((entry) => ({ role: entry.role, people: [...entry.people.values()] }))
+    if (changed.length) recastByShow.set(showId, changed)
+  }
+
+  const seenAgain = [...byShow]
+    .filter(([, entry]) => entry.times.length > 1)
+    .map(([showId, entry]) => ({
       ...entry,
       times: entry.times.sort((a, b) => (a.year ?? 0) - (b.year ?? 0)),
+      recast: recastByShow.get(showId) ?? [],
     }))
 
-  // ─── One part, more than one person ─────────────────────────────────────
-  const byRole = new Map<string, { role: string; show: string; people: Map<string, string> }>()
-  for (const night of nights) {
-    for (const seen of onThisNight(night)) {
-      if (!seen.role) continue
-      const key = `${night.showId}::${normalizeRole(seen.role)}`
-      const entry = byRole.get(key) ?? {
-        role: seen.role,
-        show: night.showTitle,
-        people: new Map(),
-      }
-      entry.people.set(seen.personId, seen.name)
-      byRole.set(key, entry)
-    }
-  }
-  const roles = [...byRole.values()]
-    .filter((entry) => entry.people.size > 1)
-    .map((entry) => ({ role: entry.role, show: entry.show, people: [...entry.people.values()] }))
-
-  return { performers, venues: returnedTo, shows: seenAgain, roles }
+  return { performers, venues: returnedTo, shows: seenAgain }
 })
 
 export const getConnections = createServerFn({ method: 'GET' }).handler(async () =>
