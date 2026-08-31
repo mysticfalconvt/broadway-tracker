@@ -13,6 +13,32 @@ import {
   user,
 } from '../src/server/db/schema'
 
+/**
+ * Nothing in this file may touch a database that is not the test one.
+ *
+ * `resetDatabase` truncates every table. Under vitest that is safe, because
+ * `tests/setup.ts` points `DATABASE_URL` at `broadway_tracker_test` before any
+ * suite loads. Imported from anywhere else — a scratch script, a one-off
+ * `tsx` file — it is pointed at whatever `.env` says, which is somebody's real
+ * data.
+ *
+ * That is not hypothetical. A throwaway debugging script imported these
+ * fixtures and truncated a working development database: every account, every
+ * night, every show. There was no backup on the host and no WAL archiving, so
+ * none of it came back.
+ *
+ * The check is at module scope so it fires on import, before a caller can get
+ * as far as running anything.
+ */
+const pointedAt = process.env.DATABASE_URL ?? ''
+if (!pointedAt.includes('broadway_tracker_test')) {
+  throw new Error(
+    'tests/helpers.ts truncates every table and is pointed at ' +
+      `${pointedAt.replace(/:\/\/[^@]*@/, '://***@') || '(nothing)'}. ` +
+      'Run it under vitest, or set DATABASE_URL to broadway_tracker_test first.',
+  )
+}
+
 export const db = getDb()
 
 /** Wipes every domain table so each test starts from a known empty database. */

@@ -94,6 +94,24 @@ Rules that have been got wrong more than once:
   byline on a piece is the deliberate exception, and it never links to the
   profile.
 
+## Scratch scripts point at real data
+
+`DATABASE_URL` in `.env` is a **working database with real accounts in it**, not
+a scratch one. `pnpm test` is safe because `tests/setup.ts` rewrites the URL to
+`broadway_tracker_test` before anything loads; a `.tmp.ts` file run with `tsx`
+gets no such treatment, and `getDb()` there is pointed straight at the real one.
+
+A debugging script did exactly this: it truncated the development database —
+every account, every night, every show — while chasing a failing test. There was
+no WAL archiving and no dump on the host, so none of it came back.
+
+- Never issue `truncate`, `delete` without a `where`, or `drop` from a scratch
+  script. If a test needs a clean database, run it under vitest.
+- `tests/helpers.ts` now refuses to load unless `DATABASE_URL` names the test
+  database, so importing the fixtures outside vitest throws instead of wiping
+  something.
+- Prefer reading. A debugging script that only selects cannot cause this.
+
 ## Traps in the tooling
 
 - **The route generator can re-scaffold a route file** while the dev server is
