@@ -388,3 +388,78 @@ describe('correcting a night already logged', () => {
     expect(after?.curtain).toBeNull()
   })
 })
+
+describe('a timeline of nights', () => {
+  it('groups by year, newest first, and keeps undated ones', async () => {
+    const { nightsForUser } = await import('../src/server/outing-functions')
+    const member = await makeUser()
+    const a = await makeShow()
+    const b = await makeShow()
+    const c = await makeShow()
+    await createOutingForUser(member.id, {
+      showId: a.id,
+      datePrecision: 'exact',
+      occurredOn: '2007-08-16',
+      attendeeIds: [],
+      favorite: false,
+    })
+    await createOutingForUser(member.id, {
+      showId: b.id,
+      datePrecision: 'year',
+      occurredYear: 2026,
+      attendeeIds: [],
+      favorite: false,
+    })
+    await createOutingForUser(member.id, {
+      showId: c.id,
+      datePrecision: 'approximate',
+      approximateDate: 'some time in the nineties',
+      attendeeIds: [],
+      favorite: false,
+    })
+
+    const { nights } = await nightsForUser(member.id, 100, 0)
+    const years = nights.map(
+      (n) => n.occurredYear ?? (n.occurredOn ? Number(n.occurredOn.slice(0, 4)) : null),
+    )
+    // Newest first, and the one nobody can date is still here, at the end.
+    expect(years).toEqual([2026, 2007, null])
+  })
+})
+
+describe('nights recorded at different precisions', () => {
+  it('orders them against each other by when they actually were', async () => {
+    // An exact night in 2007 used to sort above a year-only night in 2026,
+    // because the second has no day and the column ordered on was null.
+    const { nightsForUser } = await import('../src/server/outing-functions')
+    const member = await makeUser()
+    const exact = await makeShow()
+    const monthly = await makeShow()
+    const yearly = await makeShow()
+    await createOutingForUser(member.id, {
+      showId: exact.id,
+      datePrecision: 'exact',
+      occurredOn: '2007-08-16',
+      attendeeIds: [],
+      favorite: false,
+    })
+    await createOutingForUser(member.id, {
+      showId: yearly.id,
+      datePrecision: 'year',
+      occurredYear: 2026,
+      attendeeIds: [],
+      favorite: false,
+    })
+    await createOutingForUser(member.id, {
+      showId: monthly.id,
+      datePrecision: 'month',
+      occurredYear: 2015,
+      occurredMonth: 6,
+      attendeeIds: [],
+      favorite: false,
+    })
+
+    const { nights } = await nightsForUser(member.id, 100, 0)
+    expect(nights.map((n) => n.showId)).toEqual([yearly.id, monthly.id, exact.id])
+  })
+})

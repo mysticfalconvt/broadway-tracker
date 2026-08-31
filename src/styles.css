@@ -3667,3 +3667,76 @@ a.joined-card-name:hover {
   font-variant-numeric: tabular-nums;
   font-weight: 650;
 }
+
+.timeline {
+  display: grid;
+  gap: 2rem;
+}
+/*
+  The year is the marker because it is how people remember going — the autumn
+  everybody was in town, the year with nothing in it. Sticky so it stays
+  overhead while its own nights scroll past.
+*/
+.timeline-year {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 0.6rem;
+  padding: 0.4rem 0;
+  border-bottom: 2px solid var(--ink);
+  background: var(--paper);
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1.6rem;
+  font-variant-numeric: tabular-nums;
+}
+.timeline-year span {
+  color: var(--ink-muted);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-variant-numeric: normal;
+  white-space: nowrap;
+}
+.timeline-nights {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.timeline-nights li {
+  border-bottom: 1px solid var(--rule);
+}
+.timeline-nights a {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr;
+  gap: 1rem;
+  padding: 0.65rem 0.25rem;
+  color: inherit;
+  text-decoration: none;
+}
+.timeline-nights a:hover {
+  background: var(--canvas);
+}
+.timeline-when {
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  padding-top: 0.15rem;
+}
+.timeline-what strong {
+  display: block;
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1rem;
+}
+.timeline-what span {
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+}
+@media (max-width: 30rem) {
+  .timeline-nights a {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+}

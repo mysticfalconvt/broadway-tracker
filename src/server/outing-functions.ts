@@ -435,12 +435,24 @@ export const nightsForUser = createServerOnlyFn(
       .innerJoin(shows, eq(outings.showId, shows.id))
       .leftJoin(venues, eq(outings.venueId, venues.id))
       .where(eq(outingAttendees.userId, viewerId))
-      // Undated nights sort last rather than being dropped, which is the whole
-      // point of having this at all.
-      // Two performances on one day come back in the order they happened.
+      /**
+       * Undated nights sort last rather than being dropped, which is the whole
+       * point of having this at all — and `nulls last` is what actually does
+       * that. Postgres puts nulls *first* on a descending sort, so a night
+       * recorded as "some time in the nineties" was opening the list, above
+       * everything anybody could date.
+       *
+       * Two performances on one day come back in the order they happened.
+       */
       .orderBy(
-        desc(outings.occurredOn),
-        desc(outings.occurredYear),
+        // One comparable date per night, whatever precision it was recorded at.
+        // Ordering by `occurred_on` first put an exact night in 2007 above a
+        // year-only night in 2026, because the second has no day and the column
+        // is null — precise nights sorted against imprecise ones by accident.
+        sql`coalesce(
+          ${outings.occurredOn},
+          make_date(${outings.occurredYear}, coalesce(${outings.occurredMonth}, 1), 1)
+        ) desc nulls last`,
         asc(outings.curtain),
         desc(outings.createdAt),
       )
@@ -591,6 +603,36 @@ export const createOuting = createServerFn({ method: 'POST' })
 export const getOuting = createServerFn({ method: 'GET' })
   .validator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data }) => outingForViewer((await requireSession()).user.id, data.id))
+
+/**
+ * Every night, grouped by the year it happened in.
+ *
+ * A collection sorted by title answers "have I seen this"; a timeline answers
+ * "what was that year like", which is a different question and the one nobody
+ * could ask. Years descend, nights within a year descend, and anything without
+ * a year sits at the end under its own heading rather than being dropped —
+ * which is the same reason `nightsForUser` returns them at all.
+ */
+export const getMyTimeline = createServerFn({ method: 'GET' }).handler(async () => {
+  const viewerId = (await requireSession()).user.id
+  // Generous rather than paged: fifteen people over a lifetime do not reach
+  // this, and a timeline that stops halfway is worse than no timeline.
+  const { nights, total } = await nightsForUser(viewerId, 1000, 0)
+
+  const byYear = new Map<number | null, typeof nights>()
+  for (const night of nights) {
+    const year =
+      night.occurredYear ?? (night.occurredOn ? Number(night.occurredOn.slice(0, 4)) : null)
+    byYear.set(year, [...(byYear.get(year) ?? []), night])
+  }
+
+  const years = [...byYear.entries()]
+    .filter(([year]) => year !== null)
+    .sort((a, b) => (b[0] as number) - (a[0] as number))
+    .map(([year, inThatYear]) => ({ year: year as number, nights: inThatYear }))
+
+  return { years, undated: byYear.get(null) ?? [], total }
+})
 
 export const getMyOutingsForShow = createServerFn({ method: 'GET' })
   .validator(z.object({ showId: z.string().uuid() }))
