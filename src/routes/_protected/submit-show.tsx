@@ -12,7 +12,11 @@ function SubmitShow() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const form = new FormData(event.currentTarget)
+    // Held onto before the first await: React nulls `currentTarget` once the
+    // handler yields, so touching it afterwards throws — after the submission
+    // has already gone through.
+    const element = event.currentTarget
+    const form = new FormData(element)
     const title = String(form.get('title'))
     setError(null)
     setIsPending(true)
@@ -30,7 +34,7 @@ function SubmitShow() {
         },
       })
       setSubmittedTitle(title)
-      event.currentTarget.reset()
+      element.reset()
     } catch (caughtError) {
       setError(
         caughtError instanceof Error ? caughtError.message : 'We could not submit this show.',

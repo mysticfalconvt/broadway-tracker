@@ -279,7 +279,13 @@ function ProductionForm({
   const [isPending, setIsPending] = useState(false)
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const form = new FormData(event.currentTarget)
+    // Held onto before the first await. React nulls `currentTarget` once the
+    // handler yields, so reaching for it afterwards throws — and it threw
+    // *after* the save had gone through, which showed an error for something
+    // that had actually worked and skipped the refresh that would have proved
+    // it. The most confusing shape a bug can take.
+    const element = event.currentTarget
+    const form = new FormData(element)
     setError(null)
     setIsPending(true)
     try {
@@ -302,7 +308,9 @@ function ProductionForm({
           closedOn: String(form.get('closedOn')) || undefined,
         },
       })
-      event.currentTarget.reset()
+      // Only the blank one. Resetting an edit form snaps its fields back to
+      // the values it was rendered with, which are the ones just replaced.
+      if (!production) element.reset()
       onSaved()
     } catch (caughtError) {
       setError(
