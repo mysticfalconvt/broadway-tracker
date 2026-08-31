@@ -3513,3 +3513,10 @@ a.recent-entry:hover h3,
   font: inherit;
   font-size: 0.85rem;
 }
+
+/* A word under a field, for the rare one whose purpose is not obvious. */
+.field-hint {
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}

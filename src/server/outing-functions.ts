@@ -2,7 +2,7 @@ import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 
 import { dateWindow } from '../lib/fuzzy-date'
 import { normalizeRole } from '../lib/person'
-import { and, desc, eq, inArray, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { requireSession } from './session'
 
@@ -36,6 +36,16 @@ export const outingInput = z
     occurredMonth: z.number().int().min(1).max(12).optional(),
     occurredYear: z.number().int().min(1800).max(2200).optional(),
     approximateDate: z.string().trim().min(1).max(100).optional(),
+    /**
+     * Curtain-up, as a clock time. Optional, and only meaningful with a date.
+     *
+     * Two performances on one day is the case worth recording — a matinee and
+     * an evening, or the two parts of a show that comes in two.
+     */
+    curtain: z
+      .string()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'A time looks like 14:00.')
+      .optional(),
     attendeeIds: z.array(z.string().uuid()).max(50).default([]),
     rating: z.number().int().min(1).max(10).optional(),
     favorite: z.boolean().default(false),
@@ -194,6 +204,9 @@ export const createOutingForUser = createServerOnlyFn(
           occurredMonth: data.datePrecision === 'month' ? data.occurredMonth : null,
           occurredYear: ['month', 'year'].includes(data.datePrecision) ? data.occurredYear : null,
           approximateDate: data.datePrecision === 'approximate' ? data.approximateDate : null,
+          // Only alongside a real date. A curtain time on "some time in the
+          // nineties" says nothing and reads as though it does.
+          curtain: data.occurredOn ? (data.curtain ?? null) : null,
         })
         .returning({ id: outings.id })
       if (!outing) throw new Error('Unable to create this outing.')
@@ -261,6 +274,7 @@ export const outingForViewer = createServerOnlyFn(async (viewerId: string, outin
       occurredMonth: outings.occurredMonth,
       occurredYear: outings.occurredYear,
       approximateDate: outings.approximateDate,
+      curtain: outings.curtain,
       // Prefer the shared venue record, falling back to whatever was typed.
       venue: sql<string | null>`coalesce(${venues.name}, ${outings.venue})`,
       city: sql<string | null>`coalesce(${venues.city}, ${outings.city})`,
@@ -412,6 +426,7 @@ export const nightsForUser = createServerOnlyFn(
         occurredMonth: outings.occurredMonth,
         occurredYear: outings.occurredYear,
         approximateDate: outings.approximateDate,
+        curtain: outings.curtain,
         venue: sql<string | null>`coalesce(${venues.name}, ${outings.venue})`,
         city: sql<string | null>`coalesce(${venues.city}, ${outings.city})`,
       })
@@ -422,7 +437,13 @@ export const nightsForUser = createServerOnlyFn(
       .where(eq(outingAttendees.userId, viewerId))
       // Undated nights sort last rather than being dropped, which is the whole
       // point of having this at all.
-      .orderBy(desc(outings.occurredOn), desc(outings.occurredYear), desc(outings.createdAt))
+      // Two performances on one day come back in the order they happened.
+      .orderBy(
+        desc(outings.occurredOn),
+        desc(outings.occurredYear),
+        asc(outings.curtain),
+        desc(outings.createdAt),
+      )
       .limit(limit)
       .offset(offset)
 
@@ -451,6 +472,7 @@ export const outingsForUserAndShow = createServerOnlyFn(async (viewerId: string,
       occurredMonth: outings.occurredMonth,
       occurredYear: outings.occurredYear,
       approximateDate: outings.approximateDate,
+      curtain: outings.curtain,
       venue: outings.venue,
       city: outings.city,
       productionName: productions.name,
@@ -588,6 +610,16 @@ const sharedFactsInput = z
     occurredMonth: z.number().int().min(1).max(12).optional(),
     occurredYear: z.number().int().min(1800).max(2200).optional(),
     approximateDate: z.string().trim().min(1).max(100).optional(),
+    /**
+     * Curtain-up, as a clock time. Optional, and only meaningful with a date.
+     *
+     * Two performances on one day is the case worth recording — a matinee and
+     * an evening, or the two parts of a show that comes in two.
+     */
+    curtain: z
+      .string()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'A time looks like 14:00.')
+      .optional(),
   })
   .superRefine((data, context) => {
     if (data.datePrecision === 'exact' && !data.occurredOn) {

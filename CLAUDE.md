@@ -161,6 +161,18 @@ before changing it:
   comes from. Deleting a casting withdraws a claim about a stage; it never
   touches `seen_performers`, which is a member's own word about their own night.
 
+## Two performances in one day
+
+A matinee and an evening are two nights out, and so are the two parts of a show
+that comes in two. Log each separately and set `outings.curtain` — a clock time,
+no date and no zone, because a two o'clock matinee is two o'clock where the
+theatre is. It is dropped unless the date is exact: a time on "some time in the
+nineties" reads as though it says something.
+
+This is not tidiness. A matinee is when an understudy goes on, so the two
+performances often had different people in them, and the cast inference was
+answering identically for both.
+
 ## Renamed theatres
 
 A building outlives its name. The Brooks Atkinson became the Lena Horne in 2022,

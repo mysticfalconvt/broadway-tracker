@@ -125,6 +125,7 @@ function LogOuting() {
           // Only the field matching the chosen precision is rendered, so the
           // others are absent from the form rather than empty.
           occurredOn: formText(form, 'occurredOn'),
+          curtain: formText(form, 'curtain'),
           occurredMonth: formNumber(form, 'occurredMonth'),
           occurredYear: formNumber(form, 'occurredYear'),
           approximateDate: formText(form, 'approximateDate'),
@@ -532,6 +533,18 @@ function LogOuting() {
                 onChange={(event) => setToday(event.target.value)}
                 required
               />
+            </label>
+          ) : null}
+          {/*
+            Only with an exact date, and optional even then. It earns its place
+            on a two-show day — a matinee and an evening, or a show that comes
+            in two parts — and is noise on every other night.
+          */}
+          {precision === 'exact' ? (
+            <label>
+              Curtain
+              <input name="curtain" type="time" />
+              <span className="field-hint">If you saw two that day.</span>
             </label>
           ) : null}
           {precision === 'month' ? (

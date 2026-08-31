@@ -29,6 +29,23 @@ const MONTHS = [
 ]
 
 /** Renders a stored fuzzy date for display, e.g. `May 18, 2026` or `Around 2005`. */
+/**
+ * A curtain time, when there is one, in the form people say it.
+ *
+ * Only shown where it distinguishes something. A time on a night nobody saw
+ * twice is clutter; on a two-show day it is the whole difference between them.
+ */
+export function formatCurtain(curtain?: string | null): string {
+  if (!curtain) return ''
+  const [hours, minutes] = curtain.split(':').map(Number)
+  if (hours === undefined || minutes === undefined) return ''
+  const suffix = hours < 12 ? 'am' : 'pm'
+  const clock = hours % 12 === 0 ? 12 : hours % 12
+  return minutes === 0
+    ? `${clock}${suffix}`
+    : `${clock}:${String(minutes).padStart(2, '0')}${suffix}`
+}
+
 export function formatFuzzyDate(date: FuzzyDate): string {
   switch (date.datePrecision) {
     case 'exact': {

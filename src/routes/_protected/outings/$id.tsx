@@ -19,7 +19,7 @@ import {
   saveSeenPerformer,
   suggestPeople,
 } from '../../../server/people-functions'
-import { formatFuzzyDate } from '../../../lib/fuzzy-date'
+import { formatCurtain, formatFuzzyDate } from '../../../lib/fuzzy-date'
 import type { Visibility } from '../../../server/visibility'
 
 export const Route = createFileRoute('/_protected/outings/$id')({
@@ -57,7 +57,11 @@ function OutingDetail() {
   // the moment the server stopped withholding them.
   const ownEntry = outing.attendees.find((attendee) => attendee.userId === viewerId)
   const others = outing.attendees.filter((attendee) => attendee.userId !== viewerId)
-  const date = formatFuzzyDate(outing)
+  // The time joins the date only when there is one, which is only when
+  // somebody saw two performances that day and needed them told apart.
+  const date = outing.curtain
+    ? `${formatFuzzyDate(outing)} · ${formatCurtain(outing.curtain)}`
+    : formatFuzzyDate(outing)
   const place = [outing.venue, outing.city].filter(Boolean).join(', ')
 
   return (

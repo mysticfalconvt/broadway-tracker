@@ -460,7 +460,9 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
   tool({
     name: 'log_night',
     description:
-      'Record a night this person went to the theatre. Say how sure the date is: `exact` ' +
+      'Record a night this person went to the theatre. Two performances on one day are two ' +
+      'nights — log each, and set `curtain` on both so they can be told apart. ' +
+      'Say how sure the date is: `exact` ' +
       'with a full date, `month`, `year` when only the year is known, `approximate` with a ' +
       'phrase like "some time in the nineties". Never invent a precision they did not ' +
       'give — a guessed date recorded as exact is a false memory. Check my_nights_at first ' +
@@ -476,6 +478,14 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
       occurredMonth: z.number().int().min(1).max(12).optional(),
       occurredYear: z.number().int().min(1800).max(2200).optional(),
       approximateDate: z.string().trim().max(100).optional(),
+      curtain: z
+        .string()
+        .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+        .optional()
+        .describe(
+          'Curtain-up as 24-hour clock, e.g. "14:00". Give it when two performances fell on ' +
+            'one day — a matinee and an evening, or the two parts of a show that comes in two.',
+        ),
       sharedNotes: z.string().trim().max(5_000).optional(),
       attendeeIds: z
         .array(z.string().uuid())

@@ -1,12 +1,14 @@
+import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import { outings } from '../src/server/db/schema'
 import { libraryForOwner } from '../src/server/library-functions'
 import {
   createOutingForUser,
   outingForViewer,
   outingsForUserAndShow,
 } from '../src/server/outing-functions'
-import { makeFriendship, makeShow, makeUser, resetDatabase } from './helpers'
+import { db, makeFriendship, makeShow, makeUser, resetDatabase } from './helpers'
 
 beforeEach(resetDatabase)
 
@@ -244,5 +246,81 @@ describe('attendee-owned content', () => {
     )
     const outing = await outingForViewer(owner.id, id)
     expect(outing.attendees[0]?.privateNotes).toBe('Took the kids.')
+  })
+})
+
+describe('two performances on one day', () => {
+  it('keeps them as separate nights that can be told apart', async () => {
+    // Harry Potter and the Cursed Child in two parts, or any matinee and
+    // evening. Two rows on one date used to be indistinguishable.
+    const member = await makeUser()
+    const show = await makeShow()
+    const matinee = await createOutingForUser(member.id, {
+      showId: show.id,
+      datePrecision: 'exact',
+      occurredOn: '2018-07-14',
+      curtain: '14:00',
+      attendeeIds: [],
+      favorite: false,
+    })
+    const evening = await createOutingForUser(member.id, {
+      showId: show.id,
+      datePrecision: 'exact',
+      occurredOn: '2018-07-14',
+      curtain: '19:30',
+      attendeeIds: [],
+      favorite: false,
+    })
+    expect(matinee.id).not.toBe(evening.id)
+
+    const { nightsForUser } = await import('../src/server/outing-functions')
+    const page = await nightsForUser(member.id, 50, 0)
+    expect(page.total).toBe(2)
+    // In the order they happened, not the order they were typed.
+    expect(page.nights.map((one) => one.curtain)).toEqual(['14:00:00', '19:30:00'])
+  })
+
+  it('refuses a time that is not one, at the edge where input arrives', async () => {
+    // Through the tool, because that is where validation lives. The core takes
+    // data that has already been checked — a `createServerFn` validator on the
+    // web path, the tool's own schema on the MCP one — so asserting a readable
+    // message against the core would only prove Postgres rejects nonsense.
+    const { runTool } = await import('../src/server/tools')
+    const member = await makeUser()
+    const show = await makeShow()
+    const refused = await runTool(
+      member.id,
+      'log_night',
+      {
+        showId: show.id,
+        datePrecision: 'exact',
+        occurredOn: '2018-07-14',
+        curtain: 'matinee',
+      },
+      { allowWrites: true },
+    )
+    expect(refused.ok).toBe(false)
+    // Turned away by the schema, not by Postgres choking on it further in.
+    // The database rejects it either way, but its message mentions the column
+    // too, so anything looser than this passes without the guard.
+    expect(refused.ok === false && refused.error).toMatch(/^Wrong arguments for log_night/)
+    expect(await db.select().from(outings)).toHaveLength(0)
+  })
+
+  it('drops a time from a date too vague to hang one on', async () => {
+    // "Some time in the nineties, at two o'clock" says nothing, and reads as
+    // though it says something.
+    const member = await makeUser()
+    const show = await makeShow()
+    const night = await createOutingForUser(member.id, {
+      showId: show.id,
+      datePrecision: 'year',
+      occurredYear: 1995,
+      curtain: '14:00',
+      attendeeIds: [],
+      favorite: false,
+    })
+    const [row] = await db.select().from(outings).where(eq(outings.id, night.id))
+    expect(row?.curtain).toBeNull()
   })
 })

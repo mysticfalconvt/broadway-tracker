@@ -8,6 +8,7 @@ import {
   primaryKey,
   smallint,
   text,
+  time,
   timestamp,
   uniqueIndex,
   uuid,
@@ -386,7 +387,23 @@ export const outings = pgTable(
     occurredMonth: smallint('occurred_month'),
     occurredYear: smallint('occurred_year'),
     approximateDate: text('approximate_date'),
-    startsAt: timestamp('starts_at'),
+    /**
+     * Curtain-up, when it is worth recording.
+     *
+     * A two-show day is two nights out, and the app could not tell them apart:
+     * a matinee and an evening of the same show on one date were two rows with
+     * nothing to separate them and no order between them. Harry Potter and the
+     * Cursed Child in two parts is the same shape.
+     *
+     * It matters more than tidiness. A matinee is when an understudy goes on,
+     * so the two performances often had different people in them — and "who you
+     * probably saw" was answering identically for both.
+     *
+     * A clock time with no date and no zone: a two o'clock matinee is two
+     * o'clock where the theatre is, which is the only reading anybody wants.
+     */
+    curtain: time('curtain'),
+
     venue: text('venue'),
     city: text('city'),
     country: text('country'),

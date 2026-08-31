@@ -1,0 +1,1 @@
+ALTER TABLE "outings" DROP COLUMN "starts_at";
