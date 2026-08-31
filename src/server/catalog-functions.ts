@@ -337,8 +337,59 @@ async function insertWithUniqueSlug({
 }
 
 export const submitShowForUser = createServerOnlyFn(
-  async (userId: string, data: z.infer<typeof showInput>) =>
-    insertWithUniqueSlug({ ...data, submittedByUserId: userId }),
+  async (userId: string, data: z.infer<typeof showInput>) => {
+    const show = await insertWithUniqueSlug({ ...data, submittedByUserId: userId })
+    // After the insert: a submission that failed to save must not be announced.
+    await tellAdminsAboutASubmission(userId, show.title)
+    return show
+  },
+)
+
+/**
+ * Tells administrators a show is waiting for review.
+ *
+ * A submission is blocked on a person, and earns a letter for the same reason a
+ * friend request does: the badge only reaches somebody who visits, and a show
+ * is at its most fixable now — while whoever submitted it still remembers where
+ * the dates came from, which is the part no research recovers later.
+ *
+ * Nothing is sent when an administrator submits it themselves. That is what
+ * keeps this immediate rather than batched: somebody pointing an agent at the
+ * catalog is almost always an administrator, and those are the bursts that
+ * would have made a queue notice into noise. What remains — a member adding a
+ * show they went to — happens rarely enough to deserve a letter each time.
+ *
+ * Delivery failures are logged rather than thrown: the submission is already
+ * recorded and must not be undone by a mail problem.
+ */
+export const tellAdminsAboutASubmission = createServerOnlyFn(
+  async (submitterId: string, title: string) => {
+    try {
+      const db = getDb()
+      const [submitter] = await db
+        .select({ name: user.name, role: user.role })
+        .from(user)
+        .where(eq(user.id, submitterId))
+        .limit(1)
+      if (!submitter || submitter.role === 'admin') return null
+
+      const admins = await db.select({ email: user.email }).from(user).where(eq(user.role, 'admin'))
+      if (admins.length === 0) return null
+
+      const base = process.env.BETTER_AUTH_URL ?? ''
+      const notice = {
+        subject: `${submitter.name} added ${title}`,
+        text: `${submitter.name} has submitted ${title} to the catalog.\n\n${base}/admin/catalog\n\nWorth a look now rather than later — they still remember where the details came from.`,
+      }
+
+      const { sendEmail } = await import('./email')
+      for (const admin of admins) await sendEmail({ to: admin.email, ...notice })
+      return { sentTo: admins.map((admin) => admin.email), ...notice }
+    } catch (error) {
+      console.error('[catalog] could not tell the administrators about the submission', error)
+      return null
+    }
+  },
 )
 
 export const submitShow = createServerFn({ method: 'POST' })
