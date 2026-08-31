@@ -3477,3 +3477,39 @@ a.recent-entry:hover h3,
   padding-block: 0.3rem;
   font-size: 0.8rem;
 }
+
+.venue-row {
+  display: grid;
+  gap: 0.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--rule);
+}
+.venue-former {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+.venue-merge {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.venue-merge label {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+.venue-merge select {
+  min-height: 2.4rem;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0.35rem 0.55rem;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+}

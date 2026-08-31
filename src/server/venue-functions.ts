@@ -123,6 +123,7 @@ export const venuesForAdmin = createServerOnlyFn(async (actor: Actor) => {
       city: venues.city,
       country: venues.country,
       matchKey: venues.matchKey,
+      formerNames: venues.formerNames,
       // The table names are interpolated and the columns written out, because
       // interpolating the column references renders them unqualified -- which
       // silently correlates the subquery against itself and counts zero.

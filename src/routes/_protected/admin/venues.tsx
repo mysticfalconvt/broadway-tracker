@@ -22,6 +22,21 @@ function VenueAdmin() {
   async function merge(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
+    // The losing record is deleted, and putting it back means recreating it by
+    // hand. Nights and productions move across, and the name is kept — but the
+    // row is gone, so this asks first.
+    const target = venues.find((one) => one.id === String(form.get('targetId')))
+    const source = venues.find((one) => one.id === String(form.get('sourceId')))
+    if (
+      source &&
+      target &&
+      !window.confirm(
+        `Treat “${source.name}” and “${target.name}” as the same building? ` +
+          `Everything recorded at “${source.name}” moves across, and the name is kept as a former one.`,
+      )
+    ) {
+      return
+    }
     setError(null)
     try {
       await mergeVenueInto({
@@ -110,29 +125,62 @@ function VenueAdmin() {
         {venues.length ? (
           <div className="venue-list">
             {venues.map((venue) => (
-              <form key={venue.id} onSubmit={rename}>
-                <input type="hidden" name="id" value={venue.id} />
-                <label>
-                  Name
-                  <input name="name" defaultValue={venue.name} required />
-                </label>
-                <label>
-                  City
-                  <input name="city" defaultValue={venue.city ?? ''} />
-                </label>
-                <label>
-                  Country
-                  <input name="country" defaultValue={venue.country ?? ''} />
-                </label>
-                <p className="venue-usage">
-                  {venue.outingCount} {venue.outingCount === 1 ? 'outing' : 'outings'} ·{' '}
-                  {venue.productionCount}{' '}
-                  {venue.productionCount === 1 ? 'production' : 'productions'}
-                </p>
-                <button className="button button-quiet" type="submit">
-                  Save
-                </button>
-              </form>
+              <div className="venue-row" key={venue.id}>
+                <form onSubmit={rename}>
+                  <input type="hidden" name="id" value={venue.id} />
+                  <label>
+                    Name
+                    <input name="name" defaultValue={venue.name} required />
+                  </label>
+                  <label>
+                    City
+                    <input name="city" defaultValue={venue.city ?? ''} />
+                  </label>
+                  <label>
+                    Country
+                    <input name="country" defaultValue={venue.country ?? ''} />
+                  </label>
+                  {venue.formerNames.length ? (
+                    <p className="venue-former">Formerly {venue.formerNames.join(', ')}</p>
+                  ) : null}
+                  <p className="venue-usage">
+                    {venue.outingCount} {venue.outingCount === 1 ? 'outing' : 'outings'} ·{' '}
+                    {venue.productionCount}{' '}
+                    {venue.productionCount === 1 ? 'production' : 'productions'}
+                  </p>
+                  <button className="button button-quiet" type="submit">
+                    Save
+                  </button>
+                </form>
+                {/*
+                Deliberate, rather than only for pairs that look alike. The
+                suspect list is fuzzy name matching, and a renamed theatre is
+                precisely the case it cannot find: the Brooks Atkinson and the
+                Lena Horne share almost no letters and are the same room. Two
+                records nobody would ever mistake for each other still need
+                joining, so the choice has to be a person's.
+              */}
+                <form className="venue-merge" onSubmit={merge}>
+                  <input type="hidden" name="sourceId" value={venue.id} />
+                  <label>
+                    Same building as
+                    <select name="targetId" required defaultValue="">
+                      <option value="">Leave it alone</option>
+                      {venues
+                        .filter((other) => other.id !== venue.id)
+                        .map((other) => (
+                          <option key={other.id} value={other.id}>
+                            {other.name}
+                            {other.city ? ` — ${other.city}` : ''}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <button className="text-action text-action-warn" type="submit">
+                    Merge “{venue.name}” into it
+                  </button>
+                </form>
+              </div>
             ))}
           </div>
         ) : (
