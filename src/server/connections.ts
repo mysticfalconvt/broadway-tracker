@@ -166,7 +166,16 @@ export const connectionsFor = createServerOnlyFn(async (viewerId: string) => {
   const venueRows = venueIds.length
     ? await db.select().from(venues).where(inArray(venues.id, venueIds))
     : []
-  const byVenue = new Map<string, { name: string; formerNames: string[]; nights: number }>()
+  const byVenue = new Map<
+    string,
+    {
+      name: string
+      formerNames: string[]
+      nights: number
+      /** What was seen there. A room is remembered by what happened in it. */
+      shows: { title: string; slug: string; year: number | null }[]
+    }
+  >()
   for (const night of nights) {
     // Free text only groups with itself; without a linked record there is no
     // way to know two spellings are one building.
@@ -177,12 +186,23 @@ export const connectionsFor = createServerOnlyFn(async (viewerId: string) => {
       name: found?.name ?? night.venueText ?? '',
       formerNames: found?.formerNames ?? [],
       nights: 0,
+      shows: [],
     }
     entry.nights += 1
+    entry.shows.push({
+      title: night.showTitle,
+      slug: night.showSlug,
+      year: night.occurredYear ?? (night.occurredOn ? Number(night.occurredOn.slice(0, 4)) : null),
+    })
     byVenue.set(key, entry)
   }
   const returnedTo = [...byVenue.values()]
     .filter((entry) => entry.nights > 1)
+    // Oldest first within a theatre: the point is the span, not the newest.
+    .map((entry) => ({
+      ...entry,
+      shows: entry.shows.sort((a, b) => (a.year ?? 0) - (b.year ?? 0)),
+    }))
     .sort((a, b) => b.nights - a.nights || a.name.localeCompare(b.name))
 
   // ─── Shows seen more than once ──────────────────────────────────────────

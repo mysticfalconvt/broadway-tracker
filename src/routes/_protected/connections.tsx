@@ -19,10 +19,6 @@ export const Route = createFileRoute('/_protected/connections')({
   loader: async () => ({ found: await getConnections() }),
 })
 
-function times(count: number) {
-  return count === 2 ? 'twice' : `${count} times`
-}
-
 function Connections() {
   const { found } = Route.useLoaderData()
   const empty =
@@ -75,7 +71,16 @@ function Connections() {
               <li key={venue.name}>
                 <strong>{venue.name}</strong>
                 <span>
-                  {times(venue.nights)}
+                  {/* What was seen there, which is how a room is remembered. */}
+                  {venue.shows.map((show, index) => (
+                    <span key={`${show.slug}-${show.year}`}>
+                      {index > 0 ? ', ' : ''}
+                      <Link params={{ slug: show.slug }} to="/shows/$slug">
+                        {show.title}
+                      </Link>
+                      {show.year ? ` (${show.year})` : ''}
+                    </span>
+                  ))}
                   {/* The rename is the connection, not a footnote to it. */}
                   {venue.formerNames.length
                     ? ` · the same room as the ${venue.formerNames.join(', the ')}`

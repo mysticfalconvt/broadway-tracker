@@ -206,6 +206,9 @@ describe('theatres gone back to', () => {
     expect(found.venues).toHaveLength(1)
     expect(found.venues[0]?.nights).toBe(2)
     expect(found.venues[0]?.formerNames).toContain('Brooks Atkinson Theatre')
+    // A room is remembered by what happened in it, oldest first.
+    expect(found.venues[0]?.shows.map((one) => one.title)).toEqual(['Grease', 'Six'])
+    expect(found.venues[0]?.shows.map((one) => one.year)).toEqual([2007, 2026])
   })
 
   it('says nothing about a theatre visited once', async () => {
