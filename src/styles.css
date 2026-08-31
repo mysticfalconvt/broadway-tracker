@@ -1186,12 +1186,6 @@ h3 {
   margin-left: -0.45rem;
   border: 2px solid var(--surface);
 }
-.avatar:nth-child(2n) {
-  background: var(--oxblood);
-}
-.avatar:nth-child(3n) {
-  background: var(--brass);
-}
 .avatar-label {
   margin-left: 0.55rem;
   color: var(--ink-muted);
@@ -3082,11 +3076,15 @@ a.recent-entry:hover h3,
 }
 
 /* Somebody's photograph, or their initials on a colour of their own. */
-.avatar {
+/*
+  Only a photograph needs these. Applied to every `.avatar` they overrode the
+  grid centring on the block above, which left an initial sitting in the corner
+  of the circle where the border radius clipped it off.
+*/
+img.avatar {
   display: block;
   aspect-ratio: 1;
   object-fit: cover;
-  border-radius: 50%;
 }
 .avatar-initials {
   display: grid;
