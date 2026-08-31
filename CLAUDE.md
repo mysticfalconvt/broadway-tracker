@@ -148,6 +148,13 @@ before changing it:
 - **Only the SHA-256 of a token is stored.** Plain SHA-256 rather than a
   password hash is deliberate: 160 bits from a CSPRNG has no dictionary to run.
 - Tokens are shown once. Nothing can recover one afterwards.
+- **A member's key is wider than the website, on purpose, in one place.** It can
+  add productions and cast to any published show; no member-facing screen adds a
+  casting at all. That is the layer's whole point — fifteen people filling a
+  catalog that is otherwise empty — and what stands behind it is a light rather
+  than a gate: every row carries `createdByUserId` and a `source`, and
+  `/admin/contributions` lists them newest first, so a bad run reads as a run.
+  If you gate this later, gate it in `addCasting`, where both callers meet.
 - **A caller may correct what it entered.** `castings.createdByUserId` is the
   test, with admins able to correct any. An append-only API hands somebody a way
   to make a mess and no way to clear it up, and bulk entry is where the mess

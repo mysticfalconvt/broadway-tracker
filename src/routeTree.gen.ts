@@ -42,6 +42,7 @@ import { Route as WritingIndexRouteImport } from './routes/writing/index'
 import { Route as WritingSlugRouteImport } from './routes/writing/$slug'
 import { Route as ProtectedAdminIndexRouteImport } from './routes/_protected/admin/index'
 import { Route as ProtectedAdminCatalogRouteImport } from './routes/_protected/admin/catalog'
+import { Route as ProtectedAdminContributionsRouteImport } from './routes/_protected/admin/contributions'
 import { Route as ProtectedAdminImportRouteImport } from './routes/_protected/admin/import'
 import { Route as ProtectedAdminLocalRouteImport } from './routes/_protected/admin/local'
 import { Route as ProtectedAdminMembersRouteImport } from './routes/_protected/admin/members'
@@ -222,6 +223,12 @@ const ProtectedAdminCatalogRoute = ProtectedAdminCatalogRouteImport.update({
   path: '/admin/catalog',
   getParentRoute: () => ProtectedRoute,
 } as any)
+const ProtectedAdminContributionsRoute =
+  ProtectedAdminContributionsRouteImport.update({
+    id: '/admin/contributions',
+    path: '/admin/contributions',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
 const ProtectedAdminImportRoute = ProtectedAdminImportRouteImport.update({
   id: '/admin/import',
   path: '/admin/import',
@@ -331,6 +338,7 @@ export interface FileRoutesByFullPath {
   '/writing/$slug': typeof WritingSlugRoute
   '/writing/': typeof WritingIndexRoute
   '/admin/catalog': typeof ProtectedAdminCatalogRoute
+  '/admin/contributions': typeof ProtectedAdminContributionsRoute
   '/admin/import': typeof ProtectedAdminImportRoute
   '/admin/local': typeof ProtectedAdminLocalRoute
   '/admin/members': typeof ProtectedAdminMembersRoute
@@ -380,6 +388,7 @@ export interface FileRoutesByTo {
   '/writing/$slug': typeof WritingSlugRoute
   '/writing': typeof WritingIndexRoute
   '/admin/catalog': typeof ProtectedAdminCatalogRoute
+  '/admin/contributions': typeof ProtectedAdminContributionsRoute
   '/admin/import': typeof ProtectedAdminImportRoute
   '/admin/local': typeof ProtectedAdminLocalRoute
   '/admin/members': typeof ProtectedAdminMembersRoute
@@ -431,6 +440,7 @@ export interface FileRoutesById {
   '/writing/$slug': typeof WritingSlugRoute
   '/writing/': typeof WritingIndexRoute
   '/_protected/admin/catalog': typeof ProtectedAdminCatalogRoute
+  '/_protected/admin/contributions': typeof ProtectedAdminContributionsRoute
   '/_protected/admin/import': typeof ProtectedAdminImportRoute
   '/_protected/admin/local': typeof ProtectedAdminLocalRoute
   '/_protected/admin/members': typeof ProtectedAdminMembersRoute
@@ -482,6 +492,7 @@ export interface FileRouteTypes {
     | '/writing/$slug'
     | '/writing/'
     | '/admin/catalog'
+    | '/admin/contributions'
     | '/admin/import'
     | '/admin/local'
     | '/admin/members'
@@ -531,6 +542,7 @@ export interface FileRouteTypes {
     | '/writing/$slug'
     | '/writing'
     | '/admin/catalog'
+    | '/admin/contributions'
     | '/admin/import'
     | '/admin/local'
     | '/admin/members'
@@ -581,6 +593,7 @@ export interface FileRouteTypes {
     | '/writing/$slug'
     | '/writing/'
     | '/_protected/admin/catalog'
+    | '/_protected/admin/contributions'
     | '/_protected/admin/import'
     | '/_protected/admin/local'
     | '/_protected/admin/members'
@@ -855,6 +868,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedAdminCatalogRouteImport
       parentRoute: typeof ProtectedRoute
     }
+    '/_protected/admin/contributions': {
+      id: '/_protected/admin/contributions'
+      path: '/admin/contributions'
+      fullPath: '/admin/contributions'
+      preLoaderRoute: typeof ProtectedAdminContributionsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/_protected/admin/import': {
       id: '/_protected/admin/import'
       path: '/admin/import'
@@ -978,6 +998,7 @@ interface ProtectedRouteChildren {
   ProtectedSubmitShowRoute: typeof ProtectedSubmitShowRoute
   ProtectedWriteRoute: typeof ProtectedWriteRoute
   ProtectedAdminCatalogRoute: typeof ProtectedAdminCatalogRoute
+  ProtectedAdminContributionsRoute: typeof ProtectedAdminContributionsRoute
   ProtectedAdminImportRoute: typeof ProtectedAdminImportRoute
   ProtectedAdminLocalRoute: typeof ProtectedAdminLocalRoute
   ProtectedAdminMembersRoute: typeof ProtectedAdminMembersRoute
@@ -1008,6 +1029,7 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedSubmitShowRoute: ProtectedSubmitShowRoute,
   ProtectedWriteRoute: ProtectedWriteRoute,
   ProtectedAdminCatalogRoute: ProtectedAdminCatalogRoute,
+  ProtectedAdminContributionsRoute: ProtectedAdminContributionsRoute,
   ProtectedAdminImportRoute: ProtectedAdminImportRoute,
   ProtectedAdminLocalRoute: ProtectedAdminLocalRoute,
   ProtectedAdminMembersRoute: ProtectedAdminMembersRoute,

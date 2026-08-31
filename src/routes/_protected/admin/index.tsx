@@ -129,6 +129,11 @@ const AREAS = [
     title: 'The catalog',
     places: [
       {
+        to: '/admin/contributions',
+        label: 'Lately added',
+        what: 'Who put each cast entry there, and what it rests on',
+      },
+      {
         to: '/admin/catalog',
         label: 'Show submissions',
         what: 'What members have asked to add, waiting on a decision',

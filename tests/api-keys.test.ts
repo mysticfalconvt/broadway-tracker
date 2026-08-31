@@ -2,9 +2,10 @@ import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { actorForToken, apiKeysFor, createApiKey, revokeApiKey } from '../src/server/api-keys'
-import { apiKeys, outings } from '../src/server/db/schema'
+import { apiKeys, castings, outings, shows } from '../src/server/db/schema'
 import { TOOLS, runTool, toolDescriptions } from '../src/server/tools'
-import { db, makeShow, makeUser, resetDatabase } from './helpers'
+import { recentContributions } from '../src/server/admin-functions'
+import { db, makeAdmin, makeShow, makeUser, resetDatabase } from './helpers'
 
 beforeEach(resetDatabase)
 
@@ -154,5 +155,120 @@ describe('what reaches the browser', () => {
     const [stored] = await db.select().from(apiKeys)
 
     expect(JSON.stringify(await apiKeysFor(member.id))).not.toContain(stored!.tokenHash)
+  })
+})
+
+describe('what a non-admin key reaches', () => {
+  it('can enrich a published show, which is the point of the layer', async () => {
+    // Deliberately wider than the website gives a member. Fifteen people
+    // filling an otherwise empty catalog is what this exists for, and what
+    // makes it safe is that every row says who put it there.
+    const member = await makeUser()
+    const show = await makeShow({ catalogStatus: 'published' })
+    const made = await runTool(
+      member.id,
+      'add_production',
+      { showId: show.id, name: 'Broadway', productionType: 'broadway', openedOn: '2001-04-19' },
+      { allowWrites: true },
+    )
+    expect(made.ok).toBe(true)
+
+    const added = await runTool(
+      member.id,
+      'add_casting',
+      {
+        productionId: (made.ok ? (made.data as { id: string }) : { id: '' }).id,
+        personName: 'Nathan Lane',
+        role: 'Max',
+      },
+      { allowWrites: true },
+    )
+    expect(added.ok).toBe(true)
+  })
+
+  it('signs every row with who put it there', async () => {
+    // The light that stands in for a gate. Without this, a bad run of entries
+    // has to be stumbled on one row at a time.
+    const member = await makeUser()
+    const show = await makeShow({ catalogStatus: 'published' })
+    const made = await runTool(
+      member.id,
+      'add_production',
+      { showId: show.id, name: 'Broadway', productionType: 'broadway' },
+      { allowWrites: true },
+    )
+    await runTool(
+      member.id,
+      'add_casting',
+      {
+        productionId: (made.ok ? (made.data as { id: string }) : { id: '' }).id,
+        personName: 'Nathan Lane',
+        role: 'Max',
+      },
+      { allowWrites: true },
+    )
+
+    const [row] = await db.select().from(castings)
+    expect(row?.createdByUserId).toBe(member.id)
+    expect(row?.source).toBe('research')
+
+    const admin = await makeAdmin()
+    const seen = await recentContributions(admin)
+    expect(seen[0]?.byName).toBe(member.name)
+    expect(seen[0]?.role).toBe('Max')
+  })
+
+  it('cannot publish a show, however it arrives', async () => {
+    const member = await makeUser()
+    const research = JSON.stringify({
+      shows: [{ title: 'Something New', type: 'musical' }],
+    })
+    const added = await runTool(
+      member.id,
+      'add_researched_show',
+      { research },
+      { allowWrites: true },
+    )
+    expect(added.ok).toBe(true)
+
+    const [made] = await db.select().from(shows).where(eq(shows.title, 'Something New'))
+    expect(made?.catalogStatus).toBe('pending')
+  })
+
+  it('cannot undo somebody else’s contribution', async () => {
+    const mine = await makeUser()
+    const theirs = await makeUser()
+    const show = await makeShow({ catalogStatus: 'published' })
+    const made = await runTool(
+      mine.id,
+      'add_production',
+      { showId: show.id, name: 'Broadway', productionType: 'broadway' },
+      { allowWrites: true },
+    )
+    await runTool(
+      mine.id,
+      'add_casting',
+      {
+        productionId: (made.ok ? (made.data as { id: string }) : { id: '' }).id,
+        personName: 'Nathan Lane',
+        role: 'Max',
+      },
+      { allowWrites: true },
+    )
+    const [row] = await db.select().from(castings)
+
+    const refused = await runTool(
+      theirs.id,
+      'remove_casting',
+      { castingId: row!.id },
+      { allowWrites: true },
+    )
+    expect(refused.ok).toBe(false)
+    expect(await db.select().from(castings)).toHaveLength(1)
+  })
+
+  it('keeps the contributions view to administrators', async () => {
+    const member = await makeUser()
+    await expect(recentContributions(member)).rejects.toThrow()
   })
 })

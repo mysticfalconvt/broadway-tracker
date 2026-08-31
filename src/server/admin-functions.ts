@@ -9,11 +9,14 @@ import { pendingRequestCountFor } from './friend-functions'
 import { type Actor, assertAdmin } from './catalog-functions'
 import { getDb } from './db/client'
 import {
+  castings,
   friendships,
   libraryEntries,
   lists,
   outingAttendees,
+  people,
   posts,
+  productions,
   reports,
   showImages,
   shows,
@@ -140,6 +143,46 @@ export const publishedShowForAdmin = createServerOnlyFn(async (actor: Actor, id:
   if (!row) throw new Error('That show does not exist.')
   return row
 })
+
+/**
+ * What has been added to the catalog lately, and by whom.
+ *
+ * A member's key can add cast to any show, which is more than the website
+ * offers them and is deliberate — fifteen people filling a catalog that is
+ * otherwise empty is the whole point of the layer. What makes that safe is not
+ * a gate but a light on: every row says who entered it and whether a person
+ * vouched for it or a machine read it off a page, so a bad run of entries is
+ * visible as a run rather than having to be stumbled on one row at a time.
+ */
+export const recentContributions = createServerOnlyFn(async (actor: Actor, limit = 100) => {
+  assertAdmin(actor)
+  return getDb()
+    .select({
+      id: castings.id,
+      role: castings.role,
+      source: castings.source,
+      sourceNote: castings.sourceNote,
+      createdAt: castings.createdAt,
+      personName: people.name,
+      productionName: productions.name,
+      showTitle: shows.title,
+      showSlug: shows.slug,
+      showStatus: shows.catalogStatus,
+      byName: user.name,
+      byHandle: user.handle,
+    })
+    .from(castings)
+    .innerJoin(people, eq(castings.personId, people.id))
+    .innerJoin(productions, eq(castings.productionId, productions.id))
+    .innerJoin(shows, eq(productions.showId, shows.id))
+    .leftJoin(user, eq(castings.createdByUserId, user.id))
+    .orderBy(desc(castings.createdAt))
+    .limit(limit)
+})
+
+export const getRecentContributions = createServerFn({ method: 'GET' }).handler(async () =>
+  recentContributions((await requireSession()).user as Actor),
+)
 
 export const getAdminOverview = createServerFn({ method: 'GET' }).handler(async () =>
   adminOverview((await requireSession()).user as Actor),

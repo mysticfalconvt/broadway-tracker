@@ -3401,3 +3401,31 @@ a.recent-entry:hover h3,
   color: var(--ink-muted);
   font-size: 0.82rem;
 }
+
+.contribution-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.contribution-list li {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.contribution-what {
+  margin: 0;
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1rem;
+}
+.contribution-where {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+}
+.contribution-who {
+  margin: 0.15rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
