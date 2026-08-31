@@ -245,6 +245,7 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
       productionType: z.enum(['broadway', 'off_broadway', 'tour', 'regional', 'local', 'other']),
       venue: z.string().trim().max(200).optional(),
       city: z.string().trim().max(120).optional(),
+      country: z.string().trim().max(120).optional(),
       openedOn: z.string().date().optional(),
       closedOn: z.string().date().optional().describe('Omit if it is still running.'),
       sourceNote: z.string().trim().max(500).optional().describe('A URL somebody could check.'),
@@ -258,6 +259,7 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
         args.productionType,
         args.venue,
         args.city,
+        args.country,
       )
 
       if (args.openedOn || args.closedOn) {
@@ -326,10 +328,17 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
       const { getDb } = await import('./db/client')
       const { outingAttendees, outings } = await import('./db/schema')
       const { and, eq } = await import('drizzle-orm')
-      const { likelyCastOn, seenPerformersFor } = await import('./people-functions')
+      const { likelyCastBetween, seenPerformersFor } = await import('./people-functions')
+      const { dateWindow } = await import('../lib/fuzzy-date')
 
       const [night] = await getDb()
-        .select({ productionId: outings.productionId, occurredOn: outings.occurredOn })
+        .select({
+          productionId: outings.productionId,
+          datePrecision: outings.datePrecision,
+          occurredOn: outings.occurredOn,
+          occurredMonth: outings.occurredMonth,
+          occurredYear: outings.occurredYear,
+        })
         .from(outings)
         .innerJoin(outingAttendees, eq(outingAttendees.outingId, outings.id))
         .where(and(eq(outings.id, outingId), eq(outingAttendees.userId, actorId)))
@@ -340,13 +349,22 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
       const recorded = await seenPerformersFor(actorId, outingId)
       const spokenFor = new Set(recorded.filter((r) => r.role).map((r) => normalizeRole(r.role!)))
       const namedAlready = new Set(recorded.map((r) => r.personId))
-      const likely = night.productionId
-        ? (await likelyCastOn(night.productionId, night.occurredOn)).filter(
-            (member) =>
-              !spokenFor.has(normalizeRole(member.role)) && !namedAlready.has(member.personId),
-          )
-        : []
-      return { recorded, stillInferred: likely }
+      const window = dateWindow(night)
+      const likely =
+        night.productionId && window
+          ? (await likelyCastBetween(night.productionId, window.from, window.to)).filter(
+              (member) =>
+                !spokenFor.has(normalizeRole(member.role)) && !namedAlready.has(member.personId),
+            )
+          : []
+      // Said plainly, because an empty list used to be indistinguishable from
+      // "no cast recorded" and there was no way to tell which had happened.
+      return {
+        recorded,
+        stillInferred: likely,
+        inferredAcross: window,
+        why: window ? null : 'This night has no date precise enough to match against a cast list.',
+      }
     },
   }),
 

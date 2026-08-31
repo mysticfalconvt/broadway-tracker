@@ -161,12 +161,25 @@ before changing it:
   comes from. Deleting a casting withdraws a claim about a stage; it never
   touches `seen_performers`, which is a member's own word about their own night.
 
+## Renamed theatres
+
+A building outlives its name. The Brooks Atkinson became the Lena Horne in 2022,
+and the two records had nothing connecting them. One record per **building**,
+with `venues.formerNames` carrying what it used to be called; `findOrCreateVenue`
+falls back to those, and `mergeVenues` is how a rename gets recorded — the name
+merged away is kept rather than discarded. The name a production displays is
+still whatever was typed at the time, because that lives on the production.
+
 ## Covers and understudies
 
 `likelyCastOn` infers from casting dates, which cannot know an understudy went
 on. `seen_performers` is the override, and it is **per role**, not per night:
 recording one cover supersedes that role and leaves the rest of the inference
-standing. Roles are compared through `normalizeRole`, never as raw strings:
+standing. It works from a **window**, not a day: `dateWindow` turns "August
+2007" into its real first and last day, and a performer is offered only if their
+tenure covers every day of it. Requiring an exact date meant the app told people
+never to record a guessed one and then silently withheld the cast from everybody
+who listened. Roles are compared through `normalizeRole`, never as raw strings:
 they are written from three places and one of them decoded entities while the
 others did not, so a cover recorded as `Johnny Bevan &amp; Others` matched
 nothing and the billed performer went on being offered. It used to replace the whole night's guess, which punished the single

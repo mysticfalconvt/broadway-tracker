@@ -60,3 +60,39 @@ export function formatFuzzyDateShort(date: FuzzyDate): string {
   }
   return formatFuzzyDate(date)
 }
+
+/**
+ * The span of days a recorded date could be, as two dates.
+ *
+ * "August 2007" is not an absence of a date, it is a range — and a range is
+ * enough to answer who was on stage whenever one company held the whole of it.
+ * Treating anything short of an exact day as unknown threw that away, and
+ * punished the person who declined to invent a day they did not remember.
+ *
+ * Null for `approximate` and `unknown`: "some time in the nineties" has no
+ * edges worth computing with, and a decade is not evidence about a cast.
+ */
+export function dateWindow(date: {
+  datePrecision: string
+  occurredOn?: string | null
+  occurredMonth?: number | null
+  occurredYear?: number | null
+}): { from: string; to: string } | null {
+  if (date.datePrecision === 'exact' && date.occurredOn) {
+    return { from: date.occurredOn, to: date.occurredOn }
+  }
+  if (date.datePrecision === 'month' && date.occurredYear && date.occurredMonth) {
+    const month = String(date.occurredMonth).padStart(2, '0')
+    // Day zero of the next month is the last day of this one, and handles
+    // February and leap years without a table.
+    const last = new Date(Date.UTC(date.occurredYear, date.occurredMonth, 0)).getUTCDate()
+    return {
+      from: `${date.occurredYear}-${month}-01`,
+      to: `${date.occurredYear}-${month}-${String(last).padStart(2, '0')}`,
+    }
+  }
+  if (date.datePrecision === 'year' && date.occurredYear) {
+    return { from: `${date.occurredYear}-01-01`, to: `${date.occurredYear}-12-31` }
+  }
+  return null
+}

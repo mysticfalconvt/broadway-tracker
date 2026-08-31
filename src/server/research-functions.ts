@@ -80,28 +80,29 @@ Rules, in order of importance:
 const SCREEN = /\((\d{4} )?(film|movie|TV series|television series|miniseries)\)/i
 
 /** The shape research comes back in, checked before any of it is written. */
-const researched = z.object({
+const researched = z.strictObject({
   shows: z
     .array(
-      z.object({
+      z.strictObject({
         title: z.string().trim().min(1).max(200),
         type: z.enum(['musical', 'play', 'other']).catch('other'),
         synopsis: z.string().trim().max(5_000).nullish(),
         productions: z
           .array(
-            z.object({
+            z.strictObject({
               name: z.string().trim().min(1).max(200),
               productionType: z
                 .enum(['broadway', 'off_broadway', 'tour', 'regional', 'local', 'other'])
                 .catch('other'),
               venue: z.string().trim().max(200).nullish(),
               city: z.string().trim().max(120).nullish(),
+              country: z.string().trim().max(120).nullish(),
               openedOn: z.string().date().nullish(),
               closedOn: z.string().date().nullish(),
               source: z.string().trim().max(500).nullish(),
               cast: z
                 .array(
-                  z.object({
+                  z.strictObject({
                     name: z.string().trim().min(1).max(160),
                     role: z.string().trim().min(1).max(160),
                     kind: z.enum(['performer', 'creative']).catch('performer'),

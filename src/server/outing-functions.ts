@@ -1,5 +1,6 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 
+import { dateWindow } from '../lib/fuzzy-date'
 import { normalizeRole } from '../lib/person'
 import { and, desc, eq, inArray, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
@@ -308,7 +309,7 @@ export const outingForViewer = createServerOnlyFn(async (viewerId: string, outin
   // Only an exact date can be matched against a casting window. A year is not
   // enough to say who was on stage that night, and offering a guess from one
   // would be presenting a coin flip as a memory.
-  const { likelyCastOn, seenPerformersFor } = await import('./people-functions')
+  const { likelyCastBetween, seenPerformersFor } = await import('./people-functions')
 
   // A recorded answer replaces the guess **for the roles it speaks to**, not
   // for the whole night.
@@ -325,10 +326,14 @@ export const outingForViewer = createServerOnlyFn(async (viewerId: string, outin
     seenCast.filter((row) => row.role).map((row) => normalizeRole(row.role!)),
   )
   const alreadyNamed = new Set(seenCast.map((row) => row.personId))
+  // A month or a year is a range, and a company that held all of it is as sure
+  // as one that held a single night. Requiring an exact day meant the person
+  // who declined to invent one lost the cast entirely.
+  const window = dateWindow(outing)
   const likelyCast =
     // "Who you probably saw" is addressed to somebody who was in the room.
-    attendance && outing.productionId && outing.datePrecision === 'exact'
-      ? (await likelyCastOn(outing.productionId, outing.occurredOn)).filter(
+    attendance && outing.productionId && window
+      ? (await likelyCastBetween(outing.productionId, window.from, window.to)).filter(
           (member) =>
             !spokenFor.has(normalizeRole(member.role)) && !alreadyNamed.has(member.personId),
         )

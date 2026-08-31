@@ -161,6 +161,17 @@ export const venues = pgTable(
     country: text('country'),
     matchKey: text('match_key').notNull().unique(),
     /**
+     * What this theatre used to be called.
+     *
+     * A building outlives its name. The Brooks Atkinson became the Lena Horne
+     * in 2022, and a night in 2007 and a night in 2026 happened in the same
+     * room — but under two names, which meant two records, and nothing
+     * connecting them. Keeping the old names on the building means a lookup by
+     * either finds it, and a production still displays whatever it was called
+     * at the time, because that is stored on the production.
+     */
+    formerNames: text('former_names').array().notNull().default([]),
+    /**
      * Where the building is, looked up once and kept.
      *
      * Null means "not known yet", which is the ordinary state of a venue nobody

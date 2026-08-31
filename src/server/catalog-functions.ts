@@ -729,6 +729,7 @@ export const findOrCreateProduction = createServerOnlyFn(
     productionType: z.infer<typeof productionInput>['productionType'],
     venue?: string | null,
     city?: string | null,
+    country?: string | null,
   ) => {
     const cleanName = name.trim().replace(/\s+/g, ' ')
     if (!cleanName) throw new Error('A production needs a name.')
@@ -773,18 +774,24 @@ export const findOrCreateProduction = createServerOnlyFn(
        * Blanks only. A venue already on record was put there by somebody.
        */
       const [current] = await db
-        .select({ venueId: productions.venueId, venue: productions.venue, city: productions.city })
+        .select({
+          venueId: productions.venueId,
+          venue: productions.venue,
+          city: productions.city,
+          country: productions.country,
+        })
         .from(productions)
         .where(eq(productions.id, match.id))
         .limit(1)
 
       const wantsVenue = Boolean(venue) && !current?.venueId && !current?.venue
-      if (!wantsVenue && !(city && !current?.city)) {
+      const wantsCountry = Boolean(country) && !current?.country
+      if (!wantsVenue && !(city && !current?.city) && !wantsCountry) {
         return { id: match.id, created: false, filled: false as const }
       }
 
       const linked = wantsVenue
-        ? await (await import('./venue-functions')).findOrCreateVenue(userId, venue!, city)
+        ? await (await import('./venue-functions')).findOrCreateVenue(userId, venue!, city, country)
         : null
       await db
         .update(productions)
@@ -792,6 +799,7 @@ export const findOrCreateProduction = createServerOnlyFn(
           venueId: linked?.id ?? current?.venueId ?? null,
           venue: current?.venue ?? venue ?? null,
           city: current?.city ?? city ?? null,
+          country: current?.country ?? country ?? null,
           updatedAt: new Date(),
         })
         .where(eq(productions.id, match.id))
@@ -799,7 +807,7 @@ export const findOrCreateProduction = createServerOnlyFn(
     }
 
     const linkedVenue = venue
-      ? await (await import('./venue-functions')).findOrCreateVenue(userId, venue, city)
+      ? await (await import('./venue-functions')).findOrCreateVenue(userId, venue, city, country)
       : null
     const [created] = await db
       .insert(productions)
@@ -810,6 +818,7 @@ export const findOrCreateProduction = createServerOnlyFn(
         venueId: linkedVenue?.id ?? null,
         venue: venue || null,
         city: city || null,
+        country: country || null,
       })
       .returning({ id: productions.id })
     if (!created) throw new Error('Unable to record that production.')

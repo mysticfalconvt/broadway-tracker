@@ -222,3 +222,67 @@ describe('productions saved by an administrator', () => {
     ).rejects.toThrow('Forbidden')
   })
 })
+
+describe('a theatre that was renamed', () => {
+  it('lands on the same building whichever name is used', async () => {
+    // The Brooks Atkinson became the Lena Horne in 2022. A night in 2007 and a
+    // night in 2026 happened in the same room, and used to make two records
+    // with nothing connecting them.
+    const member = await makeUser()
+    const old = await findOrCreateVenue(member.id, 'Brooks Atkinson Theatre', 'New York')
+    const now = await findOrCreateVenue(member.id, 'Lena Horne Theatre', 'New York')
+    expect(now.id).not.toBe(old.id)
+
+    const admin = await makeAdmin()
+    await mergeVenues(admin, old.id, now.id)
+
+    const [building] = await db.select().from(venues)
+    expect(building?.name).toBe('Lena Horne Theatre')
+    expect(building?.formerNames).toContain('Brooks Atkinson Theatre')
+
+    // The old name now finds the building rather than making a third record.
+    const again = await findOrCreateVenue(member.id, 'Brooks Atkinson Theatre', 'New York')
+    expect(again.id).toBe(now.id)
+    expect(await db.select().from(venues)).toHaveLength(1)
+  })
+
+  it('does not list the current name among the former ones', async () => {
+    // A theatre renamed twice, then merged in the direction that brings its own
+    // present name back with it. Without the filter a building ends up listed
+    // as formerly itself, and every later lookup has two ways to match it.
+    const member = await makeUser()
+    const old = await findOrCreateVenue(member.id, 'Brooks Atkinson Theatre', 'New York')
+    const now = await findOrCreateVenue(member.id, 'Lena Horne Theatre', 'New York')
+    await db
+      .update(venues)
+      .set({ formerNames: ['Lena Horne Theatre'] })
+      .where(eq(venues.id, old.id))
+
+    const admin = await makeAdmin()
+    await mergeVenues(admin, old.id, now.id)
+
+    const [building] = await db.select().from(venues)
+    expect(building?.name).toBe('Lena Horne Theatre')
+    expect(building?.formerNames).not.toContain('Lena Horne Theatre')
+    expect(building?.formerNames).toContain('Brooks Atkinson Theatre')
+  })
+
+  it('carries the nights and productions across, as merging always did', async () => {
+    const member = await makeUser()
+    const old = await findOrCreateVenue(member.id, 'Brooks Atkinson Theatre', 'New York')
+    const now = await findOrCreateVenue(member.id, 'Lena Horne Theatre', 'New York')
+    const show = await makeShow()
+    await db.insert(outings).values({
+      showId: show.id,
+      createdByUserId: member.id,
+      venueId: old.id,
+      datePrecision: 'year',
+      occurredYear: 2007,
+    })
+
+    const admin = await makeAdmin()
+    await mergeVenues(admin, old.id, now.id)
+    const [night] = await db.select().from(outings)
+    expect(night?.venueId).toBe(now.id)
+  })
+})

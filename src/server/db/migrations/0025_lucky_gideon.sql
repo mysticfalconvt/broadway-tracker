@@ -1,0 +1,1 @@
+ALTER TABLE "venues" ADD COLUMN "former_names" text[] DEFAULT '{}' NOT NULL;

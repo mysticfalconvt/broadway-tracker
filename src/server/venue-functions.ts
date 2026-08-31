@@ -41,7 +41,27 @@ export const findOrCreateVenue = createServerOnlyFn(
     const key = venueKey(cleanName, cleanCity)
     const db = getDb()
 
-    const [existing] = await db.select().from(venues).where(eq(venues.matchKey, key)).limit(1)
+    const [matched] = await db.select().from(venues).where(eq(venues.matchKey, key)).limit(1)
+    let existing: typeof matched | undefined = matched
+
+    /**
+     * Failing that, a theatre that used to be called this.
+     *
+     * Checked in TypeScript rather than SQL because the key is built by rules
+     * SQL does not have, and because the set of renamed theatres is tiny —
+     * every one of them is a building somebody deliberately recorded as having
+     * had another name.
+     */
+    if (!existing) {
+      const renamed = await db
+        .select()
+        .from(venues)
+        .where(sql`array_length(${venues.formerNames}, 1) > 0`)
+      existing = renamed.find((venue) =>
+        venue.formerNames.some((was) => venueKey(tidyPlace(was), venue.city) === key),
+      )
+    }
+
     if (existing) {
       // Somebody has used this theatre again. If it was never placed — because
       // it predates coordinates, or an earlier lookup failed — this is the
@@ -128,6 +148,23 @@ export const mergeVenues = createServerOnlyFn(
         .update(productions)
         .set({ venueId: target.id })
         .where(eq(productions.venueId, source.id))
+
+      /**
+       * The name being merged away is kept, not discarded.
+       *
+       * This is how a renamed theatre gets recorded: merge the old record into
+       * the new one and the old name survives on the building, so anybody
+       * still typing it — or any source that predates the change — lands on
+       * the right room instead of making a third record.
+       */
+      const kept = [...new Set([...target.formerNames, source.name, ...source.formerNames])].filter(
+        (name) => name.toLowerCase() !== target.name.toLowerCase(),
+      )
+      await tx
+        .update(venues)
+        .set({ formerNames: kept, updatedAt: new Date() })
+        .where(eq(venues.id, target.id))
+
       await tx.delete(venues).where(eq(venues.id, source.id))
     })
   },

@@ -344,3 +344,86 @@ describe('a whole journal, countable', () => {
     expect((await nightsForUser(member.id, 50, 0)).total).toBe(0)
   })
 })
+
+describe('a night remembered to the month', () => {
+  async function aRun() {
+    const member = await makeUser()
+    const show = await makeShow()
+    const production = await findOrCreateProduction(member.id, show.id, 'Broadway', 'broadway')
+    // A company intact across the whole of August 2007.
+    await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Laura Osnes',
+      role: 'Sandy',
+      kind: 'performer',
+      isPrincipal: true,
+      startedOn: '2007-07-24',
+      endedOn: '2008-06-01',
+    })
+    // And somebody who left partway through it.
+    await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Left Early',
+      role: 'Rizzo',
+      kind: 'performer',
+      isPrincipal: true,
+      startedOn: '2007-07-24',
+      endedOn: '2007-08-10',
+    })
+    return { member, show, production }
+  }
+
+  it('still says who was on, when one company held the whole month', async () => {
+    // Choosing the honest precision used to cost the cast entirely: the app
+    // told people never to record a guessed date as exact, and then punished
+    // the ones who listened.
+    const { outingForViewer } = await import('../src/server/outing-functions')
+    const { member, show, production } = await aRun()
+    const night = await createOutingForUser(member.id, {
+      showId: show.id,
+      productionId: production.id,
+      datePrecision: 'month',
+      occurredYear: 2007,
+      occurredMonth: 8,
+      attendeeIds: [],
+      favorite: false,
+    })
+
+    const detail = await outingForViewer(member.id, night.id)
+    expect(detail.likelyCast.map((one) => one.name)).toEqual(['Laura Osnes'])
+  })
+
+  it('leaves out anybody who was not there for all of it', async () => {
+    // The bar is "certainly on", not "might have been". Somebody who left on
+    // the 10th is a coin flip for a night in August, and a coin flip presented
+    // as a memory is the thing this app exists to avoid.
+    const { outingForViewer } = await import('../src/server/outing-functions')
+    const { member, show, production } = await aRun()
+    const night = await createOutingForUser(member.id, {
+      showId: show.id,
+      productionId: production.id,
+      datePrecision: 'month',
+      occurredYear: 2007,
+      occurredMonth: 8,
+      attendeeIds: [],
+      favorite: false,
+    })
+    const detail = await outingForViewer(member.id, night.id)
+    expect(detail.likelyCast.map((one) => one.name)).not.toContain('Left Early')
+  })
+
+  it('says nothing for a date too vague to mean anything', async () => {
+    const { outingForViewer } = await import('../src/server/outing-functions')
+    const { member, show, production } = await aRun()
+    const night = await createOutingForUser(member.id, {
+      showId: show.id,
+      productionId: production.id,
+      datePrecision: 'approximate',
+      approximateDate: 'some time in the noughties',
+      attendeeIds: [],
+      favorite: false,
+    })
+    const detail = await outingForViewer(member.id, night.id)
+    expect(detail.likelyCast).toHaveLength(0)
+  })
+})

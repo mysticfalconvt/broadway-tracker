@@ -176,6 +176,13 @@
       "when": 1788128925028,
       "tag": "0024_decode_recorded_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1788135834208,
+      "tag": "0025_lucky_gideon",
+      "breakpoints": true
     }
   ]
 }

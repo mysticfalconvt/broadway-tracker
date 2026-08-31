@@ -154,6 +154,41 @@ export const castForProduction = createServerOnlyFn(async (productionId: string)
  * caller must present it as likely, never as fact — which is why the date used
  * is returned alongside, so a page can say what the guess was based on.
  */
+/**
+ * Who was certainly on stage across a whole span of days.
+ *
+ * "Certainly" is the bar, and it is why this takes a range: somebody is
+ * returned only if their tenure covers every day of it. A company intact
+ * through the whole of August 2007 is as sure a thing as one intact on the
+ * 16th, and a performer who left mid-month is not a guess worth offering.
+ */
+export const likelyCastBetween = createServerOnlyFn(
+  async (productionId: string, from: string, to: string) =>
+    getDb()
+      .select({
+        personId: people.id,
+        name: people.name,
+        role: castings.role,
+        kind: castings.kind,
+        isPrincipal: castings.isPrincipal,
+        source: castings.source,
+      })
+      .from(castings)
+      .innerJoin(people, eq(castings.personId, people.id))
+      .where(
+        and(
+          eq(castings.productionId, productionId),
+          // Performers only: "who you probably saw" means who was on stage. A
+          // director held the role all run and was not in front of you.
+          eq(castings.kind, 'performer'),
+          // Covers the whole window, not merely overlaps it.
+          or(isNull(castings.startedOn), sql`${castings.startedOn} <= ${from}`),
+          or(isNull(castings.endedOn), sql`${castings.endedOn} >= ${to}`),
+        ),
+      )
+      .orderBy(desc(castings.isPrincipal), asc(people.name)),
+)
+
 export const likelyCastOn = createServerOnlyFn(
   async (productionId: string, onDate: string | null) => {
     if (!onDate) return []
