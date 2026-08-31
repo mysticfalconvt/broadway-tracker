@@ -3520,3 +3520,31 @@ a.recent-entry:hover h3,
   font-size: 0.75rem;
   font-weight: 400;
 }
+
+.joined-block {
+  margin-bottom: 2rem;
+}
+.joined-block h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+.joined-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.joined-list li {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.joined-list strong {
+  display: block;
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1rem;
+}
+.joined-list span {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+}

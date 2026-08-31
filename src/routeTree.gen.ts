@@ -19,6 +19,7 @@ import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as ProtectedAskRouteImport } from './routes/_protected/ask'
 import { Route as ProtectedBuildHistoryRouteImport } from './routes/_protected/build-history'
 import { Route as ProtectedCircleRouteImport } from './routes/_protected/circle'
+import { Route as ProtectedConnectionsRouteImport } from './routes/_protected/connections'
 import { Route as ProtectedFeedbackRouteImport } from './routes/_protected/feedback'
 import { Route as ProtectedFriendsRouteImport } from './routes/_protected/friends'
 import { Route as ProtectedKeysRouteImport } from './routes/_protected/keys'
@@ -106,6 +107,11 @@ const ProtectedBuildHistoryRoute = ProtectedBuildHistoryRouteImport.update({
 const ProtectedCircleRoute = ProtectedCircleRouteImport.update({
   id: '/circle',
   path: '/circle',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedConnectionsRoute = ProtectedConnectionsRouteImport.update({
+  id: '/connections',
+  path: '/connections',
   getParentRoute: () => ProtectedRoute,
 } as any)
 const ProtectedFeedbackRoute = ProtectedFeedbackRouteImport.update({
@@ -316,6 +322,7 @@ export interface FileRoutesByFullPath {
   '/ask': typeof ProtectedAskRoute
   '/build-history': typeof ProtectedBuildHistoryRoute
   '/circle': typeof ProtectedCircleRoute
+  '/connections': typeof ProtectedConnectionsRoute
   '/feedback': typeof ProtectedFeedbackRoute
   '/friends': typeof ProtectedFriendsRoute
   '/keys': typeof ProtectedKeysRoute
@@ -366,6 +373,7 @@ export interface FileRoutesByTo {
   '/ask': typeof ProtectedAskRoute
   '/build-history': typeof ProtectedBuildHistoryRoute
   '/circle': typeof ProtectedCircleRoute
+  '/connections': typeof ProtectedConnectionsRoute
   '/feedback': typeof ProtectedFeedbackRoute
   '/friends': typeof ProtectedFriendsRoute
   '/keys': typeof ProtectedKeysRoute
@@ -418,6 +426,7 @@ export interface FileRoutesById {
   '/_protected/ask': typeof ProtectedAskRoute
   '/_protected/build-history': typeof ProtectedBuildHistoryRoute
   '/_protected/circle': typeof ProtectedCircleRoute
+  '/_protected/connections': typeof ProtectedConnectionsRoute
   '/_protected/feedback': typeof ProtectedFeedbackRoute
   '/_protected/friends': typeof ProtectedFriendsRoute
   '/_protected/keys': typeof ProtectedKeysRoute
@@ -470,6 +479,7 @@ export interface FileRouteTypes {
     | '/ask'
     | '/build-history'
     | '/circle'
+    | '/connections'
     | '/feedback'
     | '/friends'
     | '/keys'
@@ -520,6 +530,7 @@ export interface FileRouteTypes {
     | '/ask'
     | '/build-history'
     | '/circle'
+    | '/connections'
     | '/feedback'
     | '/friends'
     | '/keys'
@@ -571,6 +582,7 @@ export interface FileRouteTypes {
     | '/_protected/ask'
     | '/_protected/build-history'
     | '/_protected/circle'
+    | '/_protected/connections'
     | '/_protected/feedback'
     | '/_protected/friends'
     | '/_protected/keys'
@@ -705,6 +717,13 @@ declare module '@tanstack/react-router' {
       path: '/circle'
       fullPath: '/circle'
       preLoaderRoute: typeof ProtectedCircleRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/connections': {
+      id: '/_protected/connections'
+      path: '/connections'
+      fullPath: '/connections'
+      preLoaderRoute: typeof ProtectedConnectionsRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/_protected/feedback': {
@@ -987,6 +1006,7 @@ interface ProtectedRouteChildren {
   ProtectedAskRoute: typeof ProtectedAskRoute
   ProtectedBuildHistoryRoute: typeof ProtectedBuildHistoryRoute
   ProtectedCircleRoute: typeof ProtectedCircleRoute
+  ProtectedConnectionsRoute: typeof ProtectedConnectionsRoute
   ProtectedFeedbackRoute: typeof ProtectedFeedbackRoute
   ProtectedFriendsRoute: typeof ProtectedFriendsRoute
   ProtectedKeysRoute: typeof ProtectedKeysRoute
@@ -1018,6 +1038,7 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedAskRoute: ProtectedAskRoute,
   ProtectedBuildHistoryRoute: ProtectedBuildHistoryRoute,
   ProtectedCircleRoute: ProtectedCircleRoute,
+  ProtectedConnectionsRoute: ProtectedConnectionsRoute,
   ProtectedFeedbackRoute: ProtectedFeedbackRoute,
   ProtectedFriendsRoute: ProtectedFriendsRoute,
   ProtectedKeysRoute: ProtectedKeysRoute,

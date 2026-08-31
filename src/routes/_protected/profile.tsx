@@ -84,6 +84,10 @@ function Profile() {
           <strong>Where your friends have been</strong>
           <span>Their nights out, newest first</span>
         </Link>
+        <Link to="/connections">
+          <strong>Things that came round again</strong>
+          <span>The same faces, theatres and shows, years apart</span>
+        </Link>
         <Link to="/keys">
           <strong>Let an assistant help</strong>
           <span>A key so Claude or similar can research and log for you</span>
