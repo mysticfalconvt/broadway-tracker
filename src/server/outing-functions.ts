@@ -667,6 +667,47 @@ const myReactionInput = z.object({
  * attendee correcting the date for everybody else would be editing other
  * people's memories — what each attendee owns is their own reaction, below.
  */
+/**
+ * The shared facts of a night, as its owner would edit them.
+ *
+ * `updateOutingFacts` writes the whole set, so anything wanting to change one
+ * field has to send the rest back unchanged. This is where it gets them, and it
+ * refuses for anybody but the person whose night it is — the same rule the
+ * write applies, asked before rather than after.
+ */
+export const nightForEditing = createServerOnlyFn(async (actorId: string, outingId: string) => {
+  const [night] = await getDb()
+    .select({
+      productionId: outings.productionId,
+      venue: sql<string | null>`coalesce(${venues.name}, ${outings.venue})`,
+      city: sql<string | null>`coalesce(${venues.city}, ${outings.city})`,
+      country: outings.country,
+      sharedNotes: outings.sharedNotes,
+      datePrecision: outings.datePrecision,
+      occurredOn: outings.occurredOn,
+      occurredMonth: outings.occurredMonth,
+      occurredYear: outings.occurredYear,
+      approximateDate: outings.approximateDate,
+      curtain: outings.curtain,
+      createdByUserId: outings.createdByUserId,
+    })
+    .from(outings)
+    .leftJoin(venues, eq(outings.venueId, venues.id))
+    .where(eq(outings.id, outingId))
+    .limit(1)
+  if (!night) throw new Error('That night is not in your journal.')
+  if (night.createdByUserId !== actorId) {
+    throw new Error('Only the person who logged this night can change its details.')
+  }
+
+  const { createdByUserId, ...facts } = night
+  // Nulls out, so a spread over them does not reintroduce a field as null and
+  // fail validation that expects it absent.
+  return Object.fromEntries(
+    Object.entries(facts).filter(([, value]) => value !== null && value !== undefined),
+  ) as Record<string, unknown>
+})
+
 export const updateOutingFacts = createServerOnlyFn(
   async (actorId: string, data: z.infer<typeof sharedFactsInput>) => {
     const db = getDb()
@@ -708,6 +749,7 @@ export const updateOutingFacts = createServerOnlyFn(
         occurredMonth: data.datePrecision === 'month' ? data.occurredMonth : null,
         occurredYear: ['month', 'year'].includes(data.datePrecision) ? data.occurredYear : null,
         approximateDate: data.datePrecision === 'approximate' ? data.approximateDate : null,
+        curtain: data.occurredOn ? (data.curtain ?? null) : null,
         updatedAt: new Date(),
       })
       .where(eq(outings.id, data.outingId))

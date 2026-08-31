@@ -324,3 +324,67 @@ describe('two performances on one day', () => {
     expect(row?.curtain).toBeNull()
   })
 })
+
+describe('correcting a night already logged', () => {
+  it('changes only what was passed', async () => {
+    // The trap underneath: the function this calls writes the whole set of
+    // shared facts, so a caller sending one field would blank the rest. An
+    // agent adding a curtain time must not lose somebody's theatre by it.
+    const { runTool } = await import('../src/server/tools')
+    const member = await makeUser()
+    const show = await makeShow()
+    const night = await createOutingForUser(member.id, {
+      showId: show.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-06-14',
+      venue: 'Haskell Free Library and Opera House',
+      city: 'Derby Line',
+      sharedNotes: 'Sunday matinee',
+      attendeeIds: [],
+      favorite: false,
+    })
+
+    const done = await runTool(
+      member.id,
+      'update_night',
+      { outingId: night.id, curtain: '15:00' },
+      { allowWrites: true },
+    )
+    expect(done.ok).toBe(true)
+
+    const [after] = await db.select().from(outings).where(eq(outings.id, night.id))
+    expect(after?.curtain).toBe('15:00:00')
+    // Everything else survived.
+    expect(after?.venue).toBe('Haskell Free Library and Opera House')
+    expect(after?.city).toBe('Derby Line')
+    expect(after?.sharedNotes).toBe('Sunday matinee')
+    expect(after?.occurredOn).toBe('2026-06-14')
+    expect(after?.venueId).not.toBeNull()
+  })
+
+  it('refuses somebody else’s night', async () => {
+    const { runTool } = await import('../src/server/tools')
+    const member = await makeUser()
+    const stranger = await makeUser()
+    const show = await makeShow()
+    const night = await createOutingForUser(member.id, {
+      showId: show.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-06-14',
+      venue: 'Haskell Free Library and Opera House',
+      attendeeIds: [],
+      favorite: false,
+    })
+
+    const refused = await runTool(
+      stranger.id,
+      'update_night',
+      { outingId: night.id, curtain: '15:00' },
+      { allowWrites: true },
+    )
+    expect(refused.ok).toBe(false)
+
+    const [after] = await db.select().from(outings).where(eq(outings.id, night.id))
+    expect(after?.curtain).toBeNull()
+  })
+})

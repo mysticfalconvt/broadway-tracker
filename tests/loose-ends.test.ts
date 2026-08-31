@@ -499,3 +499,90 @@ describe('somebody who joined partway through the window', () => {
     expect(detail.possibleCast).toHaveLength(1)
   })
 })
+
+describe('why an answer is empty', () => {
+  const ask = async (actorId: string, outingId: string) => {
+    const { runTool } = await import('../src/server/tools')
+    const r = await runTool(actorId, 'who_was_probably_on', { outingId })
+    return (r.ok ? r.data : { why: null }) as { why: string | null; stillInferred: unknown[] }
+  }
+
+  it('distinguishes a night with no staging attached', async () => {
+    const member = await makeUser()
+    const show = await makeShow()
+    const night = await createOutingForUser(member.id, {
+      showId: show.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-06-14',
+      attendeeIds: [],
+      favorite: false,
+    })
+    expect((await ask(member.id, night.id)).why).toMatch(/not attached to a particular staging/i)
+  })
+
+  it('distinguishes a staging nobody has recorded a cast for', async () => {
+    // The community-theatre case: its own production, no cast published. The
+    // answer is not missing, it does not exist — and that is worth saying,
+    // because it is the difference between researching and leaving it alone.
+    const member = await makeUser()
+    const show = await makeShow()
+    const production = await findOrCreateProduction(member.id, show.id, 'Borderline', 'local')
+    const night = await createOutingForUser(member.id, {
+      showId: show.id,
+      productionId: production.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-06-14',
+      attendeeIds: [],
+      favorite: false,
+    })
+    expect((await ask(member.id, night.id)).why).toMatch(/nobody has recorded a cast/i)
+  })
+
+  it('distinguishes a cast that had all left by then', async () => {
+    const member = await makeUser()
+    const show = await makeShow()
+    const production = await findOrCreateProduction(member.id, show.id, 'Broadway', 'broadway')
+    await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Long Gone',
+      role: 'Someone',
+      kind: 'performer',
+      isPrincipal: true,
+      startedOn: '2001-01-01',
+      endedOn: '2002-01-01',
+    })
+    const night = await createOutingForUser(member.id, {
+      showId: show.id,
+      productionId: production.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-06-14',
+      attendeeIds: [],
+      favorite: false,
+    })
+    expect((await ask(member.id, night.id)).why).toMatch(/nobody in it held their role/i)
+  })
+
+  it('says nothing when there is an answer to give', async () => {
+    const member = await makeUser()
+    const show = await makeShow()
+    const production = await findOrCreateProduction(member.id, show.id, 'Broadway', 'broadway')
+    await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'On That Night',
+      role: 'Someone',
+      kind: 'performer',
+      isPrincipal: true,
+    })
+    const night = await createOutingForUser(member.id, {
+      showId: show.id,
+      productionId: production.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-06-14',
+      attendeeIds: [],
+      favorite: false,
+    })
+    const answer = await ask(member.id, night.id)
+    expect(answer.stillInferred).toHaveLength(1)
+    expect(answer.why).toBeNull()
+  })
+})

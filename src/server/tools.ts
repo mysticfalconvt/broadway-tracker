@@ -317,6 +317,50 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
   }),
 
   tool({
+    name: 'update_night',
+    description:
+      'Correct a night this person already logged — attach it to a staging, give it a ' +
+      'theatre, fix the date, add a curtain time. Only fields you pass are changed; ' +
+      'everything else is left as it is. Only their own nights.',
+    writes: true,
+    parameters: z.object({
+      outingId: z.string().uuid(),
+      productionId: z.string().uuid().optional(),
+      venue: z.string().trim().max(200).optional(),
+      city: z.string().trim().max(120).optional(),
+      country: z.string().trim().max(120).optional(),
+      sharedNotes: z.string().trim().max(5_000).optional(),
+      datePrecision: z.enum(['exact', 'month', 'year', 'approximate', 'unknown']).optional(),
+      occurredOn: z.string().date().optional(),
+      occurredMonth: z.number().int().min(1).max(12).optional(),
+      occurredYear: z.number().int().min(1800).max(2200).optional(),
+      approximateDate: z.string().trim().max(100).optional(),
+      curtain: z
+        .string()
+        .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+        .optional()
+        .describe('Curtain-up as 24-hour clock, e.g. "15:00".'),
+    }),
+    run: async (actorId, args) => {
+      const { nightForEditing, updateOutingFacts } = await import('./outing-functions')
+      /**
+       * Merged over what is there, never replacing it wholesale.
+       *
+       * The underlying function takes the complete set of shared facts and
+       * writes all of them, so a caller sending only a curtain time would blank
+       * the theatre. An agent correcting one field must not have to know that,
+       * and must not lose somebody's night by not knowing it.
+       */
+      const current = await nightForEditing(actorId, args.outingId)
+      const merged = { ...current, ...args, outingId: args.outingId }
+      // `datePrecision` is NOT NULL on the row, so it is always in `current`;
+      // the cast says so rather than pretending the merge could lack it.
+      await updateOutingFacts(actorId, merged as Parameters<typeof updateOutingFacts>[1])
+      return { outingId: args.outingId, changed: Object.keys(args).filter((k) => k !== 'outingId') }
+    },
+  }),
+
+  tool({
     name: 'who_was_probably_on',
     description:
       'For one of this person’s own nights: who the catalog works out was on stage, and who ' +
@@ -328,7 +372,7 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
     parameters: z.object({ outingId: z.string().uuid() }),
     run: async (actorId, { outingId }) => {
       const { getDb } = await import('./db/client')
-      const { outingAttendees, outings } = await import('./db/schema')
+      const { castings, outingAttendees, outings } = await import('./db/schema')
       const { and, eq } = await import('drizzle-orm')
       const { castAcross, seenPerformersFor } = await import('./people-functions')
       const { dateWindow } = await import('../lib/fuzzy-date')
@@ -356,19 +400,54 @@ export const TOOLS: Tool<z.ZodTypeAny>[] = [
         night.productionId && window
           ? await castAcross(night.productionId, window.from, window.to)
           : { certain: [], possible: [] }
+      // Asked separately, because "no cast recorded at all" and "a cast that
+      // does not cover this date" are different problems with different fixes.
+      const castHere = night.productionId
+        ? await getDb()
+            .select({ id: castings.id })
+            .from(castings)
+            .where(eq(castings.productionId, night.productionId))
+            .limit(1)
+        : []
       const unsaid = (member: { role: string; personId: string }) =>
         !spokenFor.has(normalizeRole(member.role)) && !namedAlready.has(member.personId)
       // Said plainly, because an empty list used to be indistinguishable from
       // "no cast recorded" and there was no way to tell which had happened.
+      const stillInferred = across.certain.filter(unsaid)
+      const possiblyOn = across.possible.filter(unsaid)
+
+      /**
+       * Which kind of nothing this is.
+       *
+       * An empty answer had one explanation and four causes, so "no cast is
+       * recorded for this staging" and "everybody who was in it had left by
+       * then" came back identical — and a caller cannot tell whether to go and
+       * research something or leave it alone. Only said when there is nothing
+       * to show; a populated answer explains itself.
+       */
+      const why = (() => {
+        if (recorded.length || stillInferred.length || possiblyOn.length) return null
+        if (!night.productionId) {
+          return 'This night is not attached to a particular staging, so there is no cast list to match against. Use productions_of and update_night to attach one.'
+        }
+        if (!window) {
+          return 'This night has no date precise enough to match against a cast list.'
+        }
+        if (!castHere.length) {
+          return 'Nobody has recorded a cast for this staging yet. Nothing is missing from the answer — the answer does not exist.'
+        }
+        return 'A cast is recorded for this staging, but nobody in it held their role on this date.'
+      })()
+
       return {
         recorded,
-        stillInferred: across.certain.filter(unsaid),
+        stillInferred,
         // Overlapping part of the window but not all of it. Somebody who joined
         // mid-month is the best clue there is for pinning a vague night down,
         // and a whole-window rule is exactly what throws them away.
-        possiblyOn: across.possible.filter(unsaid),
+        possiblyOn,
         inferredAcross: window,
-        why: window ? null : 'This night has no date precise enough to match against a cast list.',
+        why,
       }
     },
   }),
