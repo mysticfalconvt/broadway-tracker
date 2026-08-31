@@ -95,11 +95,13 @@ export function Connections({ found }: { found: Found }) {
                 <Link className="joined-card-name" params={{ slug: show.slug }} to="/shows/$slug">
                   {show.title}
                 </Link>
-                <ul>
+                {/* Year on the left, staging on the right, so two visits line
+                    up and the gap between them is the thing you see. */}
+                <ul className="joined-when">
                   {show.times.map((one, index) => (
                     <li key={`${one.year}-${one.production ?? index}`}>
-                      {one.year ?? 'undated'}
-                      {one.production ? <span> {one.production}</span> : null}
+                      <span className="joined-when-year">{one.year ?? 'undated'}</span>
+                      {one.production ? <span>{one.production}</span> : null}
                     </li>
                   ))}
                 </ul>
@@ -108,15 +110,37 @@ export function Connections({ found }: { found: Found }) {
                   twice, which is why it sits here rather than in a list of its
                   own — alone it was mostly a whole company arriving dressed up
                   as a discovery.
+
+                  A description list rather than a sentence: the part is the
+                  thing being looked up and the people are the answer, and run
+                  together with separators they were a paragraph nobody would
+                  read to the end of.
                 */}
                 {show.recast.length ? (
-                  <p className="joined-card-aside">
-                    {show.recast
-                      .slice(0, 4)
-                      .map((part) => `${part.role}: ${part.people.join(', then ')}`)
-                      .join(' · ')}
-                    {show.recast.length > 4 ? ` · and ${show.recast.length - 4} more parts` : ''}
-                  </p>
+                  <div className="joined-card-aside">
+                    <p className="joined-card-label">Different the second time</p>
+                    <dl className="recast">
+                      {show.recast.slice(0, 5).map((part) => (
+                        <div key={part.role}>
+                          <dt>{part.role}</dt>
+                          <dd>
+                            {part.people.map((name, index) => (
+                              <span key={name}>
+                                {index > 0 ? <span aria-hidden="true"> → </span> : null}
+                                {name}
+                              </span>
+                            ))}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                    {show.recast.length > 5 ? (
+                      <p className="joined-card-more">
+                        and {show.recast.length - 5} more{' '}
+                        {show.recast.length - 5 === 1 ? 'part' : 'parts'}
+                      </p>
+                    ) : null}
+                  </div>
                 ) : null}
               </article>
             ))}

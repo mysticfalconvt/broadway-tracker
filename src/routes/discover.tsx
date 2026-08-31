@@ -64,17 +64,31 @@ function Discover() {
     <main className="discover-page page-wrap">
       <header className="discover-header">
         <p className="eyebrow">The shared archive</p>
-        <h1>{showing === 'yours' ? 'Things that came round again.' : 'Find a show.'}</h1>
+        {/*
+          Both headings are short and about the same length on purpose. A
+          display face set at this size breaks a long phrase across two lines
+          and the page jumps as the tab changes; the explaining belongs in the
+          line underneath, which is small enough to wrap without anybody
+          noticing.
+        */}
+        <h1>{showing === 'yours' ? 'Seen again.' : 'Find a show.'}</h1>
         <p>
           {showing === 'yours'
             ? 'The same faces, theatres and shows, years apart.'
-            : 'Explore the growing collection of Broadway, touring, regional, and local theatre.'}
+            : 'Broadway, touring, regional and local theatre, as far as the archive goes.'}
         </p>
       </header>
 
       {signedIn ? (
         <nav aria-label="What to look at" className="discover-tabs">
+          {/*
+            `includeSearch` because these two tabs are the same path and differ
+            only by a search param. Without it the router marks both active from
+            the pathname alone and sets aria-current on each, so a screen reader
+            is told it is on both tabs at once.
+          */}
           <Link
+            activeOptions={{ exact: true, includeSearch: true }}
             className={showing === 'shows' ? 'is-current' : ''}
             search={{ view: undefined }}
             to="/discover"
@@ -82,11 +96,12 @@ function Discover() {
             Every show
           </Link>
           <Link
+            activeOptions={{ exact: true, includeSearch: true }}
             className={showing === 'yours' ? 'is-current' : ''}
             search={{ view: 'yours' }}
             to="/discover"
           >
-            Came round again
+            Seen again
           </Link>
         </nav>
       ) : null}
