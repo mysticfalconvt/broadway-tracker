@@ -197,3 +197,84 @@ describe('friend listing and search', () => {
     expect(other.handle).toBe('findme')
   })
 })
+
+describe('telling somebody a request is waiting', () => {
+  it('writes to the person being asked, not the one asking', async () => {
+    const asker = await makeUser({ name: 'Sarah Chen', email: 'sarah@example.test' })
+    const asked = await makeUser({ name: 'Rob', email: 'rob@example.test' })
+
+    const sent = await requestFriendship(asker.id, asked.id)
+    expect(sent?.to).toBe('rob@example.test')
+    expect(sent?.subject).toContain('Sarah Chen')
+  })
+
+  it('goes out whatever the digest is set to', async () => {
+    // The explicit decision: that setting governs the letter the app composes
+    // about itself. This is one person asking another a question, and losing it
+    // because a monthly summary was switched off would lose something nobody
+    // meant to switch off.
+    const asker = await makeUser({ name: 'Sarah Chen' })
+    const asked = await makeUser({ digestCadence: 'off' })
+
+    expect(await requestFriendship(asker.id, asked.id)).not.toBeNull()
+  })
+
+  it('says plainly that nothing else will follow', async () => {
+    // A promise the code has to keep: there is no reminder anywhere.
+    const asker = await makeUser({ name: 'Sarah Chen' })
+    const asked = await makeUser()
+    const sent = await requestFriendship(asker.id, asked.id)
+    expect(sent?.text).toMatch(/nothing else will be sent/i)
+  })
+
+  it('says nothing twice, because a second request is refused', async () => {
+    const asker = await makeUser({ name: 'Sarah Chen' })
+    const asked = await makeUser()
+    await requestFriendship(asker.id, asked.id)
+    await expect(requestFriendship(asker.id, asked.id)).rejects.toThrow(/already exists/i)
+  })
+
+  it('says nothing when the two are already friends', async () => {
+    const asker = await makeUser()
+    const asked = await makeUser()
+    await makeFriendship(asker.id, asked.id)
+    await expect(requestFriendship(asker.id, asked.id)).rejects.toThrow(/already friends/i)
+  })
+
+  it('sends no mail for a request that was never recorded', async () => {
+    const asker = await makeUser()
+    await expect(requestFriendship(asker.id, asker.id)).rejects.toThrow(/cannot add yourself/i)
+  })
+
+  it('does not write again when the request is answered', async () => {
+    // One email, on arrival, and that is the whole of it.
+    const asker = await makeUser({ name: 'Sarah Chen' })
+    const asked = await makeUser()
+    await requestFriendship(asker.id, asked.id)
+    const answered = await respondToFriendship(asked.id, asker.id, true)
+    expect(answered).toBeUndefined()
+  })
+})
+
+describe('two requests arriving at once', () => {
+  it('records one and writes one letter', async () => {
+    // A double click, or both people asking at the same moment.
+    //
+    // Honest note: this does not reliably reach the race it is named after.
+    // The two calls interleave in whatever order the driver gives them, and in
+    // practice the second usually sees the first's row and is turned away by
+    // the existence check rather than by the conflict clause. Removing
+    // `onConflictDoNothing` does not fail it. It holds the outcome — one row,
+    // one letter — not the mechanism underneath.
+    const asker = await makeUser({ name: 'Sarah Chen' })
+    const asked = await makeUser()
+
+    const both = await Promise.allSettled([
+      requestFriendship(asker.id, asked.id),
+      requestFriendship(asker.id, asked.id),
+    ])
+    const sent = both.filter((one) => one.status === 'fulfilled' && one.value !== null)
+    expect(sent).toHaveLength(1)
+    expect(await db.select().from(friendships)).toHaveLength(1)
+  })
+})

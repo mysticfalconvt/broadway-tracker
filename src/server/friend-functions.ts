@@ -1,5 +1,5 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { and, asc, eq, ne, or, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, ne, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { requireSession } from './session'
 
@@ -112,6 +112,62 @@ export const friendsForUser = createServerOnlyFn(async (userId: string) => {
   }))
 })
 
+/**
+ * What the person on the other end is sent, as words.
+ *
+ * Separate from the sending so it can be read and tested without a mail
+ * server, and so the wording is somewhere obvious rather than buried in a try
+ * block.
+ */
+export function friendRequestNotice(fromName: string, base: string) {
+  return {
+    subject: `${fromName} would like to share their theatre history with you`,
+    // The last line is a promise, and the code keeps it: nothing follows this.
+    text: `${fromName} has asked to be friends on Broadway Tracker, which means you would each see the nights the other has chosen to share.
+
+${base}/friends
+
+If you would rather not, ignoring this is an answer — nothing else will be sent about it.`,
+  }
+}
+
+/**
+ * Tells somebody a request is waiting, once.
+ *
+ * The one thing in this app that is *blocked on a person*. A night logged or a
+ * piece written can be found whenever somebody next looks; a request sits doing
+ * nothing until it is answered, and the person who sent it can see that it has
+ * not been. That asymmetry is what earns an email where a feed item would not.
+ *
+ * Sent regardless of `digestCadence`. That setting governs the letter the app
+ * composes about itself; this is one person asking another a question, and
+ * silently swallowing it because a monthly summary was switched off would lose
+ * something nobody meant to switch off.
+ *
+ * Once, and never again. There is no reminder, because a request ignored has
+ * been answered. Delivery failures are logged rather than thrown: the request
+ * itself is already recorded and must not be undone by a mail problem.
+ */
+async function notifyOfFriendRequest(actorId: string, targetId: string) {
+  try {
+    const rows = await getDb()
+      .select({ id: user.id, name: user.name, email: user.email })
+      .from(user)
+      .where(inArray(user.id, [actorId, targetId]))
+    const from = rows.find((row) => row.id === actorId)
+    const to = rows.find((row) => row.id === targetId)
+    if (!from || !to) return null
+
+    const notice = friendRequestNotice(from.name, process.env.BETTER_AUTH_URL ?? '')
+    const { sendEmail } = await import('./email')
+    await sendEmail({ to: to.email, ...notice })
+    return { to: to.email, ...notice }
+  } catch (error) {
+    console.error('[friends] could not tell them about the request', error)
+    return null
+  }
+}
+
 export const requestFriendship = createServerOnlyFn(async (actorId: string, targetId: string) => {
   if (targetId === actorId) throw new Error('You cannot add yourself.')
   const [userOneId, userTwoId] = pair(actorId, targetId)
@@ -130,7 +186,23 @@ export const requestFriendship = createServerOnlyFn(async (actorId: string, targ
     throw new Error(
       existing.status === 'accepted' ? 'You are already friends.' : 'A request already exists.',
     )
-  await getDb().insert(friendships).values({ userOneId, userTwoId, requestedByUserId: actorId })
+  /**
+   * The check above can be overtaken: two people can ask each other at once, or
+   * one person can double-click, and both calls pass it before either inserts.
+   * Letting the second lose quietly is better than a constraint error — and it
+   * is what keeps the promise of one email, because only the insert that
+   * actually happened sends one.
+   */
+  const [recorded] = await getDb()
+    .insert(friendships)
+    .values({ userOneId, userTwoId, requestedByUserId: actorId })
+    .onConflictDoNothing()
+    .returning({ requestedByUserId: friendships.requestedByUserId })
+  if (!recorded) return null
+
+  // After the insert, and only if it happened: a request that did not save must
+  // not send mail about itself, and one that did must not be undone by mail.
+  return notifyOfFriendRequest(actorId, targetId)
 })
 
 export const respondToFriendship = createServerOnlyFn(
