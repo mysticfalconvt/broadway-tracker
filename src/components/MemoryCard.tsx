@@ -1,3 +1,4 @@
+import type { Attendee } from '../server/profile-functions'
 import { AvatarGroup } from './AvatarGroup'
 import { Rating } from './Rating'
 import { ShowArtwork } from './ShowArtwork'
@@ -8,7 +9,7 @@ type MemoryCardProps = {
   date: string
   venue?: string | null
   city?: string | null
-  attendees: string[]
+  attendees: Attendee[]
   rating?: number
   review?: string
 }
@@ -33,7 +34,7 @@ export function MemoryCard({
         {/* A backfilled memory often has no venue. Let the type carry the space
             rather than leaving a dangling separator. */}
         {place ? <p className="memory-place">{place}</p> : null}
-        <AvatarGroup names={attendees} />
+        <AvatarGroup people={attendees} />
         {rating === undefined ? null : <Rating value={rating} />}
         {review ? <p className="memory-review">“{review}”</p> : null}
       </div>

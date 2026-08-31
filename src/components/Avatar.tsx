@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import { toneForTitle } from '../lib/artwork'
 
 /** First and last initial: "Rosalind Vance" becomes RV, "Cher" becomes C. */
@@ -30,8 +32,23 @@ export function Avatar({
   imageKey?: string | null
   className?: string
 }) {
-  if (imageKey) {
-    return <img alt="" className={`avatar ${className}`.trim()} src={`/api/images/${imageKey}`} />
+  /**
+   * A key can outlive the file it names — storage restored from an older copy,
+   * an upload that half finished. The browser's answer to that is a broken
+   * image icon inside a circle, which is worse than the initials it replaced,
+   * so a failed load falls back rather than showing the failure.
+   */
+  const [broken, setBroken] = useState(false)
+
+  if (imageKey && !broken) {
+    return (
+      <img
+        alt=""
+        className={`avatar ${className}`.trim()}
+        onError={() => setBroken(true)}
+        src={`/api/images/${imageKey}`}
+      />
+    )
   }
   return (
     <span

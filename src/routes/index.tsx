@@ -92,7 +92,7 @@ function SignedInHome({ home }: { home: FrontPage }) {
                     date={formatFuzzyDateShort(outing)}
                     venue={outing.venue}
                     city={outing.city}
-                    attendees={['You']}
+                    attendees={outing.attendees}
                     rating={outing.rating ? outing.rating / 2 : undefined}
                     review={outing.review ?? undefined}
                   />
@@ -311,7 +311,12 @@ function VisitorHome() {
               date="MAY 18 · 2026"
               venue="Walter Kerr Theatre"
               city="New York, NY"
-              attendees={['You', 'Sarah', 'Mom', 'Alex']}
+              attendees={[
+                { name: 'You', imageKey: null, isViewer: true },
+                { name: 'Sarah Chen', imageKey: null, isViewer: false },
+                { name: 'Mom', imageKey: null, isViewer: false },
+                { name: 'Alex Rivera', imageKey: null, isViewer: false },
+              ]}
               rating={5}
               review="One of those perfect nights."
             />

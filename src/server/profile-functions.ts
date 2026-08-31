@@ -1,11 +1,11 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { currentSession } from './session'
 
 import { getDb } from './db/client'
 import { acceptedFriendIdsFor } from './friend-functions'
-import { applyViewerCovers } from './image-functions'
+import { applyViewerCovers, canViewImage } from './image-functions'
 import { areFriends } from './friend-functions'
 import {
   libraryEntries,
@@ -71,6 +71,12 @@ export const homeForUser = createServerOnlyFn(async (userId: string) => {
       .orderBy(desc(outings.createdAt))
       .limit(2),
   ])
+  const withCovers = await applyViewerCovers(userId, recent, (row) => row.showId)
+  const company = await companyForOutings(
+    userId,
+    withCovers.map((row) => row.id),
+  )
+
   return {
     stats: {
       performances: performanceCount[0]?.count ?? 0,
@@ -80,7 +86,7 @@ export const homeForUser = createServerOnlyFn(async (userId: string) => {
     // A show somebody has photographed themselves is that photograph to them,
     // wherever it turns up.
     wantToSee: await applyViewerCovers(userId, wantToSee),
-    recent: await applyViewerCovers(userId, recent, (row) => row.showId),
+    recent: withCovers.map((row) => ({ ...row, attendees: company.get(row.id) ?? [] })),
   }
 })
 
@@ -108,6 +114,70 @@ export const frontPageFor = createServerOnlyFn(async (userId: string) => {
     ])
   return { ...home, anniversaries, alsoSeen, reviews, fromFriends, writing, looseEnd }
 })
+
+/**
+ * Who was at each of these nights, with their photograph where it may be shown.
+ *
+ * An avatar is served to its owner and to approved friends, and nobody else —
+ * public profiles are anonymous, so a face is never public. Two people can be
+ * at the same night without being friends here, so the key is resolved before
+ * it reaches the page rather than after: handing the browser a key it cannot
+ * fetch produces a broken image inside the circle, which is worse than the
+ * initials it replaced.
+ */
+export const companyForOutings = createServerOnlyFn(
+  async (viewerId: string, outingIds: string[]) => {
+    if (outingIds.length === 0) return new Map<string, Attendee[]>()
+
+    const rows = await getDb()
+      .select({
+        outingId: outingAttendees.outingId,
+        userId: user.id,
+        name: user.name,
+        image: user.image,
+      })
+      .from(outingAttendees)
+      .innerJoin(user, eq(outingAttendees.userId, user.id))
+      .where(
+        and(
+          inArray(outingAttendees.outingId, outingIds),
+          // Somebody invited and yet to answer was not there.
+          ne(outingAttendees.attendanceStatus, 'declined'),
+        ),
+      )
+      .orderBy(asc(user.name))
+
+    // Asked once per distinct key rather than once per row: the same few people
+    // recur across a page of nights.
+    const keys = [...new Set(rows.map((row) => row.image).filter(Boolean))] as string[]
+    const allowed = new Set<string>()
+    for (const key of keys) {
+      if (await canViewImage(viewerId, key)) allowed.add(key)
+    }
+
+    const byOuting = new Map<string, Attendee[]>()
+    for (const row of rows) {
+      byOuting.set(row.outingId, [
+        ...(byOuting.get(row.outingId) ?? []),
+        {
+          name: row.name,
+          imageKey: row.image && allowed.has(row.image) ? row.image : null,
+          isViewer: row.userId === viewerId,
+        },
+      ])
+    }
+    // The reader first: it is their night before it is anybody else's.
+    for (const [outingId, people] of byOuting) {
+      byOuting.set(
+        outingId,
+        [...people].sort((a, b) => Number(b.isViewer) - Number(a.isViewer)),
+      )
+    }
+    return byOuting
+  },
+)
+
+export type Attendee = { name: string; imageKey: string | null; isViewer: boolean }
 
 export const getFrontPage = createServerFn({ method: 'GET' }).handler(async () => {
   const session = await currentSession()
