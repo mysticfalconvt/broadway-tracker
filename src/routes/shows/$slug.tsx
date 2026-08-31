@@ -503,89 +503,83 @@ function describeRun(production: { openedOn?: string | null; closedOn?: string |
 }
 
 /**
- * Correcting one line of a cast list.
+ * One line of a cast list, while the list is being corrected.
  *
- * Here rather than on an admin screen because this is where a wrong role is
- * noticed — reading the company of a show, not auditing a table. Until now the
- * catalog was append-only from every direction, so the only answer to a
- * misspelled role was a second row beside it saying something different.
+ * Only rendered in an editing state, never alongside the reading one. A control
+ * under every name turns a page people read for pleasure into a form: the
+ * company of a long-running show is fifty names, and fifty buttons is not a
+ * cast list any more.
  */
-function FixCasting({
+function CastRow({
   member,
   onDone,
 }: {
   member: Awaited<ReturnType<typeof getCastForShow>>[number]
   onDone: () => Promise<void>
 }) {
-  const [open, setOpen] = useState(false)
   const [role, setRole] = useState(member.role)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  if (!open) {
-    return (
-      <button className="cast-fix" onClick={() => setOpen(true)} type="button">
-        Fix
-      </button>
-    )
-  }
+  const changed = role.trim() !== member.role
 
   return (
-    <form
-      className="cast-fix-form"
-      onSubmit={async (event) => {
-        event.preventDefault()
-        setBusy(true)
-        setError(null)
-        try {
-          await saveCasting({
-            data: {
-              id: member.id,
-              role,
-              kind: member.kind as 'performer' | 'creative',
-              isPrincipal: member.isPrincipal,
-            },
-          })
-          setOpen(false)
-          await onDone()
-        } catch (caught) {
-          setError(caught instanceof Error ? caught.message : 'That did not save.')
-        }
-        setBusy(false)
-      }}
-    >
-      <label>
-        <span className="sr-only">Role</span>
-        <input onChange={(event) => setRole(event.target.value)} required value={role} />
-      </label>
-      <button className="button button-primary" disabled={busy} type="submit">
-        Save
-      </button>
-      <button className="text-action" onClick={() => setOpen(false)} type="button">
-        Cancel
-      </button>
-      <button
-        className="text-action text-action-warn"
-        onClick={async () => {
+    <li className="cast-edit-row">
+      <form
+        onSubmit={async (event) => {
+          event.preventDefault()
           setBusy(true)
+          setError(null)
           try {
-            await dropCasting({ data: { id: member.id } })
+            await saveCasting({
+              data: {
+                id: member.id,
+                role,
+                kind: member.kind as 'performer' | 'creative',
+                isPrincipal: member.isPrincipal,
+              },
+            })
             await onDone()
           } catch (caught) {
-            setError(caught instanceof Error ? caught.message : 'That did not delete.')
-            setBusy(false)
+            setError(caught instanceof Error ? caught.message : 'That did not save.')
           }
+          setBusy(false)
         }}
-        type="button"
       >
-        Remove
-      </button>
+        <strong>{member.name}</strong>
+        <label>
+          <span className="sr-only">Role for {member.name}</span>
+          <input onChange={(event) => setRole(event.target.value)} required value={role} />
+        </label>
+        {/* Only once there is something to save, so the row stays quiet. */}
+        {changed ? (
+          <button className="button button-primary" disabled={busy} type="submit">
+            Save
+          </button>
+        ) : null}
+        <button
+          className="text-action text-action-warn"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true)
+            try {
+              await dropCasting({ data: { id: member.id } })
+              await onDone()
+            } catch (caught) {
+              setError(caught instanceof Error ? caught.message : 'That did not delete.')
+              setBusy(false)
+            }
+          }}
+          type="button"
+        >
+          Remove
+        </button>
+      </form>
       {error ? (
         <p className="form-error" role="alert">
           {error}
         </p>
       ) : null}
-    </form>
+    </li>
   )
 }
 
@@ -599,6 +593,7 @@ function Cast({
   mayFix: boolean
   onDone: () => Promise<void>
 }) {
+  const [editing, setEditing] = useState(false)
   if (!cast.length) return null
   const byProduction = new Map<string, typeof cast>()
   for (const member of cast) {
@@ -614,20 +609,28 @@ function Cast({
           <p className="eyebrow">Company</p>
           <h2>Who has been in it.</h2>
         </div>
+        {mayFix ? (
+          <button className="text-action" onClick={() => setEditing(!editing)} type="button">
+            {editing ? 'Done' : 'Correct this list'}
+          </button>
+        ) : null}
       </div>
       {[...byProduction].map(([productionName, members]) => (
         <div key={productionName} className="cast-group">
           <p className="eyebrow">{productionName}</p>
-          <ul className="cast-list">
-            {members.map((member) => (
-              <li key={member.id}>
-                <Link to="/artists/$id" params={{ id: member.personId }}>
-                  <strong>{member.name}</strong>
-                  <span>{member.role}</span>
-                </Link>
-                {mayFix ? <FixCasting member={member} onDone={onDone} /> : null}
-              </li>
-            ))}
+          <ul className={editing ? 'cast-list cast-list-editing' : 'cast-list'}>
+            {members.map((member) =>
+              editing ? (
+                <CastRow key={member.id} member={member} onDone={onDone} />
+              ) : (
+                <li key={member.id}>
+                  <Link to="/artists/$id" params={{ id: member.personId }}>
+                    <strong>{member.name}</strong>
+                    <span>{member.role}</span>
+                  </Link>
+                </li>
+              ),
+            )}
           </ul>
         </div>
       ))}
