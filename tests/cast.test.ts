@@ -704,3 +704,121 @@ describe('where a cast fact came from', () => {
     expect(cast[0]?.source).toBe('research')
   })
 })
+
+describe('somebody who came back', () => {
+  async function aProduction() {
+    const member = await makeUser()
+    const show = await makeShow()
+    const production = await findOrCreateProduction(member.id, show.id, 'Broadway', 'broadway')
+    return { member, show, production }
+  }
+
+  it('can hold two stints in the same part', async () => {
+    // Adrianna Hicks opened Six, left in 2022, and came back for the Year 5
+    // cast in 2026. One row could not be true of both, so the only way to make
+    // it true of either was to leave the dates off — which makes it unbounded
+    // and so covers every night in between, including the years she was away.
+    const { member, production } = await aProduction()
+    const first = await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Adrianna Hicks',
+      role: 'Catherine of Aragon',
+      kind: 'performer',
+      isPrincipal: true,
+      startedOn: '2021-10-03',
+      endedOn: '2022-08-07',
+    })
+    const second = await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Adrianna Hicks',
+      role: 'Catherine of Aragon',
+      kind: 'performer',
+      isPrincipal: true,
+      startedOn: '2026-02-16',
+    })
+
+    expect(second.created).toBe(true)
+    expect(second.id).not.toBe(first.id)
+    expect(await db.select().from(castings)).toHaveLength(2)
+  })
+
+  it('still treats the same stint recorded twice as one', async () => {
+    const { member, production } = await aProduction()
+    const first = await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Adrianna Hicks',
+      role: 'Catherine of Aragon',
+      kind: 'performer',
+      isPrincipal: true,
+      startedOn: '2021-10-03',
+    })
+    const again = await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Adrianna Hicks',
+      role: 'Catherine of Aragon',
+      kind: 'performer',
+      isPrincipal: true,
+      startedOn: '2021-10-03',
+    })
+    expect(again.created).toBe(false)
+    expect(again.id).toBe(first.id)
+    expect(await db.select().from(castings)).toHaveLength(1)
+  })
+
+  it('will not invent a second engagement out of a missing date', async () => {
+    // Two rows with no start at all have nothing to tell them apart. Treating
+    // them as separate stints would manufacture history from an empty field.
+    const { member, production } = await aProduction()
+    await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Adrianna Hicks',
+      role: 'Catherine of Aragon',
+      kind: 'performer',
+      isPrincipal: true,
+    })
+    const again = await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Adrianna Hicks',
+      role: 'Catherine of Aragon',
+      kind: 'performer',
+      isPrincipal: true,
+    })
+    expect(again.created).toBe(false)
+    expect(await db.select().from(castings)).toHaveLength(1)
+  })
+
+  it('keeps each stint to its own nights', async () => {
+    // The payoff: two nights four years apart, and she was on for both — but
+    // nothing in between claims her.
+    const { member, show, production } = await aProduction()
+    await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Adrianna Hicks',
+      role: 'Catherine of Aragon',
+      kind: 'performer',
+      isPrincipal: true,
+      startedOn: '2021-10-03',
+      endedOn: '2022-08-07',
+    })
+    await addCasting(member.id, {
+      productionId: production.id,
+      personName: 'Adrianna Hicks',
+      role: 'Catherine of Aragon',
+      kind: 'performer',
+      isPrincipal: true,
+      startedOn: '2026-02-16',
+    })
+
+    const { castAcross } = await import('../src/server/people-functions')
+    const during = await castAcross(production.id, '2022-01-16', '2022-01-16')
+    expect(during.certain.map((one) => one.name)).toEqual(['Adrianna Hicks'])
+
+    const away = await castAcross(production.id, '2024-06-01', '2024-06-01')
+    expect(away.certain).toHaveLength(0)
+    expect(away.possible).toHaveLength(0)
+
+    const back = await castAcross(production.id, '2026-07-01', '2026-07-01')
+    expect(back.certain.map((one) => one.name)).toEqual(['Adrianna Hicks'])
+    void show
+  })
+})

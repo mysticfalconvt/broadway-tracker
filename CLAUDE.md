@@ -161,6 +161,17 @@ before changing it:
   comes from. Deleting a casting withdraws a claim about a stage; it never
   touches `seen_performers`, which is a member's own word about their own night.
 
+## Return engagements
+
+A casting is unique on person + role + **start date**, not person + role. Somebody
+who opens a show, leaves, and comes back for an anniversary cast has two stints
+and needs two rows. Deduplicating harder than the world does forces the only
+available row to be true of both, which means leaving its dates off — and an
+unbounded casting then covers every night in the run, including the years they
+were away. Two rows with no start date at all are still one: there is nothing to
+tell them apart, and treating them as separate invents an engagement out of a
+missing field.
+
 ## Two performances in one day
 
 A matinee and an evening are two nights out, and so are the two parts of a show

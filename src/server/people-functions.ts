@@ -99,10 +99,32 @@ export const addCasting = createServerOnlyFn(
 
     // The same person in the same role is one casting, however many people record it.
     const existing = await db
-      .select({ id: castings.id, role: castings.role })
+      .select({ id: castings.id, role: castings.role, startedOn: castings.startedOn })
       .from(castings)
       .where(and(eq(castings.productionId, data.productionId), eq(castings.personId, person.id)))
-    const duplicate = existing.find((row) => row.role.toLowerCase() === role.toLowerCase())
+
+    /**
+     * The same person in the same part, starting on the same day, is one
+     * casting however many people record it. Starting on a *different* day is a
+     * second engagement, and a real one.
+     *
+     * Return engagements happen and the old rule could not hold them: somebody
+     * who opened a show, left, and came back for an anniversary cast had two
+     * stints and one row available. The only way to make that row true of both
+     * was to leave its dates off — which makes it unbounded, so it then covers
+     * every night in the run, including the years they were not there.
+     * Deduplicating harder than the world does produces a record that is wrong
+     * in a way nobody can see.
+     *
+     * Two rows with no start date at all are still one: there is nothing to
+     * tell them apart, and guessing that they are separate would invent a
+     * second engagement out of a missing field.
+     */
+    const duplicate = existing.find(
+      (row) =>
+        row.role.toLowerCase() === role.toLowerCase() &&
+        (row.startedOn ?? null) === (data.startedOn || null),
+    )
     if (duplicate) return { id: duplicate.id, personId: person.id, created: false }
 
     const [created] = await db
