@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { showImages } from '../src/server/db/schema'
+import { coverChoices, showImages } from '../src/server/db/schema'
 import { canViewImage, showPhotosForViewer } from '../src/server/image-functions'
 import { db, makeFriendship, makeShow, makeUser, resetDatabase } from './helpers'
 
@@ -211,8 +211,9 @@ describe('choosing which photograph stands for a show', () => {
     await chooseCoverPhoto(me.id, rowA.id)
     await chooseCoverPhoto(me.id, rowB.id)
 
-    const after = await db.select().from(showImages).where(eq(showImages.showId, show.id))
-    expect(after.filter((one) => one.isCover).map((one) => one.objectKey)).toEqual([b])
+    const chosen = await db.select().from(coverChoices).where(eq(coverChoices.userId, me.id))
+    expect(chosen).toHaveLength(1)
+    expect(chosen[0]?.imageId).toBe(rowB.id)
   })
 
   it('choosing the same one again goes back to the newest', async () => {
@@ -224,19 +225,46 @@ describe('choosing which photograph stands for a show', () => {
 
     expect((await chooseCoverPhoto(me.id, row!.id)).isCover).toBe(true)
     expect((await chooseCoverPhoto(me.id, row!.id)).isCover).toBe(false)
-    const [after] = await db.select().from(showImages).where(eq(showImages.id, row!.id))
-    expect(after?.isCover).toBe(false)
+    expect(await db.select().from(coverChoices).where(eq(coverChoices.userId, me.id))).toHaveLength(
+      0,
+    )
   })
 
-  it("will not let somebody choose another person's photograph", async () => {
+  it('will not let somebody choose a photograph they cannot see', async () => {
+    // The bound is what may be looked at, not who took it. A private one is
+    // nobody else's to put on their own shelf.
     const { chooseCoverPhoto } = await import('../src/server/image-functions')
     const owner = await makeUser()
     const stranger = await makeUser()
     const show = await makeShow()
-    const key = await photo(show.id, owner.id, 'public', 'approved')
+    const key = await photo(show.id, owner.id, 'private')
     const [row] = await db.select().from(showImages).where(eq(showImages.objectKey, key))
 
-    await expect(chooseCoverPhoto(stranger.id, row!.id)).rejects.toThrow(/not yours/i)
+    await expect(chooseCoverPhoto(stranger.id, row!.id)).rejects.toThrow(/not one you can see/i)
+  })
+
+  it("lets somebody choose a friend's photograph", async () => {
+    // The picture worth looking at is often somebody else's. Asking everybody
+    // to upload their own copy of it would only make the bucket worse.
+    const { applyViewerCovers, chooseCoverPhoto } = await import('../src/server/image-functions')
+    const me = await makeUser()
+    const friend = await makeUser()
+    await makeFriendship(me.id, friend.id, 'accepted')
+    const show = await makeShow({ coverImageKey: 'shows/official.jpg' })
+    const theirs = await photo(show.id, friend.id, 'friends')
+    const [row] = await db.select().from(showImages).where(eq(showImages.objectKey, theirs))
+
+    await chooseCoverPhoto(me.id, row!.id)
+    const [mine] = await applyViewerCovers(me.id, [
+      { id: show.id, coverImageKey: 'shows/official.jpg' },
+    ])
+    expect(mine?.coverImageKey).toBe(theirs)
+
+    // And it stays their own affair: the friend still sees the catalog's.
+    const [unchanged] = await applyViewerCovers(friend.id, [
+      { id: show.id, coverImageKey: 'shows/official.jpg' },
+    ])
+    expect(unchanged?.coverImageKey).toBe(theirs)
   })
 
   it('does not change what anybody else sees', async () => {
@@ -252,5 +280,117 @@ describe('choosing which photograph stands for a show', () => {
       { id: show.id, coverImageKey: 'shows/official.jpg' },
     ])
     expect(theirs?.coverImageKey).toBe('shows/official.jpg')
+  })
+})
+
+describe('a cover when nobody has chosen one', () => {
+  it("falls back to a friend's photograph before the catalog's", async () => {
+    // What the reader would have looked at anyway, without asking them to
+    // upload their own copy of it first.
+    const { applyViewerCovers } = await import('../src/server/image-functions')
+    const me = await makeUser()
+    const friend = await makeUser()
+    await makeFriendship(me.id, friend.id, 'accepted')
+    const show = await makeShow({ coverImageKey: 'shows/official.jpg' })
+    const theirs = await photo(show.id, friend.id, 'friends')
+
+    const [row] = await applyViewerCovers(me.id, [
+      { id: show.id, coverImageKey: 'shows/official.jpg' },
+    ])
+    expect(row?.coverImageKey).toBe(theirs)
+  })
+
+  it('prefers your own over a friend’s', async () => {
+    const { applyViewerCovers } = await import('../src/server/image-functions')
+    const me = await makeUser()
+    const friend = await makeUser()
+    await makeFriendship(me.id, friend.id, 'accepted')
+    const show = await makeShow({ coverImageKey: 'shows/official.jpg' })
+    await photo(show.id, friend.id, 'friends')
+    const mine = await photo(show.id, me.id, 'private')
+
+    const [row] = await applyViewerCovers(me.id, [
+      { id: show.id, coverImageKey: 'shows/official.jpg' },
+    ])
+    expect(row?.coverImageKey).toBe(mine)
+  })
+
+  it('ignores a photograph the reader may not see', async () => {
+    const { applyViewerCovers } = await import('../src/server/image-functions')
+    const me = await makeUser()
+    const friend = await makeUser()
+    const stranger = await makeUser()
+    await makeFriendship(me.id, friend.id, 'accepted')
+    const show = await makeShow({ coverImageKey: 'shows/official.jpg' })
+    await photo(show.id, friend.id, 'private')
+    await photo(show.id, stranger.id, 'friends')
+
+    const [row] = await applyViewerCovers(me.id, [
+      { id: show.id, coverImageKey: 'shows/official.jpg' },
+    ])
+    expect(row?.coverImageKey).toBe('shows/official.jpg')
+  })
+
+  it('drops a friend’s cover when the friendship ends', async () => {
+    // Checked on the way out as well as on the way in, because a choice made
+    // while somebody was a friend outlives the friendship otherwise.
+    const { applyViewerCovers, chooseCoverPhoto } = await import('../src/server/image-functions')
+    const me = await makeUser()
+    const friend = await makeUser()
+    await makeFriendship(me.id, friend.id, 'accepted')
+    const show = await makeShow({ coverImageKey: 'shows/official.jpg' })
+    const theirs = await photo(show.id, friend.id, 'friends')
+    const [row] = await db.select().from(showImages).where(eq(showImages.objectKey, theirs))
+    await chooseCoverPhoto(me.id, row!.id)
+
+    const { friendships } = await import('../src/server/db/schema')
+    await db.delete(friendships)
+
+    const [after] = await applyViewerCovers(me.id, [
+      { id: show.id, coverImageKey: 'shows/official.jpg' },
+    ])
+    expect(after?.coverImageKey).toBe('shows/official.jpg')
+  })
+})
+
+describe('two people, two covers', () => {
+  it('shows each of them their own choice', async () => {
+    // A choice is a row about a reader, so two readers looking at one show can
+    // and should see different pictures.
+    const { applyViewerCovers, chooseCoverPhoto } = await import('../src/server/image-functions')
+    const one = await makeUser()
+    const two = await makeUser()
+    await makeFriendship(one.id, two.id, 'accepted')
+    const show = await makeShow({ coverImageKey: 'shows/official.jpg' })
+    const a = await photo(show.id, one.id, 'friends')
+    const b = await photo(show.id, two.id, 'friends')
+    const rows = await db.select().from(showImages).where(eq(showImages.showId, show.id))
+    const rowA = rows.find((r) => r.objectKey === a)!
+    const rowB = rows.find((r) => r.objectKey === b)!
+
+    // Each picks the other's.
+    await chooseCoverPhoto(one.id, rowB.id)
+    await chooseCoverPhoto(two.id, rowA.id)
+
+    const [forOne] = await applyViewerCovers(one.id, [{ id: show.id, coverImageKey: null }])
+    const [forTwo] = await applyViewerCovers(two.id, [{ id: show.id, coverImageKey: null }])
+    expect(forOne?.coverImageKey).toBe(b)
+    expect(forTwo?.coverImageKey).toBe(a)
+  })
+
+  it('never lets a rejected photograph become a cover', async () => {
+    // An administrator turned it down. It stays visible to whoever uploaded it
+    // and stands for nothing.
+    const { applyViewerCovers } = await import('../src/server/image-functions')
+    const me = await makeUser()
+    const friend = await makeUser()
+    await makeFriendship(me.id, friend.id, 'accepted')
+    const show = await makeShow({ coverImageKey: 'shows/official.jpg' })
+    await photo(show.id, friend.id, 'friends', 'rejected')
+
+    const [row] = await applyViewerCovers(me.id, [
+      { id: show.id, coverImageKey: 'shows/official.jpg' },
+    ])
+    expect(row?.coverImageKey).toBe('shows/official.jpg')
   })
 })

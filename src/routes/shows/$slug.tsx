@@ -299,6 +299,93 @@ function LibraryButtons({
 }
 
 /**
+ * The controls for one photograph, folded away until wanted.
+ *
+ * Everything here concerns the reader's own picture — who may see it, whether
+ * it stands for the show, whether it stays. Laid out under every thumbnail it
+ * turned a gallery into a form; the ordinary use of this page is looking.
+ */
+function PhotoActions({
+  photo,
+  onRemove,
+}: {
+  photo: Awaited<ReturnType<typeof getShowPhotos>>[number]
+  onRemove: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const who = photo.isOwn ? 'Yours' : (photo.uploaderName ?? 'A theatregoer')
+
+  return (
+    <div className="photo-meta">
+      <span>
+        {who}
+        {photo.isCover ? <span className="photo-cover-mark"> · your cover</span> : null}
+      </span>
+      <button
+        aria-expanded={open}
+        aria-label="What to do with this photograph"
+        className="photo-more"
+        onClick={() => setOpen((was) => !was)}
+        type="button"
+      >
+        ···
+      </button>
+
+      {open ? (
+        <div className="photo-actions">
+          {/* Said inside the menu rather than under the picture: it matters
+              when somebody is deciding, and not otherwise. */}
+          {photo.isOwn && photo.visibility === 'public' && photo.reviewStatus === 'pending' ? (
+            <p className="photo-pending">Visible to friends · awaiting review</p>
+          ) : null}
+          {photo.isOwn && photo.reviewStatus === 'rejected' ? (
+            <p className="photo-pending">Not approved · only you can see this</p>
+          ) : null}
+
+          {/* Anybody's photograph may be somebody's cover; only the person who
+              took it decides who may see it or whether it stays. */}
+          <button
+            className={photo.isCover ? 'text-action is-cover' : 'text-action'}
+            onClick={async () => {
+              await setCoverPhoto({ data: { id: photo.id } })
+              window.location.reload()
+            }}
+            type="button"
+          >
+            {photo.isCover ? 'Your cover' : 'Use as cover'}
+          </button>
+
+          {photo.isOwn ? (
+            <>
+              <label className="photo-visibility">
+                <span className="sr-only">Who can see this photograph</span>
+                <select
+                  defaultValue={photo.visibility}
+                  onChange={async (event) => {
+                    await changePhotoVisibility({
+                      data: { id: photo.id, visibility: event.target.value as 'friends' },
+                    })
+                    window.location.reload()
+                  }}
+                >
+                  <option value="private">Only me</option>
+                  <option value="friends">Friends</option>
+                  <option value="public">Everyone — after review</option>
+                </select>
+              </label>
+
+              <button className="text-action text-action-warn" onClick={onRemove} type="button">
+                Remove
+              </button>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+/**
  * Photographs people have contributed for this show. A photo offered publicly
  * reaches approved friends immediately and everyone only after review, so the
  * gallery labels anything still waiting rather than implying it is live.
@@ -399,63 +486,19 @@ function PhotoGallery({
                 type="button"
               >
                 <img
-                  src={`/api/images/${photo.objectKey}`}
+                  src={`/api/images/${photo.objectKey}?w=640`}
                   alt=""
                   loading="lazy"
                   decoding="async"
                 />
               </button>
-              <div className="photo-meta">
-                <span>{photo.isOwn ? 'Yours' : (photo.uploaderName ?? 'A theatregoer')}</span>
-                {photo.isOwn &&
-                photo.visibility === 'public' &&
-                photo.reviewStatus === 'pending' ? (
-                  <span className="photo-pending">Visible to friends · awaiting review</span>
-                ) : null}
-                {photo.isOwn && photo.reviewStatus === 'rejected' ? (
-                  <span className="photo-pending">Not approved · only you can see this</span>
-                ) : null}
-                {photo.isOwn ? (
-                  <>
-                    {/* A cover is a personal lens on the catalog, so this only
-                        ever changes what this reader sees. */}
-                    <button
-                      aria-pressed={photo.isCover}
-                      className={photo.isCover ? 'text-action is-cover' : 'text-action'}
-                      onClick={async () => {
-                        await setCoverPhoto({ data: { id: photo.id } })
-                        window.location.reload()
-                      }}
-                      type="button"
-                    >
-                      {photo.isCover ? 'Your cover' : 'Use as cover'}
-                    </button>
-                    <label className="photo-visibility">
-                      <span className="sr-only">Who can see this photograph</span>
-                      <select
-                        defaultValue={photo.visibility}
-                        onChange={async (event) => {
-                          await changePhotoVisibility({
-                            data: { id: photo.id, visibility: event.target.value as 'friends' },
-                          })
-                          window.location.reload()
-                        }}
-                      >
-                        <option value="private">Only me</option>
-                        <option value="friends">Friends</option>
-                        <option value="public">Everyone — after review</option>
-                      </select>
-                    </label>
-                    <button
-                      className="text-action"
-                      type="button"
-                      onClick={() => void remove(photo.id)}
-                    >
-                      Remove
-                    </button>
-                  </>
-                ) : null}
-              </div>
+              {/*
+                Behind a menu, not laid out beside every picture. Three
+                controls and two status lines under each thumbnail made a
+                gallery that was mostly words — and the words were the same on
+                every one of them.
+              */}
+              <PhotoActions photo={photo} onRemove={() => void remove(photo.id)} />
             </li>
           ))}
         </ul>

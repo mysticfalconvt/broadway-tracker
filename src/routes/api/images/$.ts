@@ -2,7 +2,13 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { auth } from '../../../server/auth'
 import { canViewImage } from '../../../server/image-functions'
-import { getImage, isValidObjectKey } from '../../../server/storage'
+import {
+  THUMBNAIL_WIDTHS,
+  type ThumbnailWidth,
+  getImage,
+  isValidObjectKey,
+} from '../../../server/storage'
+import { imageAtWidth } from '../../../server/thumbnails'
 
 /**
  * The storage bucket has no public access and is unreachable from a browser, so
@@ -19,11 +25,22 @@ export const Route = createFileRoute('/api/images/$')({
 
         const session = await auth.api.getSession({ headers: request.headers })
         const viewerId = session?.user.id ?? null
+        // Always the key as asked for, which is always an original: a resized
+        // copy is addressed by its original plus a width, never by its own
+        // name, so there is one thing to authorize and no way to reach a copy
+        // of something you may not see.
         if (!(await canViewImage(viewerId, key))) {
           return new Response('Not found', { status: 404 })
         }
 
-        const stored = await getImage(key)
+        const asked = Number(new URL(request.url).searchParams.get('w'))
+        const width = THUMBNAIL_WIDTHS.find((allowed) => allowed === asked) as
+          | ThumbnailWidth
+          | undefined
+        // An unrecognised width serves the original rather than refusing: a
+        // picture at the wrong size is better than a broken one, and it keeps
+        // the set of stored copies closed.
+        const stored = width ? await imageAtWidth(key, width) : await getImage(key)
         if (!stored) return new Response('Not found', { status: 404 })
 
         // Keys are content-addressed by a fresh uuid on every replacement, so an

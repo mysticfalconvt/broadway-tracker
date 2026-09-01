@@ -83,7 +83,7 @@ export function Lightbox({
       <img
         alt={photo.caption ?? ''}
         className="lightbox-image"
-        src={`/api/images/${photo.objectKey}`}
+        src={`/api/images/${photo.objectKey}?w=1280`}
       />
 
       {photos.length > 1 ? (

@@ -4062,3 +4062,52 @@ a.joined-card-name:hover {
 .text-action.is-cover::before {
   content: "★ ";
 }
+
+/* The gallery is pictures; the controls wait behind a dot menu. */
+.photo-meta {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.15rem 0;
+  color: var(--ink-muted);
+  font-size: 0.76rem;
+}
+.photo-cover-mark {
+  color: #3f5a52;
+  font-weight: 650;
+}
+.photo-more {
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  padding: 0.2rem 0.4rem;
+}
+.photo-more:hover {
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+.photo-actions {
+  position: absolute;
+  top: 1.9rem;
+  right: 0;
+  z-index: 10;
+  display: grid;
+  gap: 0.55rem;
+  justify-items: start;
+  min-width: 12rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.14);
+}
+.photo-actions .photo-pending {
+  margin: 0;
+}

@@ -1,10 +1,10 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { and, desc, eq, inArray } from 'drizzle-orm'
+import { and, desc, eq, inArray, ne, or, sql } from 'drizzle-orm'
 import { currentSession, requireSession } from './session'
 
 import { getDb } from './db/client'
-import { showImages, shows, user } from './db/schema'
+import { coverChoices, showImages, shows, user } from './db/schema'
 import { areFriends } from './friend-functions'
 import { defaultVisibilityFor } from './visibility'
 import { inspectImage } from './image-validation'
@@ -172,7 +172,6 @@ export const showPhotosForViewer = createServerOnlyFn(
         reviewStatus: showImages.reviewStatus,
         uploadedByUserId: showImages.uploadedByUserId,
         uploaderName: user.name,
-        isCover: showImages.isCover,
         createdAt: showImages.createdAt,
       })
       .from(showImages)
@@ -189,7 +188,18 @@ export const showPhotosForViewer = createServerOnlyFn(
      * what may be seen. This is only how the ones already visible are grouped.
      */
     const { acceptedFriendIdsFor } = await import('./friend-functions')
-    const friendIds = viewerId ? new Set(await acceptedFriendIdsFor(viewerId)) : new Set<string>()
+    const friendIds = viewerId ? await acceptedFriendIdsFor(viewerId) : new Set<string>()
+
+    // Which of these the reader has picked out, if any. Theirs to choose from
+    // anybody's photographs, so this is a property of the reader rather than
+    // of the picture.
+    const [chosen] = viewerId
+      ? await db
+          .select({ imageId: coverChoices.imageId })
+          .from(coverChoices)
+          .where(and(eq(coverChoices.userId, viewerId), eq(coverChoices.showId, showId)))
+          .limit(1)
+      : []
 
     const visible = []
     for (const row of rows) {
@@ -199,7 +209,7 @@ export const showPhotosForViewer = createServerOnlyFn(
           id: row.id,
           objectKey: row.objectKey,
           isOwn,
-          isCover: row.isCover,
+          isCover: chosen?.imageId === row.id,
           fromFriend: !isOwn && friendIds.has(row.uploadedByUserId),
           visibility: row.visibility,
           reviewStatus: row.reviewStatus,
@@ -333,43 +343,55 @@ export const decideShowPhoto = createServerFn({ method: 'POST' })
  * costs one extra round trip rather than one per row.
  */
 /**
- * Choosing which of your own photographs stands for a show.
+ * Choosing which photograph stands for a show, for one reader.
  *
- * At most one per person per show, so setting one clears the rest — done in a
- * transaction, because two writes that can half-happen would leave somebody
- * with two covers or none.
+ * Any photograph they can see, not only their own. The one worth looking at is
+ * often somebody else's — a friend who was there and got a better one — and
+ * asking everybody to upload their own copy of the same picture to use it is
+ * asking them to make the bucket worse.
  *
- * Passing a photograph that is already the cover clears it, which is how
- * somebody goes back to "whichever is newest" without having to know that is
- * what the app does when nothing is chosen.
+ * Bounded by `canViewImage`, the same check the proxy applies, so a choice can
+ * never be made over something the reader could not have looked at. Read back
+ * through the same check too, because a friendship can end after a choice was
+ * made and the picture should quietly stop being theirs to show.
+ *
+ * Choosing the one already chosen clears it, which is how somebody returns to
+ * "whichever is newest" without having to know that is the fallback.
  */
 export const chooseCoverPhoto = createServerOnlyFn(async (userId: string, photoId: string) => {
   const db = getDb()
   const [photo] = await db
-    .select({
-      id: showImages.id,
-      showId: showImages.showId,
-      uploadedByUserId: showImages.uploadedByUserId,
-      isCover: showImages.isCover,
-    })
+    .select({ id: showImages.id, showId: showImages.showId, objectKey: showImages.objectKey })
     .from(showImages)
     .where(eq(showImages.id, photoId))
     .limit(1)
   if (!photo) throw new Error('That photograph is not here.')
-  // Somebody else's picture is not yours to put on your own shelf.
-  if (photo.uploadedByUserId !== userId) throw new Error('That photograph is not yours.')
+  if (!(await canViewImage(userId, photo.objectKey))) {
+    throw new Error('That photograph is not one you can see.')
+  }
 
-  const wanted = !photo.isCover
-  await db.transaction(async (tx) => {
-    await tx
-      .update(showImages)
-      .set({ isCover: false })
-      .where(and(eq(showImages.uploadedByUserId, userId), eq(showImages.showId, photo.showId)))
-    if (wanted) {
-      await tx.update(showImages).set({ isCover: true }).where(eq(showImages.id, photoId))
-    }
-  })
-  return { isCover: wanted }
+  const [already] = await db
+    .select({ imageId: coverChoices.imageId })
+    .from(coverChoices)
+    .where(and(eq(coverChoices.userId, userId), eq(coverChoices.showId, photo.showId)))
+    .limit(1)
+
+  if (already?.imageId === photoId) {
+    await db
+      .delete(coverChoices)
+      .where(and(eq(coverChoices.userId, userId), eq(coverChoices.showId, photo.showId)))
+    return { isCover: false }
+  }
+
+  await db
+    .insert(coverChoices)
+    .values({ userId, showId: photo.showId, imageId: photoId })
+    // One per person per show, so a second choice replaces the first.
+    .onConflictDoUpdate({
+      target: [coverChoices.userId, coverChoices.showId],
+      set: { imageId: photoId, createdAt: new Date() },
+    })
+  return { isCover: true }
 })
 
 export const applyViewerCovers = createServerOnlyFn(
@@ -381,19 +403,56 @@ export const applyViewerCovers = createServerOnlyFn(
     showIdOf: (row: T) => string = (row) => (row as unknown as { id: string }).id,
   ): Promise<T[]> => {
     if (!viewerId || rows.length === 0) return rows
+    const showIds = rows.map(showIdOf)
+    const { acceptedFriendIdsFor } = await import('./friend-functions')
+    const friendIds = [...(await acceptedFriendIdsFor(viewerId))]
+
+    /**
+     * In order of how much the reader has said about it.
+     *
+     * A photograph they picked out beats one they merely uploaded, which beats
+     * one a friend uploaded — and a friend's is offered at all because the
+     * picture worth looking at is often somebody else's, and asking everybody
+     * to upload their own copy of it would only make the bucket worse.
+     *
+     * A friend's photograph counts only while it is one the reader could open:
+     * shared with friends or public, and not one an administrator turned down.
+     * A friendship that ends takes the cover with it, which is the same rule
+     * the proxy would apply if the picture were requested directly.
+     */
     const own = await getDb()
-      .select({ showId: showImages.showId, objectKey: showImages.objectKey })
+      .select({
+        showId: showImages.showId,
+        objectKey: showImages.objectKey,
+        rank: sql<number>`case
+          when ${coverChoices.imageId} is not null then 0
+          when ${showImages.uploadedByUserId} = ${viewerId} then 1
+          else 2
+        end`,
+      })
       .from(showImages)
+      .leftJoin(
+        coverChoices,
+        and(eq(coverChoices.imageId, showImages.id), eq(coverChoices.userId, viewerId)),
+      )
       .where(
         and(
-          eq(showImages.uploadedByUserId, viewerId),
-          inArray(showImages.showId, rows.map(showIdOf)),
+          inArray(showImages.showId, showIds),
+          or(
+            eq(showImages.uploadedByUserId, viewerId),
+            and(
+              friendIds.length > 0 ? inArray(showImages.uploadedByUserId, friendIds) : sql`false`,
+              inArray(showImages.visibility, ['friends', 'public']),
+              ne(showImages.reviewStatus, 'rejected'),
+            ),
+          ),
         ),
       )
-      // A chosen one first, then the newest. Before this the newest simply won,
-      // so adding a picture of the interval bar quietly replaced the one
-      // somebody had settled on.
-      .orderBy(desc(showImages.isCover), desc(showImages.createdAt))
+      // Newest first within a rank; the ranking itself is applied below, where
+      // it can be read.
+      .orderBy(desc(showImages.createdAt))
+
+    own.sort((a, b) => a.rank - b.rank)
 
     // The first key seen for a show is the one that wins.
     const mine = new Map<string, string>()

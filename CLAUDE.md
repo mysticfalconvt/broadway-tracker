@@ -202,6 +202,25 @@ This is not tidiness. A matinee is when an understudy goes on, so the two
 performances often had different people in them, and the cast inference was
 answering identically for both.
 
+## Images: sizes and covers
+
+A resized copy is derived the first time a size is asked for and then kept, at
+`key@width.webp` beside the original. Resizing per request repeats the work
+forever; making every size at upload does work nobody wants and needs a backfill
+for everything already stored. `THUMBNAIL_WIDTHS` is closed — a width from the
+query string would be one request per pixel filling the bucket.
+
+Only ever pass the **original** key in a URL, with `?w=`. The authorization
+check reads that key, so there is one thing to authorize and no way to address a
+copy of something you may not see.
+
+A cover is a row in `cover_choices` (reader, show, image), not a flag on the
+photograph: a photograph belongs to whoever took it, and a cover belongs to
+whoever is looking. Any image the reader can see may be chosen, including a
+friend's. Falling back, in order: their choice, their own newest, a visible
+friend's newest, the catalog's. Visibility is checked when a choice is set *and*
+when it is read, because a friendship can end after the choice was made.
+
 ## Linking a Google account to an existing one
 
 `disableImplicitLinking: true` is the guard that matters: a provider identity is

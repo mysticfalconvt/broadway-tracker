@@ -520,17 +520,6 @@ export const showImages = pgTable(
       onDelete: 'set null',
     }),
     reviewedAt: timestamp('reviewed_at'),
-    /**
-     * The one the uploader wants to see on this show, everywhere they see it.
-     *
-     * A cover is a personal lens on the catalog rather than a fact about the
-     * show, so this is per photograph and the photograph already belongs to a
-     * person. Without it the newest upload simply won, which meant adding a
-     * picture of the interval bar quietly replaced the one somebody chose.
-     *
-     * At most one per person per show; setting one clears the rest.
-     */
-    isCover: boolean('is_cover').notNull().default(false),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },
@@ -607,6 +596,38 @@ export const posts = pgTable(
     index('posts_show_idx').on(table.showId),
     index('posts_venue_idx').on(table.venueId),
   ],
+)
+
+/**
+ * Which photograph stands for a show, for one person.
+ *
+ * A boolean on the photograph could only ever mean "the uploader's cover",
+ * because the photograph belongs to whoever took it. But a cover is a personal
+ * lens on the catalog rather than a fact about the show, and the picture worth
+ * looking at is often somebody else's — a friend who was there and got a better
+ * one. Asking everybody to upload their own copy of the same photograph to use
+ * it is asking them to make the bucket worse.
+ *
+ * So the choice is its own row: this reader, this show, that image. What may be
+ * chosen is bounded by what may be seen, which is checked when it is set and
+ * again when it is read, because a friendship can end after a choice was made.
+ */
+export const coverChoices = pgTable(
+  'cover_choices',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    showId: uuid('show_id')
+      .notNull()
+      .references(() => shows.id, { onDelete: 'cascade' }),
+    imageId: uuid('image_id')
+      .notNull()
+      .references(() => showImages.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  // One per person per show; choosing again replaces rather than accumulates.
+  (table) => [primaryKey({ columns: [table.userId, table.showId] })],
 )
 
 export const reports = pgTable(

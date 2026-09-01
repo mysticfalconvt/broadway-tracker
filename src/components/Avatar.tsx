@@ -46,7 +46,8 @@ export function Avatar({
         alt=""
         className={`avatar ${className}`.trim()}
         onError={() => setBroken(true)}
-        src={`/api/images/${imageKey}`}
+        // A face in a 2rem circle needs nothing like the original.
+        src={`/api/images/${imageKey}?w=128`}
       />
     )
   }

@@ -48,9 +48,33 @@ function getStorage() {
 export const KEY_PREFIXES = ['shows', 'avatars', 'show-photos'] as const
 export type KeyPrefix = (typeof KEY_PREFIXES)[number]
 
+/**
+ * The widths a stored copy may be made at.
+ *
+ * A closed set, not a number from the query string. Anything else would let one
+ * request per pixel fill the bucket with near-identical copies, which is a
+ * cheap thing for anybody signed in to do by accident and a cheaper one to do
+ * on purpose.
+ */
+export const THUMBNAIL_WIDTHS = [128, 320, 640, 1280] as const
+export type ThumbnailWidth = (typeof THUMBNAIL_WIDTHS)[number]
+
+const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
 const KEY_PATTERN = new RegExp(
-  `^(${KEY_PREFIXES.join('|')})/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.(png|jpg|webp)$`,
+  `^(${KEY_PREFIXES.join('|')})/${UUID}(@(${THUMBNAIL_WIDTHS.join('|')}))?\\.(png|jpg|webp)$`,
 )
+
+/**
+ * Where a resized copy of an object lives.
+ *
+ * Beside the original rather than in a namespace of its own, so the prefix
+ * still says what kind of thing it is — which is what the authorization check
+ * reads. The width is in the name so the set of copies is visible in the bucket
+ * rather than only in code.
+ */
+export function thumbnailKeyFor(key: string, width: ThumbnailWidth) {
+  return `${key.replace(/\.[a-z]+$/, '')}@${width}.webp`
+}
 
 /**
  * Keys are generated here and never taken from a client, so a user cannot

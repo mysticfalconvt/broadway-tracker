@@ -7,6 +7,11 @@ type ShowArtworkProps = {
   coverImageKey?: string | null
   /** Overrides the generated tone where a section needs a particular mood. */
   tone?: 'midnight' | 'oxblood' | 'paper'
+  /**
+   * Which stored size to ask for. A card wants a card-sized copy; a hero wants
+   * a hero-sized one. Defaults to the card, because most of these are cards.
+   */
+  width?: 128 | 320 | 640 | 1280
 }
 
 /**
@@ -14,12 +19,12 @@ type ShowArtworkProps = {
  * a cover is missing. Covers live in private storage with no public URL, so the
  * key is resolved to the authorizing proxy route rather than a bucket address.
  */
-export function ShowArtwork({ title, type, coverImageKey, tone }: ShowArtworkProps) {
+export function ShowArtwork({ title, type, coverImageKey, tone, width = 640 }: ShowArtworkProps) {
   if (coverImageKey) {
     return (
       <img
         className="show-artwork"
-        src={`/api/images/${coverImageKey}`}
+        src={`/api/images/${coverImageKey}?w=${width}`}
         alt={`${title} artwork`}
         loading="lazy"
         decoding="async"

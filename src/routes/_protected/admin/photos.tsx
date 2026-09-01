@@ -42,7 +42,12 @@ function PhotoReview() {
         <ul className="photo-grid review-grid">
           {photos.map((photo) => (
             <li key={photo.id}>
-              <img src={`/api/images/${photo.objectKey}`} alt="" loading="lazy" decoding="async" />
+              <img
+                src={`/api/images/${photo.objectKey}?w=640`}
+                alt=""
+                loading="lazy"
+                decoding="async"
+              />
               <div className="photo-meta">
                 <span>
                   <strong>{photo.showTitle}</strong> · {photo.uploaderName}
