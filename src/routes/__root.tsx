@@ -1,4 +1,4 @@
-import { HeadContent, Link, Scripts, createRootRoute } from '@tanstack/react-router'
+import { HeadContent, Link, Scripts, createRootRoute, useRouterState } from '@tanstack/react-router'
 import { useEffect, useState, type ReactNode } from 'react'
 
 import { authClient } from '../lib/auth-client'
@@ -101,17 +101,52 @@ function NavLinks() {
   // fall back to the server's rather than trusting `isPending` during SSR.
   const { data: clientSession } = authClient.useSession()
   const session = clientSession ?? serverSession
+  const [open, setOpen] = useState(false)
+  // Closed on every navigation: a menu still standing over the page you asked
+  // for is a menu you have to dismiss before you can read anything.
+  const here = useRouterState({ select: (state) => state.location.pathname })
+  useEffect(() => setOpen(false), [here])
+
+  const waiting = badges.friendRequests + (badges.isAdmin ? badges.waiting : 0)
+
+  /**
+   * The same links, on a phone.
+   *
+   * They used to be hidden below 760px and replaced with nothing at all: no
+   * navigation existed on a phone beyond the brand, and the counts that say
+   * somebody is waiting on you were invisible too. The button carries a dot
+   * when anything is waiting, because a menu that has to be opened to discover
+   * there was something in it is not much better than no menu.
+   */
+  const menu = (
+    <button
+      aria-controls="nav-menu"
+      aria-expanded={open}
+      className={`nav-toggle${waiting ? ' has-waiting' : ''}`}
+      onClick={() => setOpen((was) => !was)}
+      type="button"
+    >
+      {open ? 'Close' : 'Menu'}
+      {waiting ? <span className="sr-only">, {waiting} waiting</span> : null}
+    </button>
+  )
+
   if (!session) {
     return (
-      <div className="nav-links" aria-label="Product areas">
+      <div
+        className={`nav-links${open ? ' is-open' : ''}`}
+        aria-label="Product areas"
+        id="nav-menu"
+      >
         <Link to="/discover">Discover</Link>
         <Link to="/sign-in">Sign in</Link>
         <Link to="/sign-up">Create account</Link>
+        {menu}
       </div>
     )
   }
   return (
-    <div className="nav-links" aria-label="Product areas">
+    <div className={`nav-links${open ? ' is-open' : ''}`} aria-label="Product areas" id="nav-menu">
       <Link to="/library">My Theatre</Link>
       <Link to="/discover">Discover</Link>
       <Link to="/lists">Lists</Link>
@@ -143,6 +178,7 @@ function NavLinks() {
           ) : null}
         </Link>
       ) : null}
+      {menu}
     </div>
   )
 }

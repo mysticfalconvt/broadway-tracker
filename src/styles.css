@@ -99,6 +99,10 @@ p {
   font-size: 0.875rem;
   font-weight: 500;
 }
+/* The links are the navigation on a wide screen; the button is for phones. */
+.nav-toggle {
+  display: none;
+}
 .nav-note {
   color: var(--oxblood);
   font-size: 0.7rem;
@@ -1221,9 +1225,72 @@ h3 {
   .site-nav {
     min-height: 4rem;
   }
+  /*
+    A phone had no navigation at all: these were hidden and nothing took their
+    place, so every area of the app was unreachable except by typing a URL, and
+    the counts saying somebody was waiting on you were invisible with them.
+  */
+  .nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.85rem;
+    border: 1px solid var(--field-border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 650;
+  }
+  /* Something is waiting. A menu you must open to find that out is barely a
+     menu at all, so the dot rides on the button itself. */
+  .nav-toggle.has-waiting::after {
+    content: "";
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--oxblood);
+  }
   .nav-links span:not(.nav-note),
   .nav-links a {
     display: none;
+  }
+  .nav-links.is-open {
+    position: absolute;
+    top: 3.5rem;
+    right: 0;
+    left: 0;
+    z-index: 20;
+    display: grid;
+    gap: 0;
+    padding: 0.4rem 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface);
+    box-shadow: 0 12px 24px rgb(0 0 0 / 0.12);
+  }
+  .nav-links.is-open a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* Wide enough to be hit with a thumb, and full width so the whole row is
+       the target rather than the words. */
+    min-height: 3rem;
+    padding: 0 1.25rem;
+    color: var(--ink);
+    font-size: 1rem;
+  }
+  .nav-links.is-open a + a {
+    border-top: 1px solid var(--rule);
+  }
+  .nav-links.is-open .nav-toggle {
+    justify-content: center;
+    margin: 0.5rem 1.25rem 0.25rem;
+  }
+  /* The row it sits in has to be the positioning context for the panel. */
+  .site-nav {
+    position: relative;
   }
   .app-page {
     padding-top: 1rem;
