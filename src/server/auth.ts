@@ -104,8 +104,26 @@ export const auth = betterAuth({
         }
       : undefined,
   account: {
-    // OAuth identities may only be linked from an authenticated account session.
-    accountLinking: { disableImplicitLinking: true },
+    accountLinking: {
+      // OAuth identities may only be linked from an authenticated session.
+      // This is the guard that matters: without it, signing in with a provider
+      // whose email happens to match an existing account would hand over that
+      // account, and whether the provider verified the address is the
+      // provider's business rather than ours.
+      disableImplicitLinking: true,
+      /**
+       * A provider account may carry a different address to the one somebody
+       * signs in with, and usually does. People keep an address they use and a
+       * Google account they log in with, and requiring the two to match means
+       * the person it would help most is the one it refuses.
+       *
+       * Safe only because of the line above. Linking never happens on the way
+       * in — it happens from a session that is already authenticated, so
+       * whoever asks for it has proved they hold both. Turning this on while
+       * implicit linking was allowed would be an account-takeover route.
+       */
+      allowDifferentEmails: true,
+    },
   },
   user: {
     additionalFields: {

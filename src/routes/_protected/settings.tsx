@@ -1,6 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 import { ImageDrop } from '../../components/ImageDrop'
+import { WaysToSignIn } from '../../components/WaysToSignIn'
+import { getSocialProviders, getWaysToSignIn } from '../../server/social-functions'
 import { Avatar } from '../../components/Avatar'
 
 import { authClient } from '../../lib/auth-client'
@@ -88,11 +90,16 @@ function profileVisibilityFrom(value: FormDataEntryValue | null) {
 }
 
 export const Route = createFileRoute('/_protected/settings')({
-  loader: async () => ({ impact: await getSharingImpact() }),
+  loader: async () => ({
+    impact: await getSharingImpact(),
+    ways: await getWaysToSignIn(),
+    providers: await getSocialProviders(),
+  }),
   component: Settings,
 })
 
 function Settings() {
+  const { ways, providers } = Route.useLoaderData()
   const { user } = Route.useRouteContext()
   const { impact } = Route.useLoaderData()
   const [message, setMessage] = useState<string | null>(null)
@@ -268,6 +275,10 @@ function Settings() {
           </button>
         </div>
       </form>
+
+      {/* After the form, not inside it: linking navigates away to Google, and
+          a half-filled settings form should not be riding on that. */}
+      <WaysToSignIn googleAvailable={providers.google} ways={ways} />
     </main>
   )
 }

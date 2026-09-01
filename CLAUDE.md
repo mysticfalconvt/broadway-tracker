@@ -202,6 +202,23 @@ This is not tidiness. A matinee is when an understudy goes on, so the two
 performances often had different people in them, and the cast inference was
 answering identically for both.
 
+## Linking a Google account to an existing one
+
+`disableImplicitLinking: true` is the guard that matters: a provider identity is
+never attached on the way *in*, only from a session that is already
+authenticated. Without it, signing in with a provider whose email happened to
+match an existing account would hand that account over, and whether the provider
+verified the address is the provider's business rather than ours.
+
+`allowDifferentEmails: true` is safe **only** because of that. People keep an
+address they use and a Google account they log in with, and requiring the two to
+match refuses the person it would help most. Turning it on while implicit
+linking was allowed would be an account-takeover route — do not separate them.
+
+`disconnectWayIn` refuses to remove the last one. The consequence is not "a
+provider is disconnected", it is somebody shut out of years of their own
+evenings with the account still there and no door left in it.
+
 ## Renamed theatres
 
 A building outlives its name. The Brooks Atkinson became the Lena Horne in 2022,

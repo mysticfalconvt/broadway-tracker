@@ -3893,3 +3893,31 @@ a.joined-card-name:hover {
   font-size: 0.76rem;
   font-weight: 650;
 }
+
+.settings-section {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--rule);
+}
+.settings-section h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+.ways-list {
+  margin: 0.9rem 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+.ways-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 0.9rem;
+}
+.ways-only {
+  color: var(--ink-muted);
+  font-size: 0.76rem;
+}
