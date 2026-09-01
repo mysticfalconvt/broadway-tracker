@@ -172,12 +172,24 @@ export const showPhotosForViewer = createServerOnlyFn(
         reviewStatus: showImages.reviewStatus,
         uploadedByUserId: showImages.uploadedByUserId,
         uploaderName: user.name,
+        isCover: showImages.isCover,
         createdAt: showImages.createdAt,
       })
       .from(showImages)
       .innerJoin(user, eq(showImages.uploadedByUserId, user.id))
       .where(eq(showImages.showId, showId))
       .orderBy(desc(showImages.createdAt))
+
+    /**
+     * Whose photograph this is, in the terms somebody would sort by: mine,
+     * a friend's, or somebody else's. Asked once for the whole gallery rather
+     * than per row, because the same handful of people took most of them.
+     *
+     * Not a permission — `canViewImage` below is still the only thing deciding
+     * what may be seen. This is only how the ones already visible are grouped.
+     */
+    const { acceptedFriendIdsFor } = await import('./friend-functions')
+    const friendIds = viewerId ? new Set(await acceptedFriendIdsFor(viewerId)) : new Set<string>()
 
     const visible = []
     for (const row of rows) {
@@ -187,6 +199,8 @@ export const showPhotosForViewer = createServerOnlyFn(
           id: row.id,
           objectKey: row.objectKey,
           isOwn,
+          isCover: row.isCover,
+          fromFriend: !isOwn && friendIds.has(row.uploadedByUserId),
           visibility: row.visibility,
           reviewStatus: row.reviewStatus,
           // A public page is anonymous, so a contributor is named only to
@@ -318,6 +332,46 @@ export const decideShowPhoto = createServerFn({ method: 'POST' })
  * they have contributed one to. Batched into a single query so a list screen
  * costs one extra round trip rather than one per row.
  */
+/**
+ * Choosing which of your own photographs stands for a show.
+ *
+ * At most one per person per show, so setting one clears the rest — done in a
+ * transaction, because two writes that can half-happen would leave somebody
+ * with two covers or none.
+ *
+ * Passing a photograph that is already the cover clears it, which is how
+ * somebody goes back to "whichever is newest" without having to know that is
+ * what the app does when nothing is chosen.
+ */
+export const chooseCoverPhoto = createServerOnlyFn(async (userId: string, photoId: string) => {
+  const db = getDb()
+  const [photo] = await db
+    .select({
+      id: showImages.id,
+      showId: showImages.showId,
+      uploadedByUserId: showImages.uploadedByUserId,
+      isCover: showImages.isCover,
+    })
+    .from(showImages)
+    .where(eq(showImages.id, photoId))
+    .limit(1)
+  if (!photo) throw new Error('That photograph is not here.')
+  // Somebody else's picture is not yours to put on your own shelf.
+  if (photo.uploadedByUserId !== userId) throw new Error('That photograph is not yours.')
+
+  const wanted = !photo.isCover
+  await db.transaction(async (tx) => {
+    await tx
+      .update(showImages)
+      .set({ isCover: false })
+      .where(and(eq(showImages.uploadedByUserId, userId), eq(showImages.showId, photo.showId)))
+    if (wanted) {
+      await tx.update(showImages).set({ isCover: true }).where(eq(showImages.id, photoId))
+    }
+  })
+  return { isCover: wanted }
+})
+
 export const applyViewerCovers = createServerOnlyFn(
   async <T extends { coverImageKey: string | null }>(
     viewerId: string | null,
@@ -336,9 +390,12 @@ export const applyViewerCovers = createServerOnlyFn(
           inArray(showImages.showId, rows.map(showIdOf)),
         ),
       )
-      .orderBy(desc(showImages.createdAt))
+      // A chosen one first, then the newest. Before this the newest simply won,
+      // so adding a picture of the interval bar quietly replaced the one
+      // somebody had settled on.
+      .orderBy(desc(showImages.isCover), desc(showImages.createdAt))
 
-    // Newest first, so the first key seen for a show is the one that wins.
+    // The first key seen for a show is the one that wins.
     const mine = new Map<string, string>()
     for (const row of own) if (!mine.has(row.showId)) mine.set(row.showId, row.objectKey)
     if (mine.size === 0) return rows
@@ -391,3 +448,7 @@ export const changePhotoVisibility = createServerFn({ method: 'POST' })
   .handler(async ({ data }) =>
     setShowPhotoVisibility((await requireSession()).user.id, data.id, data.visibility),
   )
+
+export const setCoverPhoto = createServerFn({ method: 'POST' })
+  .validator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data }) => chooseCoverPhoto((await requireSession()).user.id, data.id))

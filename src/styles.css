@@ -3921,3 +3921,123 @@ a.joined-card-name:hover {
   color: var(--ink-muted);
   font-size: 0.76rem;
 }
+
+.photo-filters {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.photo-filters button {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+.photo-filters button.is-current {
+  border-color: var(--oxblood);
+  background: var(--canvas);
+  color: var(--ink);
+}
+/* The thumbnail is the control now, so it has to look like one. */
+.photo-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  cursor: zoom-in;
+  overflow: hidden;
+}
+.photo-open img {
+  display: block;
+  width: 100%;
+  transition: transform 0.2s ease;
+}
+.photo-open:hover img {
+  transform: scale(1.03);
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 3.5rem 1rem 2.5rem;
+  background: rgb(18 18 20 / 0.92);
+}
+.lightbox-image {
+  max-width: min(100%, 78rem);
+  max-height: calc(100vh - 7rem);
+  object-fit: contain;
+  border-radius: 4px;
+}
+.lightbox-bar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.15rem;
+  color: rgb(255 255 255 / 0.85);
+  font-size: 0.82rem;
+}
+.lightbox-close {
+  border: 1px solid rgb(255 255 255 / 0.35);
+  border-radius: 999px;
+  background: none;
+  padding: 0.35rem 0.9rem;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+.lightbox-step {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  /* Big enough to hit with a thumb without aiming. */
+  width: 3rem;
+  height: 3rem;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.12);
+  color: #fff;
+  cursor: pointer;
+  font-size: 1.8rem;
+  line-height: 1;
+}
+.lightbox-step:hover {
+  background: rgb(255 255 255 / 0.22);
+}
+.lightbox-step.is-prev {
+  left: 0.6rem;
+}
+.lightbox-step.is-next {
+  right: 0.6rem;
+}
+.lightbox-caption {
+  position: absolute;
+  bottom: 0.9rem;
+  margin: 0;
+  color: rgb(255 255 255 / 0.8);
+  font-size: 0.8rem;
+}
+
+/* The chosen one says so rather than looking like the button beside it. */
+.text-action.is-cover {
+  color: #3f5a52;
+}
+.text-action.is-cover::before {
+  content: "★ ";
+}

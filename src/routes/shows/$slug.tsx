@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react'
 
 import { authClient } from '../../lib/auth-client'
 import { ImageDrop } from '../../components/ImageDrop'
+import { Lightbox } from '../../components/Lightbox'
 import { ShowArtwork } from '../../components/ShowArtwork'
 import { getSession } from '../../server/auth-functions'
 import {
@@ -14,7 +15,12 @@ import {
 import { dropCasting, getCastForShow, saveCasting } from '../../server/people-functions'
 import { getPostsAbout } from '../../server/post-functions'
 import { getMyShowState, saveLibraryEntry } from '../../server/library-functions'
-import { changePhotoVisibility, deleteShowPhoto, getShowPhotos } from '../../server/image-functions'
+import {
+  changePhotoVisibility,
+  deleteShowPhoto,
+  getShowPhotos,
+  setCoverPhoto,
+} from '../../server/image-functions'
 import { formatFuzzyDate } from '../../lib/fuzzy-date'
 import { formText } from '../../lib/form'
 
@@ -309,6 +315,27 @@ function PhotoGallery({
   const [problem, setProblem] = useState<string | null>(null)
   // Sharing with approved friends is the default; private stays one click away.
   const [visibility, setVisibility] = useState('friends')
+  const [whose, setWhose] = useState<'all' | 'mine' | 'friends'>('all')
+  const [open, setOpen] = useState<number | null>(null)
+
+  const shown = photos.filter((photo) =>
+    whose === 'mine' ? photo.isOwn : whose === 'friends' ? photo.fromFriend : true,
+  )
+  /**
+   * Offered only when it would do something.
+   *
+   * A group earns a chip when it holds some of the photographs but not all of
+   * them. Four pictures all taken by the reader gave an "All" and a "Yours"
+   * that showed the same four — a control that cannot change what is on the
+   * screen, which is worse than no control at all.
+   */
+  const filters = (
+    [
+      ['all', 'All', photos.length],
+      ['mine', 'Yours', photos.filter((one) => one.isOwn).length],
+      ['friends', "Friends'", photos.filter((one) => one.fromFriend).length],
+    ] as const
+  ).filter(([key, , count]) => key === 'all' || (count > 0 && count < photos.length))
 
   async function upload(file: File) {
     setProblem(null)
@@ -343,11 +370,41 @@ function PhotoGallery({
         </div>
       </div>
 
-      {photos.length ? (
+      {photos.length && filters.length > 1 ? (
+        <div className="photo-filters" role="group" aria-label="Whose photographs">
+          {filters.map(([key, label, count]) => (
+            <button
+              aria-pressed={whose === key}
+              className={whose === key ? 'is-current' : ''}
+              key={key}
+              onClick={() => setWhose(key)}
+              type="button"
+            >
+              {label} <span className="tab-count">{count}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {shown.length ? (
         <ul className="photo-grid">
-          {photos.map((photo) => (
+          {shown.map((photo, position) => (
             <li key={photo.id}>
-              <img src={`/api/images/${photo.objectKey}`} alt="" loading="lazy" decoding="async" />
+              {/* A thumbnail is a contact sheet entry: it says a photograph
+                  exists without letting anybody look at it. */}
+              <button
+                aria-label="Open this photograph"
+                className="photo-open"
+                onClick={() => setOpen(position)}
+                type="button"
+              >
+                <img
+                  src={`/api/images/${photo.objectKey}`}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                />
+              </button>
               <div className="photo-meta">
                 <span>{photo.isOwn ? 'Yours' : (photo.uploaderName ?? 'A theatregoer')}</span>
                 {photo.isOwn &&
@@ -360,6 +417,19 @@ function PhotoGallery({
                 ) : null}
                 {photo.isOwn ? (
                   <>
+                    {/* A cover is a personal lens on the catalog, so this only
+                        ever changes what this reader sees. */}
+                    <button
+                      aria-pressed={photo.isCover}
+                      className={photo.isCover ? 'text-action is-cover' : 'text-action'}
+                      onClick={async () => {
+                        await setCoverPhoto({ data: { id: photo.id } })
+                        window.location.reload()
+                      }}
+                      type="button"
+                    >
+                      {photo.isCover ? 'Your cover' : 'Use as cover'}
+                    </button>
                     <label className="photo-visibility">
                       <span className="sr-only">Who can see this photograph</span>
                       <select
@@ -389,11 +459,26 @@ function PhotoGallery({
             </li>
           ))}
         </ul>
+      ) : photos.length ? (
+        <p className="profile-empty">None of these are yours yet.</p>
       ) : (
         <p className="profile-empty">
           No photographs yet. If you have been, yours would be the first.
         </p>
       )}
+
+      {open !== null ? (
+        <Lightbox
+          index={Math.min(open, shown.length - 1)}
+          onClose={() => setOpen(null)}
+          onMove={setOpen}
+          photos={shown.map((photo) => ({
+            id: photo.id,
+            objectKey: photo.objectKey,
+            caption: photo.isOwn ? 'Yours' : (photo.uploaderName ?? null),
+          }))}
+        />
+      ) : null}
 
       {session ? (
         <div className="photo-upload">

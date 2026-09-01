@@ -520,6 +520,17 @@ export const showImages = pgTable(
       onDelete: 'set null',
     }),
     reviewedAt: timestamp('reviewed_at'),
+    /**
+     * The one the uploader wants to see on this show, everywhere they see it.
+     *
+     * A cover is a personal lens on the catalog rather than a fact about the
+     * show, so this is per photograph and the photograph already belongs to a
+     * person. Without it the newest upload simply won, which meant adding a
+     * picture of the interval bar quietly replaced the one somebody chose.
+     *
+     * At most one per person per show; setting one clears the rest.
+     */
+    isCover: boolean('is_cover').notNull().default(false),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },

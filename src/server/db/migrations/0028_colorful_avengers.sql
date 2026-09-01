@@ -1,0 +1,1 @@
+ALTER TABLE "show_images" ADD COLUMN "is_cover" boolean DEFAULT false NOT NULL;
