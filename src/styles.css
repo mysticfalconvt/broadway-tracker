@@ -581,7 +581,8 @@ h3 {
   color: var(--oxblood);
 }
 .catalog-show-row .show-artwork {
-  min-height: 4.5rem;
+  aspect-ratio: 3 / 4;
+  min-height: 0;
 }
 .catalog-show-row strong,
 .catalog-show-row small {
@@ -622,7 +623,8 @@ h3 {
   padding: clamp(3rem, 8vw, 7rem) 0;
 }
 .show-hero .show-artwork {
-  min-height: 21rem;
+  aspect-ratio: 3 / 2;
+  min-height: 0;
 }
 .outing-hero .button-primary,
 .show-hero .button-primary {
@@ -749,7 +751,8 @@ h3 {
   text-decoration: none;
 }
 .library-entry .show-artwork {
-  min-height: 13rem;
+  aspect-ratio: 4 / 3;
+  min-height: 0;
 }
 .library-entry > div:last-child {
   display: grid;
@@ -837,7 +840,8 @@ h3 {
 .list-items .show-artwork {
   width: 3.5rem;
   min-width: 3.5rem;
-  min-height: 4.5rem;
+  aspect-ratio: 3 / 4;
+  min-height: 0;
 }
 .list-items article > div {
   display: flex;
@@ -955,7 +959,10 @@ h3 {
   background: var(--surface);
   box-shadow: 0 12px 30px rgb(32 30 29 / 5%);
 }
+/* The one exception: this sits beside its text and stretches to match it, so a
+   height already exists for the crop to work against. */
 .memory-card .show-artwork {
+  aspect-ratio: auto;
   min-height: 17rem;
   height: 100%;
 }
@@ -991,12 +998,26 @@ h3 {
   font-style: italic;
   line-height: 1.35;
 }
+/*
+  A definite shape, not a floor.
+  `object-fit: cover` only crops when the box has a height to crop against, and
+  every rule below set `min-height` alone — so an image kept its own
+  proportions and a portrait photograph stretched its card to match. Since a
+  reader can now choose one of their own photographs as a cover, that became
+  ordinary rather than theoretical.
+  A ratio here means every card in a row is the same height whatever shape the
+  picture behind it is, and each context still overrides with its own.
+*/
 .show-artwork {
   display: block;
   width: 100%;
+  aspect-ratio: 4 / 3;
   object-fit: cover;
 }
 .show-artwork-fallback {
+  /* Text inside must never be clipped, so this may grow past the ratio. */
+  min-height: 11rem;
+  height: auto;
   display: flex;
   flex-direction: column;
   justify-content: end;

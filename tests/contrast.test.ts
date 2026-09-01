@@ -91,6 +91,32 @@ describe('stylesheet invariants', () => {
     expect(css).toMatch(/^:focus-visible\s*\{/m)
   })
 
+  it('gives artwork a definite shape to crop against', () => {
+    /**
+     * `object-fit: cover` only crops against a height. Every rule sizing
+     * artwork used to set `min-height` alone, which is a floor rather than a
+     * shape — so an image kept its own proportions and a portrait photograph
+     * stretched its card and the row beside it. That stopped being theoretical
+     * the moment a reader could choose one of their own photographs as a cover.
+     *
+     * The bound lives on the base rule, so every context inherits it through
+     * the cascade and a `min-height` there is only a floor. What must hold is
+     * that the base declares a shape, and that nothing takes it away without
+     * putting a real height in its place.
+     */
+    const base = css.match(/(?:^|\n)\.show-artwork\s*\{([^}]*)\}/)
+    expect(base, '.show-artwork base rule is missing').toBeTruthy()
+    expect(base?.[1], '.show-artwork must declare an aspect-ratio').toMatch(/aspect-ratio:/)
+
+    for (const [, selector, body] of css.matchAll(/([^{}]*)\{([^}]*)\}/g)) {
+      if (!/aspect-ratio:\s*auto/.test(body ?? '')) continue
+      expect(
+        /(^|;|\s)height:/.test(body ?? ''),
+        `${selector?.trim()} drops the ratio without giving artwork a height instead`,
+      ).toBe(true)
+    }
+  })
+
   it('gives every button variant its own text colour', () => {
     // A variant that sets a background but inherits its colour renders
     // cream-on-cream inside the dark heroes, which is invisible.
