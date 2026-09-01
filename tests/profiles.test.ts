@@ -96,7 +96,8 @@ describe('friend profile content filtering', () => {
       visibility: 'private',
     })
     const result = await friendProfileForViewer(friend.id, owner.handle)
-    expect(result.favorites.map((show) => show.title)).toEqual(['Shared favorite'])
+    const starred = result.seenShows.filter((show) => show.favorite)
+    expect(starred.map((show) => show.title)).toEqual(['Shared favorite'])
   })
 
   it('omits non-favorite entries from favorites', async () => {
@@ -111,7 +112,7 @@ describe('friend profile content filtering', () => {
       visibility: 'friends',
     })
     const result = await friendProfileForViewer(friend.id, owner.handle)
-    expect(result.favorites).toHaveLength(0)
+    expect(result.seenShows.filter((show) => show.favorite)).toHaveLength(0)
   })
 
   it('shows only friends-visible lists', async () => {
@@ -202,7 +203,8 @@ describe('what a friend actually sees', () => {
   it('shows a friend what was shared with friends', async () => {
     const { owner, friend } = await sharedWith('friends')
     const profile = await friendProfileForViewer(friend.id, owner.handle)
-    expect(profile.favorites.map((s) => s.title)).toEqual(['Hadestown'])
+    // One entry, once. This used to be asserted in two lists at the same time,
+    // which is exactly how the same show came to be drawn twice on the page.
     expect(profile.seenShows.map((s) => s.title)).toEqual(['Hadestown'])
   })
 
@@ -211,14 +213,14 @@ describe('what a friend actually sees', () => {
     // is the exact opposite of what they asked for — and it is the default.
     const { owner, friend } = await sharedWith('public')
     const profile = await friendProfileForViewer(friend.id, owner.handle)
-    expect(profile.favorites.map((s) => s.title)).toEqual(['Hadestown'])
+    // One entry, once. This used to be asserted in two lists at the same time,
+    // which is exactly how the same show came to be drawn twice on the page.
     expect(profile.seenShows.map((s) => s.title)).toEqual(['Hadestown'])
   })
 
   it('keeps a private entry private, friendship or not', async () => {
     const { owner, friend } = await sharedWith('private')
     const profile = await friendProfileForViewer(friend.id, owner.handle)
-    expect(profile.favorites).toHaveLength(0)
     expect(profile.seenShows).toHaveLength(0)
   })
 
@@ -238,7 +240,7 @@ describe('what a friend actually sees', () => {
       })
     }
     const profile = await friendProfileForViewer(friend.id, owner.handle)
-    expect(profile.favorites).toHaveLength(0)
+    expect(profile.seenShows.filter((s) => s.favorite)).toHaveLength(0)
     expect(profile.seenShows.map((s) => s.title).sort()).toEqual(['Hadestown', 'Six'])
     expect(profile.stats.seen).toBe(2)
   })
@@ -262,5 +264,69 @@ describe('what a friend actually sees', () => {
     await makeList(owner.id, { title: 'Just mine', visibility: 'private' })
     const profile = await friendProfileForViewer(friend.id, owner.handle)
     expect(profile.lists.map((l) => l.title).sort()).toEqual(['For the group', 'Out in the open'])
+  })
+})
+
+describe('what the two of you have in common', () => {
+  it('marks the shows the reader has also seen', async () => {
+    // The reason for visiting somebody's page: the overlap is what there is to
+    // talk about, and what you might have been at together.
+    const owner = await friendsProfile()
+    const friend = await makeUser()
+    await makeFriendship(owner.id, friend.id, 'accepted')
+    const both = await makeShow({ title: 'Hadestown', slug: 'hadestown-both' })
+    const onlyTheirs = await makeShow({ title: 'Six', slug: 'six-theirs' })
+    for (const show of [both, onlyTheirs]) {
+      await makeLibraryEntry(owner.id, show.id, {
+        status: 'seen',
+        favorite: false,
+        visibility: 'public',
+      })
+    }
+    await makeLibraryEntry(friend.id, both.id, { status: 'seen', visibility: 'private' })
+
+    const profile = await friendProfileForViewer(friend.id, owner.handle)
+    const marked = profile.seenShows.filter((show) => show.bothSaw).map((show) => show.title)
+    expect(marked).toEqual(['Hadestown'])
+  })
+
+  it('does not count a show the reader only wants to see', async () => {
+    const owner = await friendsProfile()
+    const friend = await makeUser()
+    await makeFriendship(owner.id, friend.id, 'accepted')
+    const show = await makeShow()
+    await makeLibraryEntry(owner.id, show.id, {
+      status: 'seen',
+      favorite: false,
+      visibility: 'public',
+    })
+    await makeLibraryEntry(friend.id, show.id, { status: 'want_to_see', visibility: 'private' })
+
+    const profile = await friendProfileForViewer(friend.id, owner.handle)
+    expect(profile.seenShows.filter((one) => one.bothSaw)).toHaveLength(0)
+  })
+
+  it('marks their nights whose show the reader has also seen', async () => {
+    // The likeliest thing anybody came to this page to fix: a night they were
+    // at and never said so.
+    const owner = await friendsProfile()
+    const friend = await makeUser()
+    await makeFriendship(owner.id, friend.id, 'accepted')
+    const show = await makeShow()
+    await makeLibraryEntry(friend.id, show.id, { status: 'seen', visibility: 'private' })
+    const { createOutingForUser } = await import('../src/server/outing-functions')
+    await createOutingForUser(owner.id, {
+      showId: show.id,
+      datePrecision: 'exact',
+      occurredOn: '2026-06-14',
+      visibility: 'friends',
+      attendeeIds: [],
+      favorite: false,
+    })
+
+    const profile = await friendProfileForViewer(friend.id, owner.handle)
+    expect(profile.outings).toHaveLength(1)
+    expect(profile.outings[0]?.youSawItToo).toBe(true)
+    expect(profile.outings[0]?.alreadyThere).toBe(false)
   })
 })

@@ -3786,3 +3786,43 @@ a.joined-card-name:hover {
   color: var(--ink-muted);
   font-size: 0.74rem;
 }
+
+.tab-count {
+  display: inline-block;
+  min-width: 1.4rem;
+  margin-left: 0.15rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+  text-align: center;
+}
+.discover-tabs a.is-current .tab-count {
+  background: var(--canvas);
+}
+.show-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.3rem 0 0 !important;
+}
+.show-mark {
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+  font-weight: 650;
+}
+/* The overlap is the point of the page, so it is the one that carries colour. */
+.show-mark.is-shared {
+  background: #3f5a52;
+  color: #f6efe6;
+}
+.friend-outing-maybe {
+  margin: 0.3rem 0 0;
+  color: var(--oxblood);
+  font-size: 0.76rem;
+  font-weight: 650;
+}

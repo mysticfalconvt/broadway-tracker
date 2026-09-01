@@ -263,7 +263,7 @@ export const friendProfileForViewer = createServerOnlyFn(
       throw new Error('This profile is only available to friends.')
     if (profile.visibility === 'private')
       throw new Error('This friend keeps their profile to themselves.')
-    const [seen, outingsCount, favorites, seenShows, sharedOutings, sharedLists] =
+    const [seen, outingsCount, seenShows, viewerSeen, sharedOutings, sharedLists] =
       await Promise.all([
         db
           .select({ count: sql<number>`count(*)::int` })
@@ -273,6 +273,19 @@ export const friendProfileForViewer = createServerOnlyFn(
           .select({ count: sql<number>`count(*)::int` })
           .from(outings)
           .where(eq(outings.createdByUserId, profile.id)),
+        /**
+         * One list, with the starred ones marked.
+         *
+         * These were two queries and two sections, and a favourite is almost
+         * always also seen — so the same show was drawn twice on one page, once
+         * under "Favorites" and again under "Seen", with nothing saying they
+         * were the same thing.
+         *
+         * Public is more open than friends, not less. Matching 'friends'
+         * exactly hid everything from the very people it was shared with,
+         * because new entries default to the profile's own setting and that
+         * defaults to public.
+         */
         db
           .select({
             id: shows.id,
@@ -280,31 +293,7 @@ export const friendProfileForViewer = createServerOnlyFn(
             slug: shows.slug,
             type: shows.type,
             coverImageKey: shows.coverImageKey,
-          })
-          .from(libraryEntries)
-          .innerJoin(shows, eq(libraryEntries.showId, shows.id))
-          .where(
-            and(
-              eq(libraryEntries.userId, profile.id),
-              eq(libraryEntries.favorite, true),
-              // Public is more open than friends, not less. Matching 'friends'
-              // exactly hid everything from the very people it was shared with,
-              // because new entries default to the profile's own setting and
-              // that defaults to public.
-              inArray(libraryEntries.visibility, ['friends', 'public']),
-            ),
-          )
-          .orderBy(desc(libraryEntries.updatedAt))
-          .limit(6),
-        // The stat said "24 shows seen" above a page listing none of them, unless
-        // the friend happened to have starred something.
-        db
-          .select({
-            id: shows.id,
-            title: shows.title,
-            slug: shows.slug,
-            type: shows.type,
-            coverImageKey: shows.coverImageKey,
+            favorite: libraryEntries.favorite,
           })
           .from(libraryEntries)
           .innerJoin(shows, eq(libraryEntries.showId, shows.id))
@@ -315,8 +304,14 @@ export const friendProfileForViewer = createServerOnlyFn(
               inArray(libraryEntries.visibility, ['friends', 'public']),
             ),
           )
-          .orderBy(desc(libraryEntries.updatedAt))
-          .limit(24),
+          // Starred first: it is the part somebody actually wants to see.
+          .orderBy(desc(libraryEntries.favorite), desc(libraryEntries.updatedAt))
+          .limit(60),
+        // What the reader has seen, so the two histories can be compared.
+        db
+          .select({ showId: libraryEntries.showId })
+          .from(libraryEntries)
+          .where(and(eq(libraryEntries.userId, viewerId), eq(libraryEntries.status, 'seen'))),
         // The nights themselves, not just how many. A count with nothing under it
         // is the least useful thing a profile can say.
         db
@@ -370,6 +365,8 @@ export const friendProfileForViewer = createServerOnlyFn(
           .orderBy(asc(lists.title)),
       ])
     const { placesVisitedBy } = await import('./geocoding')
+    const mine = new Set(viewerSeen.map((row) => row.showId))
+
     return {
       user: profile,
       stats: { seen: seen[0]?.count ?? 0, outings: outingsCount[0]?.count ?? 0 },
@@ -378,9 +375,16 @@ export const friendProfileForViewer = createServerOnlyFn(
       places: await placesVisitedBy(profile.id, { includePrivate: false }),
       // The reader's own photographs, even on somebody else's page: a cover is
       // a personal lens on the catalog, not a fact about the friend.
-      favorites: await applyViewerCovers(viewerId, favorites),
-      seenShows: await applyViewerCovers(viewerId, seenShows),
-      outings: await applyViewerCovers(viewerId, sharedOutings, (row) => row.showId),
+      //
+      // `bothSaw` is the point of visiting somebody's page at all: it is the
+      // thing to talk about, and the thing you might have been at together.
+      seenShows: (await applyViewerCovers(viewerId, seenShows)).map((show) => ({
+        ...show,
+        bothSaw: mine.has(show.id),
+      })),
+      outings: (await applyViewerCovers(viewerId, sharedOutings, (row) => row.showId)).map(
+        (outing) => ({ ...outing, youSawItToo: mine.has(outing.showId) }),
+      ),
       lists: sharedLists,
     }
   },

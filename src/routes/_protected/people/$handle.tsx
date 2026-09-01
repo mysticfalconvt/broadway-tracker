@@ -1,11 +1,16 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
+import { z } from 'zod'
 
 import { ShowArtwork } from '../../../components/ShowArtwork'
 import { VenueMap } from '../../../components/VenueMap'
-import { formatFuzzyDate } from '../../../lib/fuzzy-date'
+import { formatFuzzyDateShort } from '../../../lib/fuzzy-date'
 import { getFriendProfile } from '../../../server/profile-functions'
 
+type Profile = NonNullable<Awaited<ReturnType<typeof getFriendProfile>>>
+type Night = Profile['outings'][number]
+
 export const Route = createFileRoute('/_protected/people/$handle')({
+  validateSearch: z.object({ view: z.enum(['nights', 'shows', 'places', 'lists']).optional() }),
   loader: async ({ params }) => {
     try {
       return { profile: await getFriendProfile({ data: { handle: params.handle } }), problem: null }
@@ -19,19 +24,32 @@ export const Route = createFileRoute('/_protected/people/$handle')({
 
 function FriendProfile() {
   const { profile, problem } = Route.useLoaderData()
+  const { view } = Route.useSearch()
+  const { handle } = Route.useParams()
+  const showing = view ?? 'nights'
+
   if (!profile) {
     return (
       <main className="page-wrap empty-state">
         <p className="eyebrow">Not shared</p>
         <h1>{problem}</h1>
-        <p>Profiles are private until their owner chooses to share them.</p>
         <Link className="button button-primary" to="/friends">
-          Back to your friends
+          Back to friends
         </Link>
       </main>
     )
   }
-  const { user, stats, favorites, seenShows, outings, places, lists } = profile
+
+  const { user, stats, places, seenShows, outings, lists } = profile
+  const together = seenShows.filter((show) => show.bothSaw).length
+
+  const tabs = [
+    { key: 'nights', label: 'Their nights', count: outings.length },
+    { key: 'shows', label: 'Shows', count: seenShows.length },
+    { key: 'places', label: 'Places', count: places.length },
+    { key: 'lists', label: 'Lists', count: lists.length },
+  ] as const
+
   return (
     <main className="profile-page page-wrap">
       <header className="settings-header">
@@ -48,146 +66,152 @@ function FriendProfile() {
           <dt>Outings logged</dt>
           <dd>{stats.outings}</dd>
         </div>
+        <div>
+          {/* The reason for visiting somebody's page: the overlap is what there
+              is to talk about, and what you might have been at together. */}
+          <dt>Also seen by you</dt>
+          <dd>{together}</dd>
+        </div>
       </dl>
-      <section className="profile-favorites">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Favorites</p>
-            <h2>Shows worth an encore.</h2>
-          </div>
-        </div>
-        {favorites.length ? (
-          <div className="library-grid">
-            {favorites.map((show) => (
-              <Link
-                className="library-entry"
-                key={show.id}
-                to="/shows/$slug"
-                params={{ slug: show.slug }}
-              >
-                <ShowArtwork
-                  title={show.title}
-                  type={show.type}
-                  coverImageKey={show.coverImageKey}
-                />
-                <div>
-                  <h2>{show.title}</h2>
-                  <p>{show.type}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <p className="profile-empty">No favorites have been shared.</p>
-        )}
-      </section>
-      {places.length ? (
-        <section className="profile-favorites">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Where they go</p>
-              <h2>Their theatres.</h2>
-            </div>
-          </div>
+
+      <nav aria-label="What to look at" className="discover-tabs">
+        {tabs.map((tab) => (
+          <Link
+            activeOptions={{ exact: true, includeSearch: true }}
+            className={showing === tab.key ? 'is-current' : ''}
+            key={tab.key}
+            params={{ handle }}
+            search={{ view: tab.key === 'nights' ? undefined : tab.key }}
+            to="/people/$handle"
+          >
+            {tab.label} <span className="tab-count">{tab.count}</span>
+          </Link>
+        ))}
+      </nav>
+
+      {showing === 'nights' ? <TheirNights nights={outings} /> : null}
+      {showing === 'shows' ? <TheirShows shows={seenShows} /> : null}
+      {showing === 'places' ? (
+        places.length ? (
           <VenueMap venues={places} />
-        </section>
+        ) : (
+          <p className="profile-empty">No theatres shared yet.</p>
+        )
       ) : null}
-      <section className="profile-favorites">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Nights out</p>
-            <h2>What they went to.</h2>
-          </div>
-        </div>
-        {outings.length ? (
-          <ul className="friend-outings">
-            {outings.map((outing) => (
-              <FriendOuting key={outing.id} outing={outing} />
-            ))}
-          </ul>
-        ) : (
-          <p className="profile-empty">Nothing shared yet.</p>
-        )}
-      </section>
-      <section className="profile-favorites">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Seen</p>
-            <h2>Where they have been.</h2>
-          </div>
-        </div>
-        {seenShows.length ? (
-          <div className="library-grid">
-            {seenShows.map((show) => (
-              <Link
-                className="library-entry"
-                key={show.id}
-                params={{ slug: show.slug }}
-                to="/shows/$slug"
-              >
-                <ShowArtwork
-                  coverImageKey={show.coverImageKey}
-                  title={show.title}
-                  type={show.type}
-                />
-                <div>
-                  <h2>{show.title}</h2>
-                  <p>{show.type}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <p className="profile-empty">Nothing shared yet.</p>
-        )}
-      </section>
-      <section className="profile-favorites">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Lists</p>
-            <h2>Shared shelves.</h2>
-          </div>
-        </div>
-        {lists.length ? (
-          <div className="list-index">
-            {lists.map((list) => (
-              <Link key={list.id} to="/lists/$id" params={{ id: list.id }}>
-                <h2>{list.title}</h2>
-                {list.description ? <p>{list.description}</p> : null}
-                <p>
-                  {list.itemCount} {list.itemCount === 1 ? 'show' : 'shows'}
-                </p>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <p className="profile-empty">No lists have been shared.</p>
-        )}
-      </section>
+      {showing === 'lists' ? <TheirLists lists={lists} /> : null}
     </main>
   )
 }
 
 /**
- * One of a friend's nights, with the offer to say you were there too.
+ * Their nights, grouped by the year they happened in.
  *
- * Saying so puts the reader on that same outing rather than making a second
- * record of one evening — so it then appears in their own history, and the show
- * is marked seen in their library.
+ * The same shape the library timeline uses, because it is the same question
+ * asked about somebody else. Each night links to itself, which is where saying
+ * you were there too lives — so what this page is really for is finding the
+ * ones you were at and had not said so.
  */
-function FriendOuting({
-  outing,
-}: {
-  outing: NonNullable<Awaited<ReturnType<typeof getFriendProfile>>>['outings'][number]
-}) {
+function TheirNights({ nights }: { nights: Night[] }) {
+  if (nights.length === 0) return <p className="profile-empty">Nothing shared yet.</p>
+
+  const byYear = new Map<number | null, Night[]>()
+  for (const night of nights) {
+    const year =
+      night.occurredYear ?? (night.occurredOn ? Number(night.occurredOn.slice(0, 4)) : null)
+    byYear.set(year, [...(byYear.get(year) ?? []), night])
+  }
+  const years = [...byYear.entries()]
+    .filter(([year]) => year !== null)
+    .sort((a, b) => (b[0] as number) - (a[0] as number))
+  const undated = byYear.get(null) ?? []
+
+  return (
+    <div className="timeline">
+      {years.map(([year, inThatYear]) => (
+        <section key={year}>
+          <h2 className="timeline-year">
+            {year}
+            <span>
+              {inThatYear.length} {inThatYear.length === 1 ? 'night' : 'nights'}
+            </span>
+          </h2>
+          <ul className="friend-outings">
+            {inThatYear.map((night) => (
+              <FriendOuting key={night.id} outing={night} />
+            ))}
+          </ul>
+        </section>
+      ))}
+      {undated.length ? (
+        <section>
+          <h2 className="timeline-year">
+            Date unknown
+            <span>{undated.length}</span>
+          </h2>
+          <ul className="friend-outings">
+            {undated.map((night) => (
+              <FriendOuting key={night.id} outing={night} />
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * One grid, with the starred ones and the shared ones marked.
+ *
+ * These were two sections — "Favorites" and "Seen" — and a favourite is almost
+ * always also seen, so the same show was drawn twice on one page with nothing
+ * saying they were the same thing.
+ */
+function TheirShows({ shows }: { shows: Profile['seenShows'] }) {
+  if (shows.length === 0) return <p className="profile-empty">Nothing shared yet.</p>
+  return (
+    <div className="library-grid">
+      {shows.map((show) => (
+        <Link
+          className="library-entry"
+          key={show.id}
+          params={{ slug: show.slug }}
+          to="/shows/$slug"
+        >
+          <ShowArtwork coverImageKey={show.coverImageKey} title={show.title} type={show.type} />
+          <div>
+            <h2>{show.title}</h2>
+            <p>{show.type}</p>
+            <p className="show-marks">
+              {show.favorite ? <span className="show-mark">One of their favourites</span> : null}
+              {show.bothSaw ? <span className="show-mark is-shared">You saw it too</span> : null}
+            </p>
+          </div>
+        </Link>
+      ))}
+    </div>
+  )
+}
+
+function TheirLists({ lists }: { lists: Profile['lists'] }) {
+  if (lists.length === 0) return <p className="profile-empty">No shared shelves.</p>
+  return (
+    <div className="list-index">
+      {lists.map((list) => (
+        <Link key={list.id} params={{ id: list.id }} to="/lists/$id">
+          <h2>{list.title}</h2>
+          {list.description ? <p>{list.description}</p> : null}
+          <p>
+            {list.itemCount} {list.itemCount === 1 ? 'show' : 'shows'}
+          </p>
+        </Link>
+      ))}
+    </div>
+  )
+}
+
+function FriendOuting({ outing }: { outing: Night }) {
   const where = [outing.venue, outing.city].filter(Boolean).join(' · ')
-  const when = formatFuzzyDate({
-    datePrecision: outing.datePrecision,
-    occurredOn: outing.occurredOn,
-    occurredMonth: outing.occurredMonth,
-    occurredYear: outing.occurredYear,
-    approximateDate: outing.approximateDate,
-  })
+  const when = formatFuzzyDateShort(outing)
 
   return (
     <li>
@@ -203,7 +227,13 @@ function FriendOuting({
           <h3>{outing.showTitle}</h3>
           <p className="friend-outing-facts">{[when, where].filter(Boolean).join(' · ')}</p>
           {outing.sharedNotes ? <p className="friend-outing-note">{outing.sharedNotes}</p> : null}
-          {outing.alreadyThere ? <p className="friend-outing-flag">You were there</p> : null}
+          {outing.alreadyThere ? (
+            <p className="friend-outing-flag">You were there</p>
+          ) : outing.youSawItToo ? (
+            // Seen the show but not marked as at this night: the likeliest
+            // thing anybody came here to fix.
+            <p className="friend-outing-maybe">You have seen this — were you at this one?</p>
+          ) : null}
         </div>
       </Link>
     </li>
