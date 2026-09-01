@@ -3740,3 +3740,49 @@ a.joined-card-name:hover {
     gap: 0.15rem;
   }
 }
+
+/*
+  Somewhere to put a picture. The dashed edge is the affordance: it says this
+  area takes something, which a bare "Choose file" button does not.
+*/
+.image-drop {
+  display: grid;
+  gap: 0.4rem;
+  justify-items: start;
+  padding: 0.85rem 1rem;
+  border: 1px dashed var(--field-border);
+  border-radius: 10px;
+  background: var(--canvas);
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+/*
+  Focus decides which zone a paste belongs to, so it has to be seen — and the
+  browser's own outline is kept rather than replaced. Suppressing it here would
+  hide the one signal telling a keyboard user where their paste will land.
+*/
+.image-drop:focus-visible,
+.image-drop:focus-within {
+  border-color: var(--oxblood);
+  border-style: solid;
+}
+.image-drop.is-over {
+  border-color: var(--oxblood);
+  border-style: solid;
+  background: var(--surface);
+}
+.image-drop.is-busy {
+  opacity: 0.7;
+}
+.image-drop input[type="file"] {
+  font: inherit;
+  font-size: 0.85rem;
+  max-width: 100%;
+}
+.image-drop-hint {
+  color: var(--ink-muted);
+  font-size: 0.74rem;
+}

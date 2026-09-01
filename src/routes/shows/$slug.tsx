@@ -2,6 +2,7 @@ import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 
 import { authClient } from '../../lib/auth-client'
+import { ImageDrop } from '../../components/ImageDrop'
 import { ShowArtwork } from '../../components/ShowArtwork'
 import { getSession } from '../../server/auth-functions'
 import {
@@ -396,18 +397,9 @@ function PhotoGallery({
 
       {session ? (
         <div className="photo-upload">
-          <label className="avatar-field-input">
-            <span>{busy ? 'Uploading…' : 'Add a photograph'}</span>
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              disabled={busy}
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (file) void upload(file)
-              }}
-            />
-          </label>
+          <ImageDrop busy={busy} onFile={(file) => void upload(file)}>
+            <span>Add a photograph</span>
+          </ImageDrop>
           <label className="avatar-field-input">
             <span>Who can see it</span>
             <select value={visibility} onChange={(event) => setVisibility(event.target.value)}>

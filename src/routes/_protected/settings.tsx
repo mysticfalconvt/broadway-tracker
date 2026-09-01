@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useRef, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
+import { ImageDrop } from '../../components/ImageDrop'
 import { Avatar } from '../../components/Avatar'
 
 import { authClient } from '../../lib/auth-client'
@@ -14,7 +15,6 @@ function AvatarField({ currentKey, name }: { currentKey?: string | null; name: s
   const [key, setKey] = useState(currentKey ?? null)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
 
   async function upload(file: File) {
     setProblem(null)
@@ -32,7 +32,6 @@ function AvatarField({ currentKey, name }: { currentKey?: string | null; name: s
       setProblem(caughtError instanceof Error ? caughtError.message : 'Upload failed.')
     } finally {
       setBusy(false)
-      if (inputRef.current) inputRef.current.value = ''
     }
   }
 
@@ -42,23 +41,13 @@ function AvatarField({ currentKey, name }: { currentKey?: string | null; name: s
       <div className="avatar-field-row">
         <Avatar className="avatar-preview" imageKey={key} name={name} />
         <div>
-          <label className="avatar-field-input">
+          <ImageDrop busy={busy} onFile={(file) => void upload(file)}>
             <span>{key ? 'Replace photo' : 'Choose a photo'}</span>
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              disabled={busy}
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (file) void upload(file)
-              }}
-            />
-          </label>
+          </ImageDrop>
           <p className="settings-note">PNG, JPEG, or WebP. Up to 8MB.</p>
         </div>
       </div>
-      {busy ? <p className="settings-note">Uploading…</p> : null}
+
       {problem ? (
         <p className="form-error" role="alert">
           {problem}

@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 
 import { ShowArtwork } from '../../../components/ShowArtwork'
 import {
@@ -9,6 +9,7 @@ import {
   getPublishedShowsForAdmin,
   saveProduction,
 } from '../../../server/catalog-functions'
+import { ImageDrop } from '../../../components/ImageDrop'
 import { getVenuesForAdmin } from '../../../server/venue-functions'
 
 export const Route = createFileRoute('/_protected/admin/productions')({
@@ -37,7 +38,6 @@ function CoverField({
   const [coverImageKey, setCoverImageKey] = useState(show.coverImageKey)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
 
   async function upload(file: File) {
     setProblem(null)
@@ -55,7 +55,6 @@ function CoverField({
       setProblem(caughtError instanceof Error ? caughtError.message : 'Upload failed.')
     } finally {
       setBusy(false)
-      if (inputRef.current) inputRef.current.value = ''
     }
   }
 
@@ -72,19 +71,9 @@ function CoverField({
           <ShowArtwork title={show.title} type="Cover" coverImageKey={coverImageKey} />
         </div>
         <div>
-          <label className="avatar-field-input">
+          <ImageDrop busy={busy} onFile={(file) => void upload(file)}>
             <span>{coverImageKey ? 'Replace cover' : 'Upload a cover'}</span>
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              disabled={busy}
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (file) void upload(file)
-              }}
-            />
-          </label>
+          </ImageDrop>
           <p className="settings-note">
             PNG, JPEG, or WebP, up to 8MB. Artwork is optional — every screen reads well without it.
           </p>
