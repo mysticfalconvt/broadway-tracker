@@ -76,13 +76,37 @@ export const acceptedFriendIdsFor = createServerOnlyFn(async (userId: string) =>
   return new Set(rows.map((row) => (row.userOneId === userId ? row.userTwoId : row.userOneId)))
 })
 
-export const findPersonByHandle = createServerOnlyFn(async (viewerId: string, handle: string) =>
-  getDb()
+/**
+ * Somebody, by their handle or by the address they signed up with.
+ *
+ * Handles are shareable and emails are what people actually know about each
+ * other, so requiring the first meant asking somebody to go and ask for it
+ * before they could ask for anything else.
+ *
+ * Exact matches only, and never partial. A search that matched fragments of an
+ * address would let any member sweep for who else has an account, one guess at
+ * a time; matching the whole thing means you can only confirm an address you
+ * already knew. The answer carries a name and a handle and never the address
+ * back, so a match tells you no more than that the person you were looking for
+ * is here.
+ */
+export const findPerson = createServerOnlyFn(async (viewerId: string, term: string) => {
+  const wanted = term.trim().toLowerCase()
+  if (!wanted) return []
+
+  return getDb()
     .select({ id: user.id, name: user.name, handle: user.handle })
     .from(user)
-    .where(and(ne(user.id, viewerId), eq(user.handle, handle.toLowerCase())))
-    .limit(1),
-)
+    .where(
+      and(
+        ne(user.id, viewerId),
+        // An address is the only thing here that can contain an @, so it is
+        // enough to tell the two apart without asking which was meant.
+        wanted.includes('@') ? eq(sql`lower(${user.email})`, wanted) : eq(user.handle, wanted),
+      ),
+    )
+    .limit(1)
+})
 
 export const friendsForUser = createServerOnlyFn(async (userId: string) => {
   const rows = await getDb()
@@ -234,8 +258,10 @@ export const removeFriendshipBetween = createServerOnlyFn(
 )
 
 export const searchPeople = createServerFn({ method: 'GET' })
-  .validator(z.object({ handle: z.string().trim().min(1).max(30) }))
-  .handler(async ({ data }) => findPersonByHandle((await requireSession()).user.id, data.handle))
+  // Long enough for an address; a handle is far shorter and validated on its
+  // own terms when one is chosen.
+  .validator(z.object({ term: z.string().trim().min(1).max(254) }))
+  .handler(async ({ data }) => findPerson((await requireSession()).user.id, data.term))
 
 export const getMyFriends = createServerFn({ method: 'GET' }).handler(async () =>
   friendsForUser((await requireSession()).user.id),

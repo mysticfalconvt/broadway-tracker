@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import {
   areFriends,
-  findPersonByHandle,
+  findPerson,
   friendsForUser,
   removeFriendshipBetween,
   requestFriendship,
@@ -190,10 +190,10 @@ describe('friend listing and search', () => {
   it('finds a person by handle but never the searcher', async () => {
     const me = await makeUser({ handle: 'searcher' })
     const other = await makeUser({ handle: 'findme' })
-    expect(await findPersonByHandle(me.id, 'findme')).toHaveLength(1)
-    expect(await findPersonByHandle(me.id, 'FINDME')).toHaveLength(1)
-    expect(await findPersonByHandle(me.id, 'searcher')).toHaveLength(0)
-    expect(await findPersonByHandle(me.id, 'nobody')).toHaveLength(0)
+    expect(await findPerson(me.id, 'findme')).toHaveLength(1)
+    expect(await findPerson(me.id, 'FINDME')).toHaveLength(1)
+    expect(await findPerson(me.id, 'searcher')).toHaveLength(0)
+    expect(await findPerson(me.id, 'nobody')).toHaveLength(0)
     expect(other.handle).toBe('findme')
   })
 })
@@ -276,5 +276,69 @@ describe('two requests arriving at once', () => {
     const sent = both.filter((one) => one.status === 'fulfilled' && one.value !== null)
     expect(sent).toHaveLength(1)
     expect(await db.select().from(friendships)).toHaveLength(1)
+  })
+})
+
+describe('finding somebody to ask', () => {
+  it('finds them by the address they signed up with', async () => {
+    // A handle has to be asked for before it can be used. An email is the thing
+    // people already know about each other.
+    const me = await makeUser()
+    const them = await makeUser({
+      name: 'Sarah Chen',
+      email: 'sarah@example.test',
+      handle: 'sarahc',
+    })
+
+    const found = await findPerson(me.id, 'sarah@example.test')
+    expect(found.map((one) => one.id)).toEqual([them.id])
+    expect(found[0]?.name).toBe('Sarah Chen')
+  })
+
+  it('ignores the case of an address, on both sides', async () => {
+    // Lowercasing the search term alone proves nothing — the code does that
+    // before comparing. The stored address has to differ in case too, which is
+    // the case that actually reaches the database comparison.
+    const me = await makeUser()
+    await makeUser({ email: 'Sarah@Example.Test', handle: 'sarahc' })
+
+    expect(await findPerson(me.id, 'sarah@example.test')).toHaveLength(1)
+    expect(await findPerson(me.id, 'SARAH@EXAMPLE.TEST')).toHaveLength(1)
+  })
+
+  it('still finds them by handle', async () => {
+    const me = await makeUser()
+    const them = await makeUser({ email: 'sarah@example.test', handle: 'sarahc' })
+    expect((await findPerson(me.id, 'SarahC')).map((one) => one.id)).toEqual([them.id])
+  })
+
+  it('never matches part of an address', async () => {
+    // Matching fragments would let any member sweep for who else has an
+    // account, one guess at a time. Whole address or nothing.
+    const me = await makeUser()
+    await makeUser({ email: 'sarah@example.test', handle: 'sarahc' })
+
+    expect(await findPerson(me.id, 'sarah@')).toHaveLength(0)
+    expect(await findPerson(me.id, '@example.test')).toHaveLength(0)
+    expect(await findPerson(me.id, 'example')).toHaveLength(0)
+  })
+
+  it('never hands the address back', async () => {
+    // A match should say the person you were looking for is here, and no more.
+    const me = await makeUser()
+    await makeUser({ email: 'sarah@example.test', handle: 'sarahc' })
+    const found = await findPerson(me.id, 'sarah@example.test')
+    expect(JSON.stringify(found)).not.toContain('sarah@example.test')
+  })
+
+  it('does not find the person doing the looking', async () => {
+    const me = await makeUser({ email: 'me@example.test', handle: 'mine' })
+    expect(await findPerson(me.id, 'me@example.test')).toHaveLength(0)
+    expect(await findPerson(me.id, 'mine')).toHaveLength(0)
+  })
+
+  it('finds nobody for an address that has not signed up', async () => {
+    const me = await makeUser()
+    expect(await findPerson(me.id, 'nobody@example.test')).toHaveLength(0)
   })
 })
