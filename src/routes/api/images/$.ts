@@ -40,7 +40,9 @@ export const Route = createFileRoute('/api/images/$')({
         // An unrecognised width serves the original rather than refusing: a
         // picture at the wrong size is better than a broken one, and it keeps
         // the set of stored copies closed.
-        const stored = width ? await imageAtWidth(key, width) : await getImage(key)
+        // A missing resizer answers null, so the original is served instead of
+        // nothing. Asking for a size is a preference, never a requirement.
+        const stored = (width ? await imageAtWidth(key, width) : null) ?? (await getImage(key))
         if (!stored) return new Response('Not found', { status: 404 })
 
         // Keys are content-addressed by a fresh uuid on every replacement, so an

@@ -1,5 +1,4 @@
 import { createServerOnlyFn } from '@tanstack/react-start'
-import sharp from 'sharp'
 
 import {
   type StoredImage,
@@ -25,13 +24,42 @@ import {
  * WebP for the copies regardless of what came in: it is a third the size of the
  * JPEG at the same quality, and a copy nobody keeps the original of can afford
  * to be lossy.
+ *
+ * `sharp` is loaded when a resize is first wanted, and its absence is an
+ * ordinary answer rather than a failure. It is a native module: its binary is
+ * chosen per platform and can be missing from a build even when the package
+ * is present. Imported at the top of this file, that missing binary threw while
+ * the server was still loading its modules — so the whole application refused
+ * to start, and a convenience for gallery thumbnails took down the journal,
+ * the catalog and everybody's sign-in with it. It did exactly that in
+ * production.
+ *
+ * Nothing here is worth that. Without the module, pictures are served whole and
+ * the app is slower than it should be, which is the correct way for this to
+ * fail.
  */
+type Resizer = typeof import('sharp')['default']
+let loading: Promise<Resizer | null> | undefined
+async function resizer(): Promise<Resizer | null> {
+  loading ??= import('sharp')
+    .then((module) => module.default)
+    .catch((error) => {
+      console.error('[images] sharp is unavailable, serving originals', error)
+      return null
+    })
+  return loading
+}
 export const imageAtWidth = createServerOnlyFn(
   async (key: string, width: ThumbnailWidth): Promise<StoredImage | null> => {
     const derived = thumbnailKeyFor(key, width)
 
     const already = await getImage(derived)
     if (already) return already
+
+    const sharp = await resizer()
+    // No resizer: the caller falls back to the original, which is right rather
+    // than merely tolerable — a large picture beats a broken page.
+    if (!sharp) return null
 
     const original = await getImage(key)
     if (!original) return null

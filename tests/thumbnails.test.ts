@@ -41,3 +41,36 @@ describe('where a resized copy lives', () => {
     expect(isValidObjectKey(thumbnailKeyFor(once, 640))).toBe(false)
   })
 })
+
+describe('when the resizer is not there', () => {
+  it('is loaded lazily, never at module scope', async () => {
+    /**
+     * The failure this prevents took production down entirely.
+     *
+     * `sharp` is a native module: the JavaScript is portable and the binary
+     * beside it is not, so a build can ship the package without the part that
+     * runs. Imported at the top of a module, that throws while the server is
+     * still loading — and a convenience for gallery thumbnails stopped the
+     * journal, the catalog and everybody's sign-in.
+     *
+     * Read as text rather than exercised, because the point is the shape of the
+     * file: there must be no import of it that runs before a resize is asked
+     * for.
+     */
+    const { readFile } = await import('node:fs/promises')
+    const source = await readFile('src/server/thumbnails.ts', 'utf8')
+
+    expect(source).not.toMatch(/^import .*from ['"]sharp['"]/m)
+    expect(source).toMatch(/import\(['"]sharp['"]\)/)
+    // And the failure has to be caught, or a lazy import throws just as hard.
+    expect(source).toMatch(/\.catch\(/)
+  })
+
+  it('serves the original when no size was asked for', async () => {
+    // The route's fallback, stated as a rule: asking for a size is a
+    // preference, never a requirement.
+    const { readFile } = await import('node:fs/promises')
+    const route = await readFile('src/routes/api/images/$.ts', 'utf8')
+    expect(route).toMatch(/\?\?\s*\(await getImage\(key\)\)/)
+  })
+})

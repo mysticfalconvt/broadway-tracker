@@ -42,6 +42,23 @@ export default defineConfig({
     tailwindcss(),
     tanstackStart({ srcDirectory: 'src' }),
     viteReact(),
-    nitro(),
+    /**
+     * `sharp` stays out of the bundle.
+     *
+     * It is a native module: the JavaScript is portable and the `.node` binary
+     * beside it is not. Bundled into `.output/server/_libs/`, the binary is
+     * left behind in `node_modules/@img` and the import throws on the deployed
+     * host — while the server is still loading, so nothing starts at all.
+     *
+     * External, it is imported from `node_modules` at run time, where its
+     * platform binary actually is.
+     *
+     * `imageAtWidth` still treats its absence as an ordinary answer, because a
+     * build that ships without it must degrade to full-size pictures rather
+     * than to no application. Belt and braces, deliberately: this is the second
+     * time the packaging of one optional dependency has been able to decide
+     * whether anybody can sign in.
+     */
+    nitro({ rolldownConfig: { external: ['sharp'] } }),
   ],
 })

@@ -204,6 +204,16 @@ answering identically for both.
 
 ## Images: sizes and covers
 
+**`sharp` is a native module and must never be imported at module scope.** Its
+binary is chosen per platform and a build can ship the package without it — and
+an import that throws while the server is loading takes down the entire
+application, not the feature. It did exactly that in production. It is loaded
+lazily inside `imageAtWidth`, its failure is caught, and the route falls back to
+serving the original. `vite.config.ts` also keeps it out of the bundle
+(`rolldownConfig.external`) so it resolves from `node_modules` at run time,
+where the platform binary is. Both, deliberately: the config makes it work, the
+lazy import makes a broken config survivable.
+
 A resized copy is derived the first time a size is asked for and then kept, at
 `key@width.webp` beside the original. Resizing per request repeats the work
 forever; making every size at upload does work nobody wants and needs a backfill
