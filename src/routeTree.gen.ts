@@ -58,6 +58,7 @@ import { Route as ProtectedPeopleHandleRouteImport } from './routes/_protected/p
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiDigestStopRouteImport } from './routes/api/digest.stop'
 import { Route as ApiImagesSplatRouteImport } from './routes/api/images/$'
+import { Route as ApiTierListsIdRouteImport } from './routes/api/tier-lists/$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -305,6 +306,11 @@ const ApiImagesSplatRoute = ApiImagesSplatRouteImport.update({
   path: '/api/images/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTierListsIdRoute = ApiTierListsIdRouteImport.update({
+  id: '/api/tier-lists/$id',
+  path: '/api/tier-lists/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -353,6 +359,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/digest/stop': typeof ApiDigestStopRoute
   '/api/images/$': typeof ApiImagesSplatRoute
+  '/api/tier-lists/$id': typeof ApiTierListsIdRoute
   '/admin/': typeof ProtectedAdminIndexRoute
   '/lists/': typeof ProtectedListsIndexRoute
 }
@@ -403,6 +410,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/digest/stop': typeof ApiDigestStopRoute
   '/api/images/$': typeof ApiImagesSplatRoute
+  '/api/tier-lists/$id': typeof ApiTierListsIdRoute
   '/admin': typeof ProtectedAdminIndexRoute
   '/lists': typeof ProtectedListsIndexRoute
 }
@@ -455,6 +463,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/digest/stop': typeof ApiDigestStopRoute
   '/api/images/$': typeof ApiImagesSplatRoute
+  '/api/tier-lists/$id': typeof ApiTierListsIdRoute
   '/_protected/admin/': typeof ProtectedAdminIndexRoute
   '/_protected/lists/': typeof ProtectedListsIndexRoute
 }
@@ -507,6 +516,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/digest/stop'
     | '/api/images/$'
+    | '/api/tier-lists/$id'
     | '/admin/'
     | '/lists/'
   fileRoutesByTo: FileRoutesByTo
@@ -557,6 +567,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/digest/stop'
     | '/api/images/$'
+    | '/api/tier-lists/$id'
     | '/admin'
     | '/lists'
   id:
@@ -608,6 +619,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/digest/stop'
     | '/api/images/$'
+    | '/api/tier-lists/$id'
     | '/_protected/admin/'
     | '/_protected/lists/'
   fileRoutesById: FileRoutesById
@@ -633,6 +645,7 @@ export interface RootRouteChildren {
   WritingIndexRoute: typeof WritingIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiImagesSplatRoute: typeof ApiImagesSplatRoute
+  ApiTierListsIdRoute: typeof ApiTierListsIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -980,6 +993,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiImagesSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tier-lists/$id': {
+      id: '/api/tier-lists/$id'
+      path: '/api/tier-lists/$id'
+      fullPath: '/api/tier-lists/$id'
+      preLoaderRoute: typeof ApiTierListsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1082,6 +1102,7 @@ const rootRouteChildren: RootRouteChildren = {
   WritingIndexRoute: WritingIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiImagesSplatRoute: ApiImagesSplatRoute,
+  ApiTierListsIdRoute: ApiTierListsIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

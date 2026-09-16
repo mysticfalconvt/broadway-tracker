@@ -24,6 +24,7 @@ function Lists() {
         data: {
           title: String(form.get('title')),
           description: String(form.get('description')).trim() || undefined,
+          kind: String(form.get('kind') ?? 'list') as 'list' | 'tier_list',
           // Absent means "follow my profile", which the server fills in.
           visibility: formText(form, 'visibility') as Visibility | undefined,
         },
@@ -44,8 +45,15 @@ function Lists() {
       </header>
       <form className="settings-form" onSubmit={submit}>
         <label>
-          List title
+          Title
           <input name="title" required />
+        </label>
+        <label>
+          Format
+          <select name="kind" defaultValue="list">
+            <option value="list">Shelf</option>
+            <option value="tier_list">Tier list (S through D)</option>
+          </select>
         </label>
         <label>
           Description <span>Optional</span>
@@ -63,7 +71,7 @@ function Lists() {
           </p>
         ) : null}
         <button className="button button-primary" type="submit">
-          Create list
+          Create
         </button>
       </form>
       <section className="list-index">
@@ -71,7 +79,8 @@ function Lists() {
           <Link key={list.id} to="/lists/$id" params={{ id: list.id }}>
             <h2>{list.title}</h2>
             <p>
-              {list.itemCount} {list.itemCount === 1 ? 'show' : 'shows'} ·{' '}
+              {list.kind === 'tier_list' ? 'Tier list' : 'Shelf'} · {list.itemCount}{' '}
+              {list.itemCount === 1 ? 'show' : 'shows'} ·{' '}
               {list.visibility === 'friends'
                 ? 'Friends'
                 : list.visibility === 'public'

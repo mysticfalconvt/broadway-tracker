@@ -1,0 +1,1 @@
+ALTER TABLE "lists" ADD COLUMN "tier_names" jsonb DEFAULT '{"S":"S","A":"A","B":"B","C":"C","D":"D"}'::jsonb NOT NULL;

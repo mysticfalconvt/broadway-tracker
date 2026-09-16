@@ -777,6 +777,171 @@ h3 {
   gap: 0.75rem;
   margin-top: 2.5rem;
 }
+
+.tier-board {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.tier-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.tier-filters legend {
+  width: 100%;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tier-filters button,
+.tier-card-actions button {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+}
+
+.tier-filters .is-selected {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+}
+
+.tier-row {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+}
+
+.tier-rows {
+  overflow: hidden;
+  border-radius: 0.75rem;
+}
+
+.tier-row + .tier-row {
+  border-top: 0;
+}
+
+.tier-row > h2 {
+  display: grid;
+  place-items: center;
+  margin: 0;
+  background: var(--ink);
+  color: var(--surface);
+  font-size: 2rem;
+}
+
+.tier-s > h2 {
+  background: #b84242;
+}
+
+.tier-a > h2 {
+  background: #cf6c35;
+}
+
+.tier-b > h2 {
+  background: #b9942b;
+}
+
+.tier-c > h2 {
+  background: #4b8a5f;
+}
+
+.tier-d > h2 {
+  background: #477f9c;
+}
+
+.tier-row > div {
+  min-height: 9.5rem;
+  padding: 0.65rem;
+}
+
+.tier-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  min-height: 8rem;
+}
+
+.tier-card-wrap {
+  width: 6.5rem;
+}
+
+.tier-card {
+  position: relative;
+  width: 6.5rem;
+  overflow: hidden;
+  border-radius: 0.35rem;
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
+}
+
+.tier-card-dragging {
+  opacity: 0.2;
+}
+
+.tier-card-overlay {
+  cursor: grabbing;
+  pointer-events: none;
+  rotate: 2deg;
+  box-shadow: 0 16px 34px rgb(0 0 0 / 32%);
+}
+
+.tier-card a {
+  display: grid;
+  color: inherit;
+  text-decoration: none;
+}
+
+.tier-card .show-artwork {
+  width: 100%;
+  height: 7.6rem;
+  object-fit: cover;
+}
+
+.tier-card a > span {
+  min-height: 2.7rem;
+  padding: 0.3rem;
+  font-size: 0.72rem;
+  line-height: 1.15;
+}
+
+.tier-card[role="button"] {
+  cursor: grab;
+  touch-action: none;
+}
+
+.tier-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-top: 0.25rem;
+}
+
+.tier-card-actions button {
+  font-size: 0.62rem;
+  padding: 0.2rem 0.35rem;
+}
+
+.tier-unranked > h2 {
+  font-size: 1rem;
+}
+
+.tier-board-note {
+  color: var(--ink-muted);
+  margin: 0;
+}
 .list-index > a,
 .list-items article {
   border: 1px solid var(--border);

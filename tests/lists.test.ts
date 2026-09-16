@@ -6,9 +6,22 @@ import {
   listForViewer,
   listsForOwner,
   moveItemInOwnedList,
+  placeTierListItemForOwner,
   removeShowFromOwnedList,
+  tierCandidatesForOwner,
+  updateOwnedList,
 } from '../src/server/list-functions'
-import { makeFriendship, makeList, makeShow, makeUser, resetDatabase } from './helpers'
+import {
+  db,
+  makeFriendship,
+  makeLibraryEntry,
+  makeList,
+  makeShow,
+  makeUser,
+  resetDatabase,
+} from './helpers'
+import { outingAttendees, outings, productions } from '../src/server/db/schema'
+import { tierListImageForOwner } from '../src/server/tier-list-image'
 
 beforeEach(resetDatabase)
 
@@ -173,5 +186,94 @@ describe('list mutation authorization', () => {
     await addShowToOwnedList(owner.id, list.id, show.id)
     await addShowToOwnedList(owner.id, list.id, show.id)
     expect((await listForViewer(owner.id, list.id)).items).toHaveLength(1)
+  })
+})
+
+describe('tier lists', () => {
+  it('only accepts shows the owner has marked seen', async () => {
+    const owner = await makeUser()
+    const list = await makeList(owner.id, { kind: 'tier_list' })
+    const unseen = await makeShow()
+    await expect(addShowToOwnedList(owner.id, list.id, unseen.id)).rejects.toThrow(
+      'Tier lists can only include shows you have seen.',
+    )
+    await makeLibraryEntry(owner.id, unseen.id, { status: 'seen' })
+    await addShowToOwnedList(owner.id, list.id, unseen.id)
+    expect((await listForViewer(owner.id, list.id)).items).toHaveLength(1)
+  })
+
+  it('moves a show between tiers and preserves its position', async () => {
+    const owner = await makeUser()
+    const list = await makeList(owner.id, { kind: 'tier_list' })
+    const first = await makeShow({ title: 'First' })
+    const second = await makeShow({ title: 'Second' })
+    await makeLibraryEntry(owner.id, first.id, { status: 'seen' })
+    await makeLibraryEntry(owner.id, second.id, { status: 'seen' })
+    await addShowToOwnedList(owner.id, list.id, first.id)
+    await addShowToOwnedList(owner.id, list.id, second.id)
+    await placeTierListItemForOwner(owner.id, list.id, second.id, 'S', 0)
+    await placeTierListItemForOwner(owner.id, list.id, first.id, 'S', 1)
+    const result = await listForViewer(owner.id, list.id)
+    expect(result.items.filter((item) => item.tier === 'S').map((item) => item.title)).toEqual([
+      'Second',
+      'First',
+    ])
+  })
+
+  it('lets the owner rename tier labels without changing placements', async () => {
+    const owner = await makeUser()
+    const list = await makeList(owner.id, { kind: 'tier_list' })
+    await updateOwnedList(owner.id, list.id, {
+      title: list.title,
+      visibility: 'private',
+      tierNames: { S: 'Standing ovation', A: 'Encore', B: 'Matinee', C: 'Fine', D: 'Skip' },
+    })
+    const result = await listForViewer(owner.id, list.id)
+    expect(result.tierNames).toEqual({
+      S: 'Standing ovation',
+      A: 'Encore',
+      B: 'Matinee',
+      C: 'Fine',
+      D: 'Skip',
+    })
+  })
+
+  it('reports every attended production type on a seen show', async () => {
+    const owner = await makeUser()
+    const show = await makeShow()
+    await makeLibraryEntry(owner.id, show.id, { status: 'seen' })
+    const [production] = await db
+      .insert(productions)
+      .values({ showId: show.id, name: 'Tour', productionType: 'tour' })
+      .returning()
+    if (!production) throw new Error('Fixture setup failed')
+    const [outing] = await db
+      .insert(outings)
+      .values({ showId: show.id, productionId: production.id, createdByUserId: owner.id })
+      .returning()
+    if (!outing) throw new Error('Fixture setup failed')
+    await db
+      .insert(outingAttendees)
+      .values({ outingId: outing.id, userId: owner.id, attendanceStatus: 'accepted' })
+    const [candidate] = await tierCandidatesForOwner(owner.id)
+    expect(candidate?.productionTypes).toEqual(['tour'])
+  })
+
+  it('refuses to export another member’s tier list', async () => {
+    const owner = await makeUser()
+    const stranger = await makeUser()
+    const list = await makeList(owner.id, { kind: 'tier_list' })
+    await expect(tierListImageForOwner(stranger.id, list.id)).rejects.toThrow('Tier list not found')
+  })
+
+  it('exports a colored PNG for an owner’s ranked shows', async () => {
+    const owner = await makeUser()
+    const list = await makeList(owner.id, { kind: 'tier_list' })
+    const show = await makeShow()
+    await makeLibraryEntry(owner.id, show.id, { status: 'seen' })
+    await addShowToOwnedList(owner.id, list.id, show.id)
+    await placeTierListItemForOwner(owner.id, list.id, show.id, 'S', 0)
+    const image = await tierListImageForOwner(owner.id, list.id)
+    expect(image.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
   })
 })

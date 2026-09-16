@@ -4,6 +4,7 @@ import {
   doublePrecision,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   smallint,
@@ -463,6 +464,13 @@ export const lists = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     title: text('title').notNull(),
     description: text('description'),
+    kind: text('kind', { enum: ['list', 'tier_list'] })
+      .notNull()
+      .default('list'),
+    tierNames: jsonb('tier_names')
+      .$type<{ S: string; A: string; B: string; C: string; D: string }>()
+      .notNull()
+      .default({ S: 'S', A: 'A', B: 'B', C: 'C', D: 'D' }),
     visibility: text('visibility', { enum: ['private', 'friends', 'public'] })
       .notNull()
       .default('friends'),
@@ -482,6 +490,8 @@ export const listItems = pgTable(
       .notNull()
       .references(() => shows.id, { onDelete: 'cascade' }),
     position: integer('position').notNull().default(0),
+    // Null keeps an item in a tier list's unranked tray. Ordinary lists leave this empty.
+    tier: text('tier', { enum: ['S', 'A', 'B', 'C', 'D'] }),
     createdAt: timestamp('created_at').notNull().defaultNow(),
   },
   (table) => [primaryKey({ columns: [table.listId, table.showId] })],

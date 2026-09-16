@@ -1,13 +1,25 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import { currentSession, requireSession } from './session'
 
 import { getDb } from './db/client'
 import { applyViewerCovers } from './image-functions'
-import { listItems, lists, shows, user } from './db/schema'
+import {
+  libraryEntries,
+  listItems,
+  lists,
+  outingAttendees,
+  outings,
+  productions,
+  shows,
+  user,
+} from './db/schema'
 import { areFriends } from './friend-functions'
 import { defaultVisibilityFor } from './visibility'
+import { DEFAULT_TIER_NAMES, TIER_LABELS, type TierLabel } from '../lib/tier-list'
+
+export { TIER_LABELS, type TierLabel } from '../lib/tier-list'
 
 /** Public lists are readable signed out, so this read tolerates no session. */
 async function optionalViewerId() {
@@ -23,6 +35,61 @@ const listInput = z.object({
   title: z.string().trim().min(1).max(120),
   description: z.string().trim().max(1000).optional(),
   visibility: z.enum(['private', 'friends', 'public']).optional(),
+  kind: z.enum(['list', 'tier_list']).optional(),
+})
+
+const tier = z.enum(TIER_LABELS)
+const tierNames = z.object({
+  S: z.string().trim().min(1).max(24),
+  A: z.string().trim().min(1).max(24),
+  B: z.string().trim().min(1).max(24),
+  C: z.string().trim().min(1).max(24),
+  D: z.string().trim().min(1).max(24),
+})
+
+async function productionTypesForUser(userId: string, showIds: string[]) {
+  if (!showIds.length) return new Map<string, string[]>()
+  const rows = await getDb()
+    .select({ showId: outings.showId, productionType: productions.productionType })
+    .from(outingAttendees)
+    .innerJoin(outings, eq(outingAttendees.outingId, outings.id))
+    .innerJoin(productions, eq(outings.productionId, productions.id))
+    .where(
+      and(
+        eq(outingAttendees.userId, userId),
+        eq(outingAttendees.attendanceStatus, 'accepted'),
+        inArray(outings.showId, showIds),
+      ),
+    )
+  const types = new Map<string, string[]>()
+  for (const row of rows) {
+    const current = types.get(row.showId) ?? []
+    if (!current.includes(row.productionType)) current.push(row.productionType)
+    types.set(row.showId, current)
+  }
+  return types
+}
+
+export const tierCandidatesForOwner = createServerOnlyFn(async (ownerId: string) => {
+  const rows = await getDb()
+    .select({
+      showId: shows.id,
+      title: shows.title,
+      slug: shows.slug,
+      type: shows.type,
+      coverImageKey: shows.coverImageKey,
+    })
+    .from(libraryEntries)
+    .innerJoin(shows, eq(libraryEntries.showId, shows.id))
+    .where(and(eq(libraryEntries.userId, ownerId), eq(libraryEntries.status, 'seen')))
+    .orderBy(asc(shows.title))
+  const productionTypes = await productionTypesForUser(
+    ownerId,
+    rows.map((row) => row.showId),
+  )
+  return applyViewerCovers(ownerId, rows, (row) => row.showId).then((covered) =>
+    covered.map((row) => ({ ...row, productionTypes: productionTypes.get(row.showId) ?? [] })),
+  )
 })
 
 export const listsForOwner = createServerOnlyFn(async (ownerId: string) => {
@@ -56,6 +123,7 @@ export const createListForOwner = createServerOnlyFn(
         userId: ownerId,
         ...input,
         description: input.description || null,
+        kind: input.kind ?? 'list',
         visibility: input.visibility ?? (await defaultVisibilityFor(ownerId)),
       })
       .returning({ id: lists.id })
@@ -108,6 +176,7 @@ export const listForViewer = createServerOnlyFn(async (viewerId: string | null, 
         type: shows.type,
         coverImageKey: shows.coverImageKey,
         position: listItems.position,
+        tier: listItems.tier,
       })
       .from(listItems)
       .innerJoin(shows, eq(listItems.showId, shows.id))
@@ -119,6 +188,13 @@ export const listForViewer = createServerOnlyFn(async (viewerId: string | null, 
   // opaque id that addresses a public profile -- sending it to a stranger would
   // let every public list by one person be grouped and tied back to them, which
   // is exactly what the anonymity of a public page is meant to prevent.
+  const productionTypes =
+    list.kind === 'tier_list'
+      ? await productionTypesForUser(
+          list.userId,
+          items.map((item) => item.showId),
+        )
+      : new Map()
   return {
     id: list.id,
     title: list.title,
@@ -126,8 +202,13 @@ export const listForViewer = createServerOnlyFn(async (viewerId: string | null, 
     visibility: list.visibility,
     createdAt: list.createdAt,
     updatedAt: list.updatedAt,
+    kind: list.kind,
+    tierNames: list.tierNames ?? DEFAULT_TIER_NAMES,
     userId: identified ? list.userId : null,
-    items,
+    items: items.map((item) => ({
+      ...item,
+      productionTypes: productionTypes.get(item.showId) ?? [],
+    })),
     canEdit,
     owner,
   }
@@ -142,14 +223,68 @@ export const addShowToOwnedList = createServerOnlyFn(
       .where(and(eq(shows.id, showId), inArray(shows.catalogStatus, ['published', 'local'])))
       .limit(1)
     if (!show) throw new Error('Choose a published show.')
+    if (list.kind === 'tier_list') {
+      const [entry] = await getDb()
+        .select({ showId: libraryEntries.showId })
+        .from(libraryEntries)
+        .where(
+          and(
+            eq(libraryEntries.userId, ownerId),
+            eq(libraryEntries.showId, showId),
+            eq(libraryEntries.status, 'seen'),
+          ),
+        )
+        .limit(1)
+      if (!entry) throw new Error('Tier lists can only include shows you have seen.')
+    }
     const existing = await getDb()
       .select({ showId: listItems.showId })
       .from(listItems)
-      .where(eq(listItems.listId, list.id))
+      .where(
+        list.kind === 'tier_list'
+          ? and(eq(listItems.listId, list.id), isNull(listItems.tier))
+          : eq(listItems.listId, list.id),
+      )
     await getDb()
       .insert(listItems)
-      .values({ listId: list.id, showId, position: existing.length })
+      .values({ listId: list.id, showId, position: existing.length, tier: null })
       .onConflictDoNothing()
+  },
+)
+
+export const placeTierListItemForOwner = createServerOnlyFn(
+  async (
+    ownerId: string,
+    listId: string,
+    showId: string,
+    destinationTier: TierLabel | null,
+    destinationIndex: number,
+  ) => {
+    const list = await requireOwnedList(ownerId, listId)
+    if (list.kind !== 'tier_list') throw new Error('This is not a tier list.')
+    await getDb().transaction(async (tx) => {
+      const items = await tx
+        .select()
+        .from(listItems)
+        .where(eq(listItems.listId, list.id))
+        .orderBy(asc(listItems.position))
+      const moving = items.find((item) => item.showId === showId)
+      if (!moving) throw new Error('Show not found in this list.')
+      const source = items.filter((item) => item.tier === moving.tier && item.showId !== showId)
+      const destination =
+        moving.tier === destinationTier
+          ? source
+          : items.filter((item) => item.tier === destinationTier)
+      const at = Math.max(0, Math.min(destinationIndex, destination.length))
+      destination.splice(at, 0, moving)
+      const changed = moving.tier === destinationTier ? destination : [...source, ...destination]
+      for (const [position, item] of changed.entries()) {
+        await tx
+          .update(listItems)
+          .set({ tier: item.showId === showId ? destinationTier : item.tier, position })
+          .where(and(eq(listItems.listId, list.id), eq(listItems.showId, item.showId)))
+      }
+    })
   },
 )
 
@@ -193,6 +328,10 @@ export const getMyLists = createServerFn({ method: 'GET' }).handler(async () =>
   listsForOwner((await requireSession()).user.id),
 )
 
+export const getMyTierCandidates = createServerFn({ method: 'GET' }).handler(async () =>
+  tierCandidatesForOwner((await requireSession()).user.id),
+)
+
 export const createList = createServerFn({ method: 'POST' })
   .validator(listInput)
   .handler(async ({ data }) => createListForOwner((await requireSession()).user.id, data))
@@ -225,12 +364,36 @@ export const moveListItem = createServerFn({ method: 'POST' })
     moveItemInOwnedList((await requireSession()).user.id, data.listId, data.showId, data.direction),
   )
 
+export const placeTierListItem = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      listId: z.string().uuid(),
+      showId: z.string().uuid(),
+      tier: tier.nullable(),
+      index: z.number().int().min(0),
+    }),
+  )
+  .handler(async ({ data }) =>
+    placeTierListItemForOwner(
+      (await requireSession()).user.id,
+      data.listId,
+      data.showId,
+      data.tier,
+      data.index,
+    ),
+  )
+
 /** Renames a list, or changes who can see it. */
 export const updateOwnedList = createServerOnlyFn(
   async (
     ownerId: string,
     listId: string,
-    input: { title: string; description?: string; visibility: 'private' | 'friends' | 'public' },
+    input: {
+      title: string
+      description?: string
+      visibility: 'private' | 'friends' | 'public'
+      tierNames?: z.infer<typeof tierNames>
+    },
   ) => {
     const list = await requireOwnedList(ownerId, listId)
     await getDb()
@@ -239,6 +402,7 @@ export const updateOwnedList = createServerOnlyFn(
         title: input.title,
         description: input.description || null,
         visibility: input.visibility,
+        ...(input.tierNames ? { tierNames: input.tierNames } : {}),
         updatedAt: new Date(),
       })
       .where(eq(lists.id, list.id))
@@ -252,6 +416,7 @@ export const saveList = createServerFn({ method: 'POST' })
       title: z.string().trim().min(1).max(120),
       description: z.string().trim().max(1000).optional(),
       visibility: z.enum(['private', 'friends', 'public']),
+      tierNames: tierNames.optional(),
     }),
   )
   .handler(async ({ data }) => updateOwnedList((await requireSession()).user.id, data.id, data))
