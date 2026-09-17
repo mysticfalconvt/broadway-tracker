@@ -75,12 +75,12 @@ export const tierListImageForOwner = createServerOnlyFn(async (ownerId: string, 
           card.title.length > 20 ? `${card.title.slice(0, 19)}...` : card.title,
         )
         const fallback = artworkColors[toneForTitle(card.title)] ?? artworkColors[0]
-        return `<rect x="${card.x}" y="${card.y}" width="124" height="178" rx="8" fill="#fffdf8"/><rect x="${card.x}" y="${card.y}" width="124" height="140" rx="8" fill="${fallback}"/><text x="${card.x + 10}" y="${card.y + 160}" fill="#201e1d" font-family="Arial, sans-serif" font-size="16">${title}</text>`
+        return `<rect x="${card.x}" y="${card.y}" width="124" height="178" rx="8" fill="#fffdf8"/><rect x="${card.x}" y="${card.y}" width="124" height="140" rx="8" fill="${fallback}"/><text x="${card.x + 10}" y="${card.y + 160}" fill="#201e1d" font-family="DejaVu Sans" font-size="16">${title}</text>`
       })
       .join('')
-    return `<rect x="0" y="${150 + row * rowHeight}" width="120" height="${rowHeight - 2}" fill="${colors[row]}"/><text x="60" y="${275 + row * rowHeight}" text-anchor="middle" fill="#fffdf8" font-family="Georgia, serif" font-size="62" font-weight="bold">${escapeXml(list.tierNames[tier])}</text>${cardMarkup}`
+    return `<rect x="0" y="${150 + row * rowHeight}" width="120" height="${rowHeight - 2}" fill="${colors[row]}"/><text x="60" y="${275 + row * rowHeight}" text-anchor="middle" fill="#fffdf8" font-family="DejaVu Serif" font-size="62" font-weight="bold">${escapeXml(list.tierNames[tier])}</text>${cardMarkup}`
   }).join('')
-  const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#f7f3ea"/><text x="64" y="88" fill="#201e1d" font-family="Georgia, serif" font-size="52" font-weight="bold">${escapeXml(list.title)}</text><text x="66" y="122" fill="#6e6862" font-family="Arial, sans-serif" font-size="20">My Broadway Tracker tier list</text>${rows}</svg>`
+  const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#f7f3ea"/><text x="64" y="88" fill="#201e1d" font-family="DejaVu Serif" font-size="52" font-weight="bold">${escapeXml(list.title)}</text><text x="66" y="122" fill="#6e6862" font-family="DejaVu Sans" font-size="20">My Broadway Tracker tier list</text>${rows}</svg>`
   const covers = await Promise.all(
     cards.map(async (card) => {
       if (!card.coverImageKey) return null
