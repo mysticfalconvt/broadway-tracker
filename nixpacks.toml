@@ -6,4 +6,6 @@ nixPkgs = ["nodejs_23", "pnpm-9_x", "fontconfig", "dejavu_fonts"]
 [start]
 # Migrations also run from the `start` script, because a host that invokes
 # `pnpm start` directly bypasses this command entirely.
-cmd = "pnpm start"
+# Sharp's bundled Fontconfig does not inherit Nix's config path. Resolve the
+# fontconfig package from PATH so the path remains valid across Nix store builds.
+cmd = 'fontconfig_root="$(dirname "$(dirname "$(command -v fc-match)")")"; FONTCONFIG_FILE="$fontconfig_root/etc/fonts/fonts.conf" FONTCONFIG_PATH="$fontconfig_root/etc/fonts" pnpm start'
