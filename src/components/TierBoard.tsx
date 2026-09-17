@@ -84,14 +84,12 @@ export function TierBoard({
   tierNames,
   editable,
   onPlace,
-  onRemove,
 }: {
   items: Card[]
   candidates: Card[]
   tierNames: Record<TierLabel, string>
   editable: boolean
   onPlace: (showId: string, tier: TierLabel | null, index: number) => Promise<void>
-  onRemove: (showId: string) => Promise<void>
 }) {
   const [filters, setFilters] = useState<string[]>([])
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -118,14 +116,6 @@ export function TierBoard({
       targetTier === null ? unranked : items.filter((entry) => entry.tier === targetTier)
     const target = withinTier.findIndex((entry) => entry.showId === over.id)
     await onPlace(card.showId, targetTier, target < 0 ? withinTier.length : target)
-  }
-
-  function shift(card: Card, direction: -1 | 1) {
-    const current =
-      card.tier === null || card.tier === undefined ? -1 : TIER_LABELS.indexOf(card.tier)
-    const target = current + direction
-    const tier = target < 0 ? null : TIER_LABELS[Math.min(target, TIER_LABELS.length - 1)]
-    return onPlace(card.showId, tier, 0)
   }
 
   return (
@@ -177,9 +167,6 @@ export function TierBoard({
                       {tierCards.map((card) => (
                         <div key={card.showId} className="tier-card-wrap">
                           <SortableCard card={card} editable={editable} />
-                          {editable ? (
-                            <CardActions card={card} onRemove={onRemove} onShift={shift} />
-                          ) : null}
                         </div>
                       ))}
                     </div>
@@ -231,29 +218,5 @@ export function TierBoard({
         </p>
       ) : null}
     </section>
-  )
-}
-
-function CardActions({
-  card,
-  onRemove,
-  onShift,
-}: {
-  card: Card
-  onRemove: (showId: string) => Promise<void>
-  onShift: (card: Card, direction: -1 | 1) => Promise<void>
-}) {
-  return (
-    <div className="tier-card-actions">
-      <button type="button" onClick={() => onShift(card, -1)} disabled={card.tier === 'S'}>
-        Higher
-      </button>
-      <button type="button" onClick={() => onShift(card, 1)} disabled={card.tier === 'D'}>
-        Lower
-      </button>
-      <button type="button" onClick={() => onRemove(card.showId)}>
-        Remove
-      </button>
-    </div>
   )
 }

@@ -138,7 +138,6 @@ function ListDetail() {
           tierNames={list.tierNames}
           editable={list.canEdit}
           onPlace={place}
-          onRemove={async (showId) => update(showId, 'remove')}
         />
       ) : (
         <div className="list-items">

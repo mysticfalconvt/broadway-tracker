@@ -910,6 +910,11 @@ h3 {
   object-fit: cover;
 }
 
+.tier-card .show-artwork-fallback {
+  min-height: 0;
+  height: 7.6rem;
+}
+
 .tier-card a > span {
   min-height: 2.7rem;
   padding: 0.3rem;
@@ -920,18 +925,6 @@ h3 {
 .tier-card[role="button"] {
   cursor: grab;
   touch-action: none;
-}
-
-.tier-card-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem;
-  margin-top: 0.25rem;
-}
-
-.tier-card-actions button {
-  font-size: 0.62rem;
-  padding: 0.2rem 0.35rem;
 }
 
 .tier-unranked > h2 {
