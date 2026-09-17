@@ -1,7 +1,7 @@
 [phases.setup]
 # Sharp rasterizes tier-list SVG text on the server, so a concrete font package
 # is required. Without it, Pango renders unsupported-glyph rectangles.
-nixPkgs = ["nodejs_23", "pnpm-9_x", "dejavu_fonts"]
+nixPkgs = ["nodejs_23", "pnpm-9_x", "fontconfig", "dejavu_fonts"]
 
 [start]
 # Migrations also run from the `start` script, because a host that invokes
